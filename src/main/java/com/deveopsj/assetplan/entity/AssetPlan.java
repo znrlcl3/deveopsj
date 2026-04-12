@@ -25,7 +25,7 @@ public class AssetPlan extends BaseEntity {
     private LocalDate planDate;
 
     @Column(nullable = false, length = 20)
-    private String assetType; // INVEST_ISA, INVEST_IRP 등
+    private String assetType; 
 
     @Column(nullable = false)
     private Long amount;

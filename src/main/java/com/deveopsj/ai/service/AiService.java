@@ -19,19 +19,17 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AiService {
 
-    // application.properties에 설정된 API 키 주입
     @Value("${spring.ai.gemini.api-key}")
     private String apiKey;
 
- // 리스트의 첫 번째 모델인 gemini-2.5-flash를 사용합니다.
     private final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=";
 
     public String getWealthFeedback(DashboardSummary summary) {
         RestTemplate restTemplate = new RestTemplate();
         
-        // 1. 프롬프트 구성 (성진 대리님 맞춤형 페르소나 적용)
+        // 1. 프롬프트 구성
         String promptText = String.format(
-            "너는 깐깐하지만 유능한 자산 관리 전문가야. 아래 데이터를 보고 '이성진 대리'에게 조언해줘.\n" +
+            "너는 깐깐하지만 유능한 자산 관리 전문가야. 아래 데이터를 보고 '이성진'에게 조언해줘.\n" +
             "- 현재 투자액: %d원 (월 목표 2,050,000원)\n" +
             "- 현재 지출액: %d원 (월 목표 550,000원)\n" +
             "- 투자 달성률: %.1f%%\n" +
@@ -75,12 +73,10 @@ public class AiService {
             return "AI 비서가 응답을 생성하지 못했습니다.";
 
         } catch (org.springframework.web.client.HttpClientErrorException e) {
-            // 401, 404 등 HTTP 에러 발생 시 로그 출력
             System.err.println("### API 호출 에러: " + e.getStatusCode());
             System.err.println("### 에러 원본: " + e.getResponseBodyAsString());
             return "AI 인증 또는 주소 에러가 발생했습니다. (404/401)";
         } catch (Exception e) {
-            // 기타 예외 처리
             e.printStackTrace();
             return "AI 분석 중 오류가 발생했습니다: " + e.getMessage();
         }
@@ -105,10 +101,10 @@ public class AiService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-            // 2. API 호출 (v1 / gemini-2.5-flash)
+            // 2. API 호출
             ResponseEntity<Map> response = restTemplate.postForEntity(GEMINI_URL + apiKey, entity, Map.class);
             
-            // 3. JSON 결과 파싱 (안전하게 추출)
+            // 3. JSON 결과 파싱
             if (response.getBody() != null && response.getBody().containsKey("candidates")) {
                 List candidates = (List) response.getBody().get("candidates");
                 if (!candidates.isEmpty()) {

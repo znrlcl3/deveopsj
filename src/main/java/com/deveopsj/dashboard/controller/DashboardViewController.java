@@ -21,7 +21,7 @@ public class DashboardViewController {
     	
         var summary = dashboardService.getMonthlySummary(1L);
         model.addAttribute("summary", summary);
-        return "dashboard"; // templates/dashboard.html 호출
+        return "dashboard";
     }
     
     @GetMapping("/input")
