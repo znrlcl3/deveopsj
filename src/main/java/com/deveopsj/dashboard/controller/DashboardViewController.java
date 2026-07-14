@@ -19,7 +19,7 @@ public class DashboardViewController {
     @GetMapping("/view")
     public String dashboard(Model model) {
     	
-        var summary = dashboardService.getMonthlySummary(1L);
+        var summary = dashboardService.getMonthlySummary(2L);
         model.addAttribute("summary", summary);
         return "dashboard";
     }

@@ -9,102 +9,66 @@
         body { background-color: #f8f9fa; font-family: 'Pretendard', sans-serif; }
         .card { border: none; border-radius: 15px; transition: transform 0.3s; }
         .card:hover { transform: translateY(-5px); }
-        .ai-card { background: linear-gradient(135.deg, #667eea 0%, #764ba2 100%); color: white; }
+        .ai-card { background: linear-gradient(135.deg, #667eea 0%, #764ba2 100%); color: black; }
         .progress { height: 30px; border-radius: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="container py-5">
-    <h2 class="mb-4 fw-bold"><i class="fas fa-wallet text-primary"></i> My Wealth Dashboard</h2>
+<div class="d-flex">
+    <!-- 사이드바 삽입 -->
+    <div th:replace="~{common/navigation :: sidebar('dashboard')}"></div>
 
-    <div class="row">
-        <div class="col-12 mb-4">
-            <div class="card ai-card shadow-lg">
-                <div class="card-body p-4">
-                    <h5 class="card-title"><i class="fas fa-robot"></i> Gemini 2.5 Pro의 실시간 진단</h5>
-                    <hr class="border-light">
-                    <p class="card-text fs-4 fw-light" id="aiText" th:text="${summary.aiBriefing}">AI가 분석 중입니다...</p>
-                </div>
-            </div>
-        </div>
+    <!-- 메인 콘텐츠 영역 (사이드바 너비 280px 반영) -->
+    <div class="flex-grow-1 py-5 px-4 px-md-5" style="margin-left: 280px; min-height: 100vh;">
+        <h2 class="mb-4 fw-bold"><i class="fas fa-wallet text-primary"></i> My Wealth Dashboard</h2>
 
-        <div class="col-md-7 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title mb-4">이번 달 투자 달성 현황</h5>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>현재 투자액: <strong th:text="${#numbers.formatInteger(summary.totalInvestment, 0, 'COMMA')} + '원'"></strong></span>
-                        <span>목표: <strong>2,050,000원</strong></span>
-                    </div>
-                    <div class="progress mb-4">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
-                             role="progressbar" 
-                             th:style="'width: ' + ${summary.investmentProgress} + '%;'" 
-                             th:text="${#numbers.formatDecimal(summary.investmentProgress, 1, 1)} + '%'">
+        <div class="row">
+            <div class="col-md-7 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-4">이번 달 투자 달성 현황</h5>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>현재 적립액: <strong th:text="${#numbers.formatInteger(summary.totalInvestment, 0, 'COMMA')} + '원'"></strong></span>
+                            <span>목표 합계: <strong id="totalTarget">--원</strong></span>
                         </div>
+                        <div class="progress mb-4">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                                 role="progressbar" 
+                                 th:style="'width: ' + ${summary.investmentProgress} + '%;'" 
+                                 th:text="${#numbers.formatDecimal(summary.investmentProgress, 1, 1)} + '%'">
+                            </div>
+                        </div>
+                        <p class="text-muted small">* 목표 금액 대비 실제 자산 플랜 실행 기준입니다.</p>
                     </div>
-                    <p class="text-muted small">* 목표 금액 대비 실제 자산 플랜 실행 기준입니다.</p>
                 </div>
             </div>
-        </div>
 
-        <div class="col-md-5 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title mb-4">카테고리별 지출</h5>
-                    <canvas id="spendingChart"></canvas>
+            <div class="col-md-5 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-4">카테고리별 지출</h5>
+                        <canvas id="spendingChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <div class="card ai-card shadow-lg">
-    <div class="card-body p-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="card-title mb-0"><i class="fas fa-robot"></i> Gemini 2.5 Pro의 실시간 진단</h5>
-            <button id="btnAnalyze" class="btn btn-light btn-sm fw-bold text-primary">
-                <i class="fas fa-magic"></i> AI 분석하기
-            </button>
-        </div>
-        <hr class="border-light">
-        <p class="card-text fs-4 fw-light" id="aiText">버튼을 누르면 AI가 자산을 분석합니다.</p>
         
-        <div id="aiLoader" class="spinner-border spinner-border-sm text-light d-none" role="status"></div>
-    </div>
-</div>
-
-<!-- <div class="row mt-5">
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-danger text-white">지출 내역 등록</div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">날짜</label>
-                    <input type="date" id="spend_date" class="form-control" th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+        <div class="card ai-card shadow-lg">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0"><i class="fas fa-robot"></i> Gemini 2.5 Pro의 실시간 진단</h5>
+                    <button id="btnAnalyze" class="btn btn-light btn-sm fw-bold text-primary">
+                        <i class="fas fa-magic"></i> AI 분석하기
+                    </button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">금액</label>
-                    <input type="number" id="spend_amount" class="form-control" placeholder="0">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">카테고리</label>
-                    <select id="spend_category" class="form-select">
-                        <option value="FOOD">식비</option>
-                        <option value="CAFE">카페/간식</option>
-                        <option value="TRANS">교통</option>
-                        <option value="ETC">기타</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">메모</label>
-                    <input type="text" id="spend_memo" class="form-control">
-                </div>
-                <button onclick="saveSpending()" class="btn btn-danger w-100">지출 저장</button>
+                <hr class="border-light">
+                <p class="card-text fs-4 fw-light" id="aiText">버튼을 누르면 AI가 자산을 분석합니다.</p>
+                
+                <div id="aiLoader" class="spinner-border spinner-border-sm text-light d-none" role="status"></div>
             </div>
         </div>
     </div>
-    </div> -->
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -142,7 +106,7 @@
         btn.disabled = true;
 
         // API 호출 (Fetch API 사용)
-        fetch('/api/ai/analyze?memberId=1')
+        fetch('/api/ai/analyze?memberId=2')
             .then(response => response.json())
             .then(data => {
                 aiTextField.innerText = data.feedback;

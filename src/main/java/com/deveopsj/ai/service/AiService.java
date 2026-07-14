@@ -53,7 +53,7 @@ public class AiService {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
             // API 호출
-            System.out.println(">>> Gemini API 호출 시작 (모델: gemini-1.5-flash)");
+            System.out.println(">>> Gemini API 호출 시작 (모델: gemini-2.5-flash)");
             ResponseEntity<Map> response = restTemplate.postForEntity(GEMINI_URL + apiKey, entity, Map.class);
             
             // 3. 응답 데이터에서 텍스트 추출 (JSON 트리 구조 탐색)
