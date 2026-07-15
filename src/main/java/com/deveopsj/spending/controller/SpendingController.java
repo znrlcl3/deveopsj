@@ -14,6 +14,8 @@ import com.deveopsj.common.service.DataInputService; // (추후 SpendingService�
 
 import lombok.RequiredArgsConstructor;
 
+import com.deveopsj.member.entity.Member;
+
 @Controller
 @RequestMapping("/spending")
 @RequiredArgsConstructor
@@ -28,8 +30,8 @@ public class SpendingController {
 
     @PostMapping("/api/save")
     @ResponseBody
-    public ResponseEntity<String> saveSpending(@RequestBody Map<String, Object> params) {
-        dataInputService.saveSpendingWithAi(params);
+    public ResponseEntity<String> saveSpending(@RequestBody Map<String, Object> params, Member member) {
+        dataInputService.saveSpendingWithAi(params, member);
         return ResponseEntity.ok("성공적으로 저장되었습니다.");
     }
 }

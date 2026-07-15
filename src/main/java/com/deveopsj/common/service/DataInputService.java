@@ -22,7 +22,7 @@ public class DataInputService {
     private final AiService aiService;
 
     @Transactional
-    public void saveSpendingWithAi(Map<String, Object> params) {
+    public void saveSpendingWithAi(Map<String, Object> params, com.deveopsj.member.entity.Member member) {
         String memo = params.get("memo").toString();
         String category = (params.get("category") != null) ? params.get("category").toString() : "";
         Long amount = Long.parseLong(params.get("amount").toString());
@@ -35,7 +35,7 @@ public class DataInputService {
 
         // 2. 엔티티 생성 및 저장
         DailySpending spending = DailySpending.builder()
-                .member(memberRepository.findById(1L).orElseThrow()) // 1번 멤버 고정
+                .member(member)
                 .amount(amount)
                 .categoryCode(category)
                 .spendingDate(date)

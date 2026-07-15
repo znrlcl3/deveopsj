@@ -3,7 +3,6 @@ package com.deveopsj.assetplan.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import java.time.LocalDate;
 
 import com.deveopsj.common.entity.BaseEntity;
 import com.deveopsj.member.entity.Member;
@@ -21,14 +20,14 @@ public class AssetPlan extends BaseEntity {
     @JoinColumn(name = "member_id")
     private Member member;
 
-    @Column(nullable = false)
-    private LocalDate planDate;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "goal_id")
+    private Goal goal;
 
     @Column(nullable = false, length = 20)
-    private String assetType; 
-
+    private String assetType;
     @Column(nullable = false)
-    private Long amount;
+    private Long monthlyAmount;
 
     @Column(length = 200)
     private String memo;

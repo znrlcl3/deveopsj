@@ -34,6 +34,13 @@
                 </a>
             </li>
             <li class="nav-item mb-2">
+                <a href="/goal/form" class="nav-link text-white d-flex align-items-center py-2 px-3" 
+                   th:classappend="${activeMenu == 'goal'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
+                    <i class="fas fa-bullseye me-3" style="width: 20px;"></i>
+                    목표 관리
+                </a>
+            </li>
+            <li class="nav-item mb-2">
                 <a href="/savings/form" class="nav-link text-white d-flex align-items-center py-2 px-3" 
                    th:classappend="${activeMenu == 'savings'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
                     <i class="fas fa-hand-holding-usd me-3" style="width: 20px;"></i>
@@ -42,11 +49,15 @@
             </li>
         </ul>
         <hr class="border-secondary">
-        <div class="d-flex align-items-center text-white text-decoration-none px-2">
+        <div class="d-flex align-items-center text-white text-decoration-none px-2" sec:authorize="isAuthenticated()">
             <i class="fas fa-user-circle fs-4 me-2 text-secondary"></i>
-            <span class="fw-bold">이성진 대리님</span>
+            <span class="fw-bold" sec:authentication="principal.member.name">사용자</span>
+            <span class="ms-1">님</span>
         </div>
-        
+        <div class="d-flex align-items-center text-white text-decoration-none px-2" sec:authorize="!isAuthenticated()">
+            <a href="/member/login" class="text-white text-decoration-none">로그인</a>
+        </div>
+
         <style>
             .hover-overlay:hover {
                 background-color: rgba(255, 255, 255, 0.1);

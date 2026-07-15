@@ -9,6 +9,8 @@ import com.deveopsj.dashboard.service.DashboardService;
 
 import lombok.RequiredArgsConstructor;
 
+import com.deveopsj.member.entity.Member;
+
 @Controller
 @RequestMapping("/dashboard")
 @RequiredArgsConstructor
@@ -17,9 +19,9 @@ public class DashboardViewController {
     private final DashboardService dashboardService;
 
     @GetMapping("/view")
-    public String dashboard(Model model) {
+    public String dashboard(Model model, Member member) {
     	
-        var summary = dashboardService.getMonthlySummary(2L);
+        var summary = dashboardService.getMonthlySummary(member.getMemberId());
         model.addAttribute("summary", summary);
         return "dashboard";
     }

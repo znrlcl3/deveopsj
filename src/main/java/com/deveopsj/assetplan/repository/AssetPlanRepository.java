@@ -9,6 +9,6 @@ import com.deveopsj.assetplan.entity.AssetPlan;
 
 public interface AssetPlanRepository extends JpaRepository<AssetPlan, Long> {
 	
-	List<AssetPlan> findByMemberMemberIdAndPlanDateBetween(Long memberId, LocalDate start, LocalDate end);
+	List<AssetPlan> findByMemberMemberId(Long memberId);
 	
 }

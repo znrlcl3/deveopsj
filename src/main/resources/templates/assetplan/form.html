@@ -31,30 +31,35 @@
 
             <div class="card p-4">
                 <div class="card-body">
-                    <form action="/assetplan/save" method="post">
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small"><i class="far fa-calendar-alt me-1"></i> 계획 날짜</label>
-                            <input type="date" name="planDate" class="form-control form-control-lg border-0 bg-light" required>
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small"><i class="fas fa-tag me-1"></i> 자산 유형</label>
-                            <select name="assetType" class="form-select form-select-lg border-0 bg-light" required>
-                                <option value="">유형을 선택하세요</option>
-                                <option th:each="code : ${codeMap['ASSET_TYPE']}" th:value="${code.codeId}" th:text="${code.codeName}"></option>
-                            </select>
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small"><i class="fas fa-won-sign me-1"></i> 목표 금액</label>
-                            <input type="number" name="amount" class="form-control form-control-lg border-0 bg-light" placeholder="0" required>
-                        </div>
-                        <div class="mb-5">
-                            <label class="form-label fw-bold small"><i class="fas fa-pen me-1"></i> 메모</label>
-                            <input type="text" name="memo" class="form-control form-control-lg border-0 bg-light">
-                        </div>
-                        <button type="submit" class="btn btn-save w-100 rounded-pill shadow-sm">
-                            <i class="fas fa-check me-2"></i> 계획 저장
-                        </button>
-                    </form>
+<!-- 생략: 헤더/바디 시작 부분 -->
+<form action="/assetplan/save" method="post">
+    <div class="mb-4">
+        <label class="form-label fw-bold small"><i class="fas fa-bullseye me-1"></i> 관련 목표</label>
+        <select name="goal.id" class="form-select form-select-lg border-0 bg-light" required>
+            <option value="">목표를 선택하세요</option>
+            <option th:each="goal : ${goals}" th:value="${goal.id}" th:text="${goal.title}"></option>
+        </select>
+    </div>
+    <div class="mb-4">
+        <label class="form-label fw-bold small"><i class="fas fa-tag me-1"></i> 자산 유형</label>
+        <select name="assetType" class="form-select form-select-lg border-0 bg-light" required>
+            <option value="">유형을 선택하세요</option>
+            <option th:each="code : ${codeMap['ASSET_TYPE']}" th:value="${code.codeId}" th:text="${code.codeName}"></option>
+        </select>
+    </div>
+    <div class="mb-4">
+        <label class="form-label fw-bold small"><i class="fas fa-won-sign me-1"></i> 월 투자 금액</label>
+        <input type="number" name="monthlyAmount" class="form-control form-control-lg border-0 bg-light" placeholder="0" required>
+    </div>
+    <div class="mb-5">
+        <label class="form-label fw-bold small"><i class="fas fa-pen me-1"></i> 메모</label>
+        <input type="text" name="memo" class="form-control form-control-lg border-0 bg-light">
+    </div>
+    <button type="submit" class="btn btn-save w-100 rounded-pill shadow-sm">
+        <i class="fas fa-check me-2"></i> 계획 저장
+    </button>
+</form>
+<!-- 생략: 바디/HTML 끝 부분 -->
                 </div>
             </div>
         </div>

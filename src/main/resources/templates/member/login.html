@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>로그인 - AI 자산관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Pretendard', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+        .btn-primary {
+            background-color: #4e73df;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #2e59d9;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card login-card p-4 bg-white">
+    <div class="text-center mb-4">
+        <i class="fas fa-wallet text-primary fs-1 mb-2"></i>
+        <h3 class="fw-bold">AI 자산관리</h3>
+        <p class="text-muted small">로그인하여 자산 분석을 시작하세요</p>
+    </div>
+
+    <!-- Alert Messages -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show small" role="alert">
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show small" role="alert">
+        <span>아이디 또는 비밀번호가 올바르지 않습니다.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${param.logout}" class="alert alert-info alert-dismissible fade show small" role="alert">
+        <span>로그아웃 되었습니다.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <form th:action="@{/member/login-proc}" method="post">
+        <div class="mb-3">
+            <label for="loginId" class="form-label small fw-bold">아이디</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fas fa-user text-muted"></i></span>
+                <input type="text" class="form-control border-start-0" id="loginId" name="loginId" required placeholder="아이디를 입력하세요">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label small fw-bold">비밀번호</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
+                <input type="password" class="form-control border-start-0" id="password" name="password" required placeholder="비밀번호를 입력하세요">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold mb-3">로그인</button>
+
+        <div class="text-center">
+            <span class="text-muted small">아직 계정이 없으신가요?</span>
+            <a href="/member/join" class="small fw-bold text-decoration-none ms-1">회원가입</a>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
