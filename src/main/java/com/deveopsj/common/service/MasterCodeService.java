@@ -27,12 +27,21 @@ public class MasterCodeService {
                 .collect(Collectors.toList());
     }
 
+    // 3. 코드명 조회
+    public String getCodeName(String groupId, String codeId) {
+        return getAllActiveCodesGrouped().getOrDefault(groupId, List.of())
+                .stream()
+                .filter(code -> code.getCodeId().equals(codeId))
+                .map(MasterCodeDto::getCodeName)
+                .findFirst()
+                .orElse(codeId); // 없으면 코드값 그대로 반환
+    }
+
     // 2. 전체 그룹핑 조회 (@ControllerAdvice 용)
     public Map<String, List<MasterCodeDto>> getAllActiveCodesGrouped() {
         return masterCodeRepository.findByDisableDateIsNullOrderBySortOrderAsc()
                 .stream()
                 .map(MasterCodeDto::fromEntity)
-                // ✨ getGroupId 로 그룹핑
                 .collect(Collectors.groupingBy(MasterCodeDto::getGroupId)); 
     }
 }

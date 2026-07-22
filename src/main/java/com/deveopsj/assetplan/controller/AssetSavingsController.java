@@ -7,8 +7,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import com.deveopsj.assetplan.entity.AssetSavings;
-import com.deveopsj.assetplan.repository.AssetPlanRepository;
-import com.deveopsj.assetplan.repository.AssetSavingsRepository;
+import com.deveopsj.assetplan.service.AssetPlanService;
+import com.deveopsj.assetplan.service.AssetSavingsService;
+import com.deveopsj.member.entity.Member;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,19 +18,20 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AssetSavingsController {
 
-    private final AssetSavingsRepository assetSavingsRepository;
-    private final AssetPlanRepository assetPlanRepository;
+    private final AssetSavingsService assetSavingsService;
+    private final AssetPlanService assetPlanService;
 
     @GetMapping("/form")
-    public String savingsForm(Model model) {
-        // 계획 목록을 조회하여 선택할 수 있도록 모델에 추가
-        model.addAttribute("plans", assetPlanRepository.findAll());
+    public String savingsForm(Model model, Member member) {
+        model.addAttribute("plans", assetPlanService.getPlansByMember(member));
+        model.addAttribute("savings", assetSavingsService.getSavingsByMember(member));
         return "savings/form";
     }
 
     @PostMapping("/save")
-    public String save(AssetSavings assetSavings) {
-        assetSavingsRepository.save(assetSavings);
-        return "redirect:/dashboard/view";
+    public String save(AssetSavings assetSavings, org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        assetSavingsService.save(assetSavings);
+        redirectAttributes.addFlashAttribute("message", "적립 내역이 저장되었습니다.");
+        return "redirect:/savings/form";
     }
 }

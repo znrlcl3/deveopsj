@@ -110,7 +110,7 @@
         btn.disabled = true;
 
         // API 호출 (Fetch API 사용)
-        fetch('/api/ai/analyze?memberId=2')
+        fetch('/api/ai/analyze')
             .then(response => response.json())
             .then(data => {
                 aiTextField.innerText = data.feedback;

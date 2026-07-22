@@ -27,6 +27,7 @@ public class AssetPlanController {
     public String assetPlanForm(Model model, Member member) {
         model.addAttribute("codeMap", masterCodeService.getAllActiveCodesGrouped());
         model.addAttribute("goals", goalService.getGoalsByMember(member));
+        model.addAttribute("plans", assetPlanService.getPlansByMember(member));
         return "assetplan/form";
     }
 
@@ -35,6 +36,17 @@ public class AssetPlanController {
         assetPlan.setMember(member);
         assetPlanService.save(assetPlan);
         redirectAttributes.addFlashAttribute("message", "자산 플랜이 성공적으로 저장되었습니다.");
-        return "redirect:/dashboard/view";
+        return "redirect:/assetplan/form";
+    }
+
+    @PostMapping("/delete")
+    public String delete(Long id, Member member, org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        try {
+            assetPlanService.deleteById(id, member);
+            redirectAttributes.addFlashAttribute("message", "자산 플랜이 삭제되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/assetplan/form";
     }
 }

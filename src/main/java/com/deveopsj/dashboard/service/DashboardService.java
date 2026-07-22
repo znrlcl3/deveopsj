@@ -3,6 +3,7 @@ package com.deveopsj.dashboard.service;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -18,6 +19,9 @@ import com.deveopsj.spending.repository.DailySpendingRepository;
 
 import lombok.RequiredArgsConstructor;
 
+import com.deveopsj.common.service.MasterCodeService;
+import java.util.ArrayList;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -27,21 +31,38 @@ public class DashboardService {
     private final AssetSavingsRepository assetSavingsRepository;
     private final DailySpendingRepository dailySpendingRepository;
     private final GoalRepository goalRepository;
+    private final MasterCodeService masterCodeService;
 
     public DashboardSummary getMonthlySummary(Long memberId) {
         LocalDate start = LocalDate.now().with(TemporalAdjusters.firstDayOfMonth());
         LocalDate end = LocalDate.now().with(TemporalAdjusters.lastDayOfMonth());
 
-        // 1. 이번 달 자산 플랜 조회 및 실적 계산
+        // 1. 자산 플랜 및 이행률 계산
         List<AssetPlan> plans = assetPlanRepository.findByMemberMemberId(memberId);
+        List<DashboardSummary.PlanProgressDto> planProgressList = new ArrayList<>();
         
         long totalTarget = 0;
         long totalActual = 0;
         
+        // 자산 유형 코드 매핑용 맵
+        Map<String, String> assetTypeMap = masterCodeService.getAllActiveCodesGrouped().get("ASSET_TYPE")
+            .stream().collect(Collectors.toMap(c -> c.getCodeId(), c -> c.getCodeName()));
+
         for (AssetPlan plan : plans) {
             totalTarget += plan.getMonthlyAmount();
             Long savings = assetSavingsRepository.getTotalSavingsByPlanId(plan.getId());
-            totalActual += (savings != null ? savings : 0);
+            long actual = (savings != null ? savings : 0);
+            totalActual += actual;
+            
+            double progress = (plan.getMonthlyAmount() == 0) ? 0 : (actual / (double)plan.getMonthlyAmount()) * 100;
+            
+            planProgressList.add(DashboardSummary.PlanProgressDto.builder()
+                .goalTitle(plan.getGoal().getTitle())
+                .assetType(assetTypeMap.getOrDefault(plan.getAssetType(), plan.getAssetType()))
+                .monthlyAmount(plan.getMonthlyAmount())
+                .actualAmount(actual)
+                .progress(Math.min(progress, 100.0))
+                .build());
         }
 
         // 2. 이번 달 지출 내역 계산
@@ -54,14 +75,15 @@ public class DashboardService {
                         Collectors.summingLong(s -> s.getAmount())
                 ));
 
-        // 3. 투자 달성률 계산 (전체 플랜 대비 전체 적립액)
-        double progress = (totalTarget == 0) ? 0 : (totalActual / (double)totalTarget) * 100;
+        // 3. 전체 투자 달성률 계산
+        double totalProgress = (totalTarget == 0) ? 0 : (totalActual / (double)totalTarget) * 100;
 
         return DashboardSummary.builder()
                 .totalInvestment(totalActual)
                 .totalSpending(totalSpend)
                 .spendingByCategory(categoryMap)
-                .investmentProgress(Math.min(progress, 100.0))
+                .investmentProgress(Math.min(totalProgress, 100.0))
+                .planProgressList(planProgressList)
                 .build();
     }
 }

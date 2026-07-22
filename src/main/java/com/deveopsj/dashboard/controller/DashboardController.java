@@ -3,11 +3,11 @@ package com.deveopsj.dashboard.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.deveopsj.dashboard.dto.DashboardSummary;
 import com.deveopsj.dashboard.service.DashboardService;
+import com.deveopsj.member.entity.Member;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,7 +19,7 @@ public class DashboardController {
     private final DashboardService dashboardService;
 
     @GetMapping("/summary")
-    public ResponseEntity<DashboardSummary> getSummary(@RequestParam Long memberId) {
-        return ResponseEntity.ok(dashboardService.getMonthlySummary(memberId));
+    public ResponseEntity<DashboardSummary> getSummary(Member member) {
+        return ResponseEntity.ok(dashboardService.getMonthlySummary(member.getMemberId()));
     }
 }

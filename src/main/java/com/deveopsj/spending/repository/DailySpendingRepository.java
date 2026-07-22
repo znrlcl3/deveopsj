@@ -2,6 +2,7 @@ package com.deveopsj.spending.repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -17,4 +18,8 @@ public interface DailySpendingRepository extends JpaRepository<DailySpending, Lo
                           @Param("endDate") LocalDate endDate);
     
     List<DailySpending> findByMemberMemberIdAndSpendingDateBetween(Long memberId, LocalDate start, LocalDate end);
+    
+    List<DailySpending> findByMemberMemberIdOrderBySpendingDateDesc(Long memberId);
+
+    Optional<DailySpending> findByIdAndMemberMemberId(Long id, Long memberId);
 }
