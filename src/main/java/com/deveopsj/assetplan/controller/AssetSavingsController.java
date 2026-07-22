@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import com.deveopsj.assetplan.entity.AssetSavings;
+import com.deveopsj.assetplan.dto.AssetSavingsSaveRequest;
 import com.deveopsj.assetplan.service.AssetPlanService;
 import com.deveopsj.assetplan.service.AssetSavingsService;
 import com.deveopsj.member.entity.Member;
@@ -29,9 +29,13 @@ public class AssetSavingsController {
     }
 
     @PostMapping("/save")
-    public String save(AssetSavings assetSavings, org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
-        assetSavingsService.save(assetSavings);
-        redirectAttributes.addFlashAttribute("message", "적립 내역이 저장되었습니다.");
+    public String save(AssetSavingsSaveRequest request, Member member, org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        try {
+            assetSavingsService.save(request, member);
+            redirectAttributes.addFlashAttribute("message", "적립 내역이 저장되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
         return "redirect:/savings/form";
     }
 }

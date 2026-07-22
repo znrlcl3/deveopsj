@@ -1,6 +1,6 @@
 /**
  * 마스터 코드를 조회하여 select 태그에 option을 자동으로 그려주는 공통 함수
- * @param {string} groupCode - 조회할 마스터 그룹 코드 (예: 'SPEND_CATEGORY')
+ * @param {string} groupCode - 조회할 마스터 그룹 코드 (예: 'SPENDING_CAT')
  * @param {string} targetId - option을 붙일 select 태그의 ID
  * @param {string} defaultText - 맨 위에 띄울 기본 텍스트
  */
@@ -9,7 +9,7 @@ async function loadMasterCodes(groupCode, targetId, defaultText = "선택하세�
     if (!selectElement) return;
 
     try {
-        // 1. API 호출 (대리님이 만든 master_codes 찌르기)
+        // 1. 마스터 코드 API 호출
         const response = await fetch(`/api/codes/${groupCode}`);
         if (!response.ok) throw new Error('코드 조회 실패');
         
@@ -21,8 +21,8 @@ async function loadMasterCodes(groupCode, targetId, defaultText = "선택하세�
         // 3. 받아온 데이터로 동적 option 생성
         codes.forEach(code => {
             const option = document.createElement('option');
-            option.value = code.codeValue; // DB의 code_value
-            option.textContent = code.codeName; // DB의 code_name
+            option.value = code.codeId;
+            option.textContent = code.codeName;
             selectElement.appendChild(option);
         });
     } catch (error) {

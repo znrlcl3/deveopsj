@@ -1,13 +1,17 @@
 package com.deveopsj.common.service;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.deveopsj.ai.service.AiService;
-import com.deveopsj.member.repository.MemberRepository;
+import com.deveopsj.common.dto.MasterCodeDto;
 import com.deveopsj.spending.entity.DailySpending;
 import com.deveopsj.spending.repository.DailySpendingRepository;
 
@@ -18,8 +22,8 @@ import lombok.RequiredArgsConstructor;
 public class DataInputService {
 
     private final DailySpendingRepository dailySpendingRepository;
-    private final MemberRepository memberRepository;
     private final AiService aiService;
+    private final MasterCodeService masterCodeService;
 
     @Transactional
     public void saveSpendingWithAi(Map<String, Object> params, com.deveopsj.member.entity.Member member) {
@@ -28,9 +32,20 @@ public class DataInputService {
         Long amount = Long.parseLong(params.get("amount").toString());
         LocalDate date = LocalDate.parse(params.get("date").toString());
 
-        // 1. 카테고리가 비어있으면 AI에게 추측 요청
+        List<MasterCodeDto> spendingCategories = masterCodeService.getActiveCodesByGroup("SPENDING_CAT");
+        if (spendingCategories.isEmpty()) {
+            throw new IllegalStateException("사용 가능한 지출 카테고리가 없습니다.");
+        }
+
+        Set<String> allowedCategoryCodes = spendingCategories.stream()
+                .map(MasterCodeDto::getCodeId)
+                .collect(Collectors.toSet());
+
+        // 1. 카테고리가 비어있으면 현재 마스터 코드를 기준으로 AI에게 추측 요청
         if (category.isEmpty() || "NONE".equals(category)) {
-            category = predictCategory(memo);
+            category = predictCategory(memo, spendingCategories, allowedCategoryCodes);
+        } else if (!allowedCategoryCodes.contains(category)) {
+            throw new IllegalArgumentException("사용할 수 없는 지출 카테고리입니다.");
         }
 
         // 2. 엔티티 생성 및 저장
@@ -45,16 +60,22 @@ public class DataInputService {
         dailySpendingRepository.save(spending);
     }
 
-    private String predictCategory(String memo) {
+    private String predictCategory(String memo, List<MasterCodeDto> categories, Set<String> allowedCategoryCodes) {
+        String categoryOptions = categories.stream()
+                .map(category -> category.getCodeId() + "(" + category.getCodeName() + ")")
+                .collect(Collectors.joining(", "));
+
         String prompt = String.format(
             "지출 메모 '%s'를 보고 다음 중 가장 적절한 카테고리 코드 하나만 답변해줘: " +
-            "[FOOD, CAFE, TRANS, MART, ETC]. 설명 없이 코드만 딱 보내줘.", memo
+            "[%s]. 설명 없이 코드만 답변해줘.", memo, categoryOptions
         );
-        
-        // AiService의 기존 메서드를 활용하거나 단순 호출용 메서드 추가
-        String aiResponse = aiService.getWealthFeedbackSimple(prompt); 
-        
-        // AI가 혹시 다른 말을 섞을 경우를 대비해 필터링 (예: "답변: FOOD" -> "FOOD")
-        return aiResponse.toUpperCase().replaceAll("[^A-Z]", "");
+
+        String aiResponse = aiService.getWealthFeedbackSimple(prompt);
+        String normalizedCode = aiResponse.toUpperCase(Locale.ROOT).replaceAll("[^A-Z_]", "");
+
+        if (allowedCategoryCodes.contains(normalizedCode)) {
+            return normalizedCode;
+        }
+        return allowedCategoryCodes.contains("ETC") ? "ETC" : categories.get(0).getCodeId();
     }
 }

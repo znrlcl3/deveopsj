@@ -13,8 +13,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.deveopsj.assetplan.dto.AssetPlanSaveRequest;
 import com.deveopsj.assetplan.entity.AssetPlan;
+import com.deveopsj.assetplan.entity.Goal;
 import com.deveopsj.assetplan.repository.AssetPlanRepository;
+import com.deveopsj.assetplan.repository.GoalRepository;
 import com.deveopsj.member.entity.Member;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,8 +26,35 @@ class AssetPlanServiceTest {
     @Mock
     private AssetPlanRepository assetPlanRepository;
 
+    @Mock
+    private GoalRepository goalRepository;
+
     @InjectMocks
     private AssetPlanService assetPlanService;
+
+    @Test
+    void 본인의_목표로만_자산플랜을_저장한다() {
+        Member member = member(7L);
+        Goal goal = new Goal();
+        AssetPlanSaveRequest request = request(3L);
+        when(goalRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.of(goal));
+
+        assetPlanService.save(request, member);
+
+        verify(assetPlanRepository).save(org.mockito.ArgumentMatchers.argThat(plan ->
+                plan.getMember() == member && plan.getGoal() == goal));
+    }
+
+    @Test
+    void 타인의_목표로는_자산플랜을_저장하지_않는다() {
+        Member member = member(7L);
+        AssetPlanSaveRequest request = request(3L);
+        when(goalRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> assetPlanService.save(request, member))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(assetPlanRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
 
     @Test
     void 본인의_자산플랜만_삭제한다() {
@@ -51,5 +81,14 @@ class AssetPlanServiceTest {
         Member member = new Member();
         member.setMemberId(id);
         return member;
+    }
+
+    private AssetPlanSaveRequest request(Long goalId) {
+        AssetPlanSaveRequest request = new AssetPlanSaveRequest();
+        request.setGoalId(goalId);
+        request.setAssetType("SAVINGS");
+        request.setMonthlyAmount(100_000L);
+        request.setMemo("테스트");
+        return request;
     }
 }
