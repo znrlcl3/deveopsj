@@ -32,3 +32,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### ai ###
+/AGENTS.md
+/GEMINI.md
+/.agents/roles/*
+/.agents/skills/*/*
