@@ -50,7 +50,8 @@ public class DashboardService {
 
         for (AssetPlan plan : plans) {
             totalTarget += plan.getMonthlyAmount();
-            Long savings = assetSavingsRepository.getTotalSavingsByPlanId(plan.getId());
+            Long savings = assetSavingsRepository.getTotalSavingsByPlanIdAndDepositDateBetween(
+                    plan.getId(), start, end);
             long actual = (savings != null ? savings : 0);
             totalActual += actual;
             
