@@ -1,7 +1,5 @@
 package com.deveopsj.spending.controller;
 
-import java.util.Map;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -11,9 +9,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import com.deveopsj.common.service.DataInputService; // (추후 SpendingService로 변경 추천)
+import com.deveopsj.common.service.DataInputService;
+import com.deveopsj.spending.dto.SpendingSaveRequest;
 import com.deveopsj.spending.service.SpendingService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import com.deveopsj.member.entity.Member;
@@ -23,7 +23,7 @@ import com.deveopsj.member.entity.Member;
 @RequiredArgsConstructor
 public class SpendingController {
 
-    private final DataInputService dataInputService; 
+    private final DataInputService dataInputService;
     private final com.deveopsj.spending.repository.DailySpendingRepository dailySpendingRepository;
     private final SpendingService spendingService;
 
@@ -35,8 +35,8 @@ public class SpendingController {
 
     @PostMapping("/api/save")
     @ResponseBody
-    public ResponseEntity<String> saveSpending(@RequestBody Map<String, Object> params, Member member) {
-        dataInputService.saveSpendingWithAi(params, member);
+    public ResponseEntity<String> saveSpending(@Valid @RequestBody SpendingSaveRequest request, Member member) {
+        dataInputService.saveSpendingWithAi(request, member);
         return ResponseEntity.ok("성공적으로 저장되었습니다.");
     }
     

@@ -51,11 +51,11 @@
             </div>
             <div class="mb-4">
                 <label class="form-label fw-bold small"><i class="fas fa-won-sign me-1"></i> 월 투자 금액</label>
-                <input type="number" name="monthlyAmount" class="form-control form-control-lg border-0 bg-light" placeholder="0" required>
+                <input type="number" name="monthlyAmount" class="form-control form-control-lg border-0 bg-light" min="1" placeholder="0" required>
             </div>
             <div class="mb-5">
                 <label class="form-label fw-bold small"><i class="fas fa-pen me-1"></i> 메모</label>
-                <input type="text" name="memo" class="form-control form-control-lg border-0 bg-light">
+                <input type="text" name="memo" class="form-control form-control-lg border-0 bg-light" maxlength="200">
             </div>
             <button type="submit" class="btn btn-save w-100 rounded-pill shadow-sm">
                 <i class="fas fa-check me-2"></i> 계획 저장

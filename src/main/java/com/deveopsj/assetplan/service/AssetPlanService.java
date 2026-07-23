@@ -8,6 +8,7 @@ import com.deveopsj.assetplan.entity.AssetPlan;
 import com.deveopsj.assetplan.entity.Goal;
 import com.deveopsj.assetplan.repository.AssetPlanRepository;
 import com.deveopsj.assetplan.repository.GoalRepository;
+import com.deveopsj.common.service.MasterCodeService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,8 +22,14 @@ public class AssetPlanService {
 
     private final AssetPlanRepository assetPlanRepository;
     private final GoalRepository goalRepository;
+    private final MasterCodeService masterCodeService;
 
     public void save(AssetPlanSaveRequest request, Member member) {
+        boolean activeAssetType = masterCodeService.getActiveCodesByGroup("ASSET_TYPE").stream()
+                .anyMatch(code -> code.getCodeId().equals(request.getAssetType()));
+        if (!activeAssetType) {
+            throw new IllegalArgumentException("사용할 수 없는 자산 유형입니다.");
+        }
         Goal goal = goalRepository.findByIdAndMemberMemberId(request.getGoalId(), member.getMemberId())
                 .orElseThrow(() -> new IllegalArgumentException("선택한 목표를 사용할 수 없습니다."));
 
@@ -31,7 +38,7 @@ public class AssetPlanService {
         assetPlan.setGoal(goal);
         assetPlan.setAssetType(request.getAssetType());
         assetPlan.setMonthlyAmount(request.getMonthlyAmount());
-        assetPlan.setMemo(request.getMemo());
+        assetPlan.setMemo(request.getMemo() == null ? null : request.getMemo().trim());
         assetPlanRepository.save(assetPlan);
     }
 

@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 
 import com.deveopsj.assetplan.dto.AssetPlanSaveRequest;
 import com.deveopsj.assetplan.service.AssetPlanService;
@@ -12,6 +13,7 @@ import com.deveopsj.assetplan.service.GoalService;
 import com.deveopsj.common.service.MasterCodeService;
 import com.deveopsj.member.entity.Member;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @Controller
@@ -32,7 +34,13 @@ public class AssetPlanController {
     }
 
     @PostMapping("/save")
-    public String save(AssetPlanSaveRequest request, Member member, org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+    public String save(@Valid AssetPlanSaveRequest request, BindingResult bindingResult, Member member,
+            org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    bindingResult.getAllErrors().get(0).getDefaultMessage());
+            return "redirect:/assetplan/form";
+        }
         try {
             assetPlanService.save(request, member);
             redirectAttributes.addFlashAttribute("message", "자산 플랜이 성공적으로 저장되었습니다.");

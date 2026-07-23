@@ -7,7 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +20,7 @@ import com.deveopsj.ai.service.AiService;
 import com.deveopsj.common.dto.MasterCodeDto;
 import com.deveopsj.member.entity.Member;
 import com.deveopsj.spending.entity.DailySpending;
+import com.deveopsj.spending.dto.SpendingSaveRequest;
 import com.deveopsj.spending.repository.DailySpendingRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -77,12 +78,13 @@ class DataInputServiceTest {
                 MasterCodeDto.builder().groupId("SPENDING_CAT").codeId("ETC").codeName("기타").build());
     }
 
-    private Map<String, Object> params(String category) {
-        return Map.of(
-                "memo", "온라인 쇼핑",
-                "category", category,
-                "amount", "10000",
-                "date", "2026-07-22");
+    private SpendingSaveRequest params(String category) {
+        SpendingSaveRequest request = new SpendingSaveRequest();
+        request.setMemo("온라인 쇼핑");
+        request.setCategory(category);
+        request.setAmount(10_000L);
+        request.setDate(LocalDate.of(2026, 7, 22));
+        return request;
     }
 
     private Member member() {

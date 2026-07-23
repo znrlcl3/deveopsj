@@ -1,9 +1,7 @@
 package com.deveopsj.common.service;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -13,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.deveopsj.ai.service.AiService;
 import com.deveopsj.common.dto.MasterCodeDto;
 import com.deveopsj.spending.entity.DailySpending;
+import com.deveopsj.spending.dto.SpendingSaveRequest;
 import com.deveopsj.spending.repository.DailySpendingRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -26,11 +25,9 @@ public class DataInputService {
     private final MasterCodeService masterCodeService;
 
     @Transactional
-    public void saveSpendingWithAi(Map<String, Object> params, com.deveopsj.member.entity.Member member) {
-        String memo = params.get("memo").toString();
-        String category = (params.get("category") != null) ? params.get("category").toString() : "";
-        Long amount = Long.parseLong(params.get("amount").toString());
-        LocalDate date = LocalDate.parse(params.get("date").toString());
+    public void saveSpendingWithAi(SpendingSaveRequest request, com.deveopsj.member.entity.Member member) {
+        String memo = request.getMemo().trim();
+        String category = request.getCategory() == null ? "" : request.getCategory();
 
         List<MasterCodeDto> spendingCategories = masterCodeService.getActiveCodesByGroup("SPENDING_CAT");
         if (spendingCategories.isEmpty()) {
@@ -51,9 +48,9 @@ public class DataInputService {
         // 2. 엔티티 생성 및 저장
         DailySpending spending = DailySpending.builder()
                 .member(member)
-                .amount(amount)
+                .amount(request.getAmount())
                 .categoryCode(category)
-                .spendingDate(date)
+                .spendingDate(request.getDate())
                 .memo(memo)
                 .build();
 

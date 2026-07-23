@@ -29,7 +29,7 @@ public class AssetSavingsService {
                 .assetPlan(assetPlan)
                 .amount(request.getAmount())
                 .depositDate(request.getDepositDate())
-                .memo(request.getMemo())
+                .memo(request.getMemo() == null ? null : request.getMemo().trim())
                 .build();
         assetSavingsRepository.save(assetSavings);
     }

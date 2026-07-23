@@ -18,6 +18,8 @@ import com.deveopsj.assetplan.entity.AssetPlan;
 import com.deveopsj.assetplan.entity.Goal;
 import com.deveopsj.assetplan.repository.AssetPlanRepository;
 import com.deveopsj.assetplan.repository.GoalRepository;
+import com.deveopsj.common.dto.MasterCodeDto;
+import com.deveopsj.common.service.MasterCodeService;
 import com.deveopsj.member.entity.Member;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +31,9 @@ class AssetPlanServiceTest {
     @Mock
     private GoalRepository goalRepository;
 
+    @Mock
+    private MasterCodeService masterCodeService;
+
     @InjectMocks
     private AssetPlanService assetPlanService;
 
@@ -37,6 +42,7 @@ class AssetPlanServiceTest {
         Member member = member(7L);
         Goal goal = new Goal();
         AssetPlanSaveRequest request = request(3L);
+        allowAssetType();
         when(goalRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.of(goal));
 
         assetPlanService.save(request, member);
@@ -49,11 +55,24 @@ class AssetPlanServiceTest {
     void 타인의_목표로는_자산플랜을_저장하지_않는다() {
         Member member = member(7L);
         AssetPlanSaveRequest request = request(3L);
+        allowAssetType();
         when(goalRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> assetPlanService.save(request, member))
                 .isInstanceOf(IllegalArgumentException.class);
         verify(assetPlanRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void 비활성_자산유형은_저장하지_않는다() {
+        AssetPlanSaveRequest request = request(3L);
+        when(masterCodeService.getActiveCodesByGroup("ASSET_TYPE")).thenReturn(java.util.List.of());
+
+        assertThatThrownBy(() -> assetPlanService.save(request, member(7L)))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(assetPlanRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(goalRepository, never()).findByIdAndMemberMemberId(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     @Test
@@ -90,5 +109,10 @@ class AssetPlanServiceTest {
         request.setMonthlyAmount(100_000L);
         request.setMemo("테스트");
         return request;
+    }
+
+    private void allowAssetType() {
+        when(masterCodeService.getActiveCodesByGroup("ASSET_TYPE")).thenReturn(java.util.List.of(
+                MasterCodeDto.builder().codeId("SAVINGS").codeName("예적금").build()));
     }
 }
