@@ -10,10 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.deveopsj.assetplan.entity.AssetPlan;
-import com.deveopsj.assetplan.entity.Goal;
 import com.deveopsj.assetplan.repository.AssetPlanRepository;
 import com.deveopsj.assetplan.repository.AssetSavingsRepository;
-import com.deveopsj.assetplan.repository.GoalRepository;
 import com.deveopsj.dashboard.dto.DashboardSummary;
 import com.deveopsj.spending.repository.DailySpendingRepository;
 
@@ -30,7 +28,6 @@ public class DashboardService {
     private final AssetPlanRepository assetPlanRepository;
     private final AssetSavingsRepository assetSavingsRepository;
     private final DailySpendingRepository dailySpendingRepository;
-    private final GoalRepository goalRepository;
     private final MasterCodeService masterCodeService;
 
     public DashboardSummary getMonthlySummary(Long memberId) {

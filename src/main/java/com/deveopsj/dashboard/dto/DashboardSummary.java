@@ -13,7 +13,6 @@ public class DashboardSummary {
     private Long totalSpending;      
     private Map<String, Long> spendingByCategory; 
     private Double investmentProgress; 
-    private String aiBriefing;      
     private List<PlanProgressDto> planProgressList;
 
     @Builder @Getter

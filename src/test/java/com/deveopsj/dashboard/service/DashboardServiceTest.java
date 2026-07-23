@@ -19,7 +19,6 @@ import com.deveopsj.assetplan.entity.AssetPlan;
 import com.deveopsj.assetplan.entity.Goal;
 import com.deveopsj.assetplan.repository.AssetPlanRepository;
 import com.deveopsj.assetplan.repository.AssetSavingsRepository;
-import com.deveopsj.assetplan.repository.GoalRepository;
 import com.deveopsj.common.dto.MasterCodeDto;
 import com.deveopsj.common.service.MasterCodeService;
 import com.deveopsj.dashboard.dto.DashboardSummary;
@@ -36,9 +35,6 @@ class DashboardServiceTest {
 
     @Mock
     private DailySpendingRepository dailySpendingRepository;
-
-    @Mock
-    private GoalRepository goalRepository;
 
     @Mock
     private MasterCodeService masterCodeService;

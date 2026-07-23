@@ -124,27 +124,6 @@
                 console.error('Error:', error);
             });
     });
-    /*
-    function saveSpending() {
-        const data = {
-            date: document.getElementById('spend_date').value,
-            amount: document.getElementById('spend_amount').value,
-            category: document.getElementById('spend_category').value,
-            memo: document.getElementById('spend_memo').value
-        };
-
-        fetch('/api/data/spending', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        }).then(res => {
-            if(res.ok) {
-                alert('저장되었습니다!');
-                location.reload(); 
-            }
-        });
-    }
-    */
 </script>
 
 </body>
