@@ -22,6 +22,7 @@ import com.deveopsj.assetplan.repository.AssetSavingsRepository;
 import com.deveopsj.common.dto.MasterCodeDto;
 import com.deveopsj.common.service.MasterCodeService;
 import com.deveopsj.dashboard.dto.DashboardSummary;
+import com.deveopsj.spending.entity.DailySpending;
 import com.deveopsj.spending.repository.DailySpendingRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -82,5 +83,37 @@ class DashboardServiceTest {
         });
         verify(assetSavingsRepository).getTotalSavingsByPlanIdAndDepositDateBetween(
                 plan.getId(), start, end);
+    }
+
+    @Test
+    void 지출카테고리를_활성_마스터코드의_한글명으로_집계한다() {
+        Long memberId = 7L;
+        LocalDate today = LocalDate.now();
+        LocalDate start = today.with(TemporalAdjusters.firstDayOfMonth());
+        LocalDate end = today.with(TemporalAdjusters.lastDayOfMonth());
+        MasterCodeDto foodCode = MasterCodeDto.builder()
+                .groupId("SPENDING_CAT")
+                .codeId("FOOD")
+                .codeName("식비")
+                .build();
+        DailySpending lunch = DailySpending.builder()
+                .categoryCode("FOOD")
+                .amount(12_000L)
+                .build();
+        DailySpending dinner = DailySpending.builder()
+                .categoryCode("FOOD")
+                .amount(18_000L)
+                .build();
+
+        when(assetPlanRepository.findByMemberMemberId(memberId)).thenReturn(List.of());
+        when(masterCodeService.getAllActiveCodesGrouped())
+                .thenReturn(Map.of("SPENDING_CAT", List.of(foodCode)));
+        when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(
+                memberId, start, end)).thenReturn(List.of(lunch, dinner));
+
+        DashboardSummary summary = dashboardService.getMonthlySummary(memberId);
+
+        assertThat(summary.getSpendingByCategory())
+                .containsExactly(Map.entry("식비", 30_000L));
     }
 }

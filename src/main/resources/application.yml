@@ -1,0 +1,5 @@
+spring:
+  ai:
+    gemini:
+      base-url: https://generativelanguage.googleapis.com/v1/models
+      model: gemini-3.1-flash-lite

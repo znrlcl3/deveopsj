@@ -12,6 +12,7 @@ import com.deveopsj.assetplan.dto.AssetSavingsSaveRequest;
 import com.deveopsj.assetplan.dto.GoalSaveRequest;
 import com.deveopsj.assetplan.entity.Goal.GoalType;
 import com.deveopsj.spending.dto.SpendingSaveRequest;
+import com.deveopsj.spending.dto.SpendingUpdateRequest;
 
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -69,5 +70,18 @@ class InputValidationTest {
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
                 .contains("date", "amount", "memo");
+    }
+
+    @Test
+    void 지출수정은_ID와_카테고리가_필요하다() {
+        SpendingUpdateRequest request = new SpendingUpdateRequest();
+        request.setDate(LocalDate.now());
+        request.setAmount(1_000L);
+        request.setMemo("점심");
+        request.setCategory(" ");
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("id", "category");
     }
 }

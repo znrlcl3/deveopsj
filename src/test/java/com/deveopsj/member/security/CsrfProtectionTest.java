@@ -6,7 +6,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+
+import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +22,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.http.MediaType;
 
 import com.deveopsj.common.service.DataInputService;
+import com.deveopsj.member.entity.Member;
 import com.deveopsj.member.service.MemberService;
+import com.deveopsj.spending.service.SpendingService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -31,6 +38,9 @@ class CsrfProtectionTest {
 
     @MockitoBean
     private DataInputService dataInputService;
+
+    @MockitoBean
+    private SpendingService spendingService;
 
     @Test
     void 로그인_화면은_리디렉션없이_표시한다() throws Exception {
@@ -79,5 +89,24 @@ class CsrfProtectionTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(dataInputService);
+    }
+
+    @Test
+    void 로그인사용자는_선택한_월의_지출목록을_조회한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+
+        mockMvc.perform(get("/spending/list")
+                        .param("month", "2026-07")
+                        .with(user(new CustomUserDetails(member))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("spending/list"))
+                .andExpect(model().attribute("selectedMonth", java.time.YearMonth.of(2026, 7)));
+
+        verify(spendingService).getSpendings(
+                member, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31));
     }
 }

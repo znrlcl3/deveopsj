@@ -41,8 +41,11 @@ public class DashboardService {
         long totalTarget = 0;
         long totalActual = 0;
         
-        // 자산 유형 코드 매핑용 맵
-        Map<String, String> assetTypeMap = masterCodeService.getAllActiveCodesGrouped().get("ASSET_TYPE")
+        var activeCodeGroups = masterCodeService.getAllActiveCodesGrouped();
+        Map<String, String> assetTypeMap = activeCodeGroups.getOrDefault("ASSET_TYPE", List.of())
+            .stream().collect(Collectors.toMap(c -> c.getCodeId(), c -> c.getCodeName()));
+        Map<String, String> spendingCategoryMap = activeCodeGroups
+            .getOrDefault("SPENDING_CAT", List.of())
             .stream().collect(Collectors.toMap(c -> c.getCodeId(), c -> c.getCodeName()));
 
         for (AssetPlan plan : plans) {
@@ -69,7 +72,8 @@ public class DashboardService {
         
         var categoryMap = spendings.stream()
                 .collect(Collectors.groupingBy(
-                        s -> s.getCategoryCode(), 
+                        s -> spendingCategoryMap.getOrDefault(
+                                s.getCategoryCode(), s.getCategoryCode()),
                         Collectors.summingLong(s -> s.getAmount())
                 ));
 

@@ -3,7 +3,8 @@ package com.deveopsj.ai.service;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.deveopsj.ai.config.GeminiProperties;
 import com.deveopsj.dashboard.dto.DashboardSummary;
 
 import lombok.RequiredArgsConstructor;
@@ -19,11 +21,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AiService {
 
-    @Value("${spring.ai.gemini.api-key}")
-    private String apiKey;
+    private static final Logger log = LoggerFactory.getLogger(AiService.class);
 
-    private final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=";
-
+    private final GeminiProperties geminiProperties;
     public String getWealthFeedback(DashboardSummary summary) {
         RestTemplate restTemplate = new RestTemplate();
         
@@ -53,8 +53,9 @@ public class AiService {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
             // API 호출
-            System.out.println(">>> Gemini API 호출 시작 (모델: gemini-2.5-flash)");
-            ResponseEntity<Map> response = restTemplate.postForEntity(GEMINI_URL + apiKey, entity, Map.class);
+            log.info("Gemini API 호출 시작 (모델: {})", geminiProperties.getModel());
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    geminiProperties.generateContentUrl(), entity, Map.class);
             
             // 3. 응답 데이터에서 텍스트 추출 (JSON 트리 구조 탐색)
             if (response.getBody() != null && response.getBody().containsKey("candidates")) {
@@ -66,19 +67,20 @@ public class AiService {
                     Map firstPart = (Map) parts.get(0);
                     
                     String feedback = (String) firstPart.get("text");
-                    System.out.println(">>> AI 응답 성공: " + feedback);
+                    log.info("Gemini API 응답 성공 (모델: {})", geminiProperties.getModel());
                     return feedback;
                 }
             }
             return "AI 비서가 응답을 생성하지 못했습니다.";
 
         } catch (org.springframework.web.client.HttpClientErrorException e) {
-            System.err.println("### API 호출 에러: " + e.getStatusCode());
-            System.err.println("### 에러 원본: " + e.getResponseBodyAsString());
+            log.warn("Gemini API 호출 실패 (모델: {}, 상태: {})",
+                    geminiProperties.getModel(), e.getStatusCode());
             return "AI 인증 또는 주소 에러가 발생했습니다. (404/401)";
         } catch (Exception e) {
-            e.printStackTrace();
-            return "AI 분석 중 오류가 발생했습니다: " + e.getMessage();
+            log.error("Gemini API 호출 중 오류 발생 (모델: {})",
+                    geminiProperties.getModel(), e);
+            return "AI 분석 중 오류가 발생했습니다.";
         }
     }
     
@@ -102,7 +104,9 @@ public class AiService {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
             // 2. API 호출
-            ResponseEntity<Map> response = restTemplate.postForEntity(GEMINI_URL + apiKey, entity, Map.class);
+            log.info("Gemini API 호출 시작 (모델: {})", geminiProperties.getModel());
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    geminiProperties.generateContentUrl(), entity, Map.class);
             
             // 3. JSON 결과 파싱
             if (response.getBody() != null && response.getBody().containsKey("candidates")) {
@@ -119,7 +123,7 @@ public class AiService {
             return "ETC"; // 응답 구조가 이상할 경우 기본값 리턴
 
         } catch (Exception e) {
-            System.err.println("### Simple AI 호출 에러: " + e.getMessage());
+            log.warn("Gemini API 단순 호출 실패 (모델: {})", geminiProperties.getModel());
             return "ETC"; // 에러 발생 시 시스템 중단을 막기 위해 기본 카테고리(ETC) 리턴
         }
     }

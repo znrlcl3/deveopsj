@@ -17,9 +17,11 @@ public interface DailySpendingRepository extends JpaRepository<DailySpending, Lo
                           @Param("startDate") LocalDate startDate, 
                           @Param("endDate") LocalDate endDate);
     
-    List<DailySpending> findByMemberMemberIdAndSpendingDateBetween(Long memberId, LocalDate start, LocalDate end);
-    
-    List<DailySpending> findByMemberMemberIdOrderBySpendingDateDesc(Long memberId);
+    List<DailySpending> findByMemberMemberIdAndSpendingDateBetween(
+            Long memberId, LocalDate start, LocalDate end);
+
+    List<DailySpending> findByMemberMemberIdAndSpendingDateBetweenOrderBySpendingDateDesc(
+            Long memberId, LocalDate start, LocalDate end);
 
     Optional<DailySpending> findByIdAndMemberMemberId(Long id, Long memberId);
 }
