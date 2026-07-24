@@ -2,15 +2,16 @@ package com.deveopsj.ai.controller;
 
 import java.util.Map;
 
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.deveopsj.ai.service.AiService;
-import com.deveopsj.dashboard.dto.DashboardSummary;
-import com.deveopsj.dashboard.service.DashboardService;
+import com.deveopsj.ai.dto.SpendingAnalysisRequest;
+import com.deveopsj.ai.service.SpendingAnalysisService;
 import com.deveopsj.member.entity.Member;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -18,13 +19,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AiRestController {
 
-    private final DashboardService dashboardService;
-    private final AiService aiService;
+    private final SpendingAnalysisService spendingAnalysisService;
 
-    @GetMapping("/analyze")
-    public Map<String, String> getAnalysis(Member member) {
-        DashboardSummary summary = dashboardService.getMonthlySummary(member.getMemberId());
-        String feedback = aiService.getWealthFeedback(summary);
+    @PostMapping("/spending-analysis")
+    public Map<String, String> analyzeSpending(
+            @Valid @RequestBody SpendingAnalysisRequest request, Member member) {
+        String feedback = spendingAnalysisService.analyze(request, member);
         return Map.of("feedback", feedback);
     }
 }

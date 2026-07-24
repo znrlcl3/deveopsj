@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.YearMonth;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -12,34 +13,32 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.deveopsj.ai.service.AiService;
-import com.deveopsj.dashboard.dto.DashboardSummary;
-import com.deveopsj.dashboard.service.DashboardService;
+import com.deveopsj.ai.dto.SpendingAnalysisRequest;
+import com.deveopsj.ai.dto.SpendingAnalysisType;
+import com.deveopsj.ai.service.SpendingAnalysisService;
 import com.deveopsj.member.entity.Member;
 
 @ExtendWith(MockitoExtension.class)
 class AiRestControllerTest {
 
     @Mock
-    private DashboardService dashboardService;
-
-    @Mock
-    private AiService aiService;
+    private SpendingAnalysisService spendingAnalysisService;
 
     @InjectMocks
     private AiRestController controller;
 
     @Test
-    void 로그인사용자의_금융정보만_AI분석에_사용한다() {
+    void 로그인사용자의_선택월과_유형으로_지출을_분석한다() {
         Member member = new Member();
         member.setMemberId(7L);
-        DashboardSummary summary = DashboardSummary.builder().build();
-        when(dashboardService.getMonthlySummary(7L)).thenReturn(summary);
-        when(aiService.getWealthFeedback(summary)).thenReturn("분석 결과");
+        SpendingAnalysisRequest request = new SpendingAnalysisRequest();
+        request.setMonth(YearMonth.of(2026, 7));
+        request.setAnalysisType(SpendingAnalysisType.SAVING_OPPORTUNITIES);
+        when(spendingAnalysisService.analyze(request, member)).thenReturn("분석 결과");
 
-        Map<String, String> response = controller.getAnalysis(member);
+        Map<String, String> response = controller.analyzeSpending(request, member);
 
         assertThat(response).containsEntry("feedback", "분석 결과");
-        verify(dashboardService).getMonthlySummary(7L);
+        verify(spendingAnalysisService).analyze(request, member);
     }
 }

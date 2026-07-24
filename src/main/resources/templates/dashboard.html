@@ -2,6 +2,8 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <title>AI 자산 대시보드</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -11,6 +13,13 @@
         .card:hover { transform: translateY(-5px); }
         .ai-card { background: linear-gradient(135.deg, #667eea 0%, #764ba2 100%); color: black; }
         .progress { height: 30px; border-radius: 15px; font-weight: bold; }
+        .analysis-option { cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+        .analysis-option:hover { transform: translateY(-2px); }
+        .analysis-radio:checked + .analysis-option {
+            border-color: #4e73df;
+            background-color: #eef2ff;
+            box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.15);
+        }
     </style>
 </head>
 <body>
@@ -65,14 +74,38 @@
                         <i class="fas fa-robot"></i>
                         <span th:text="${aiModel} + '의 실시간 진단'">Gemini의 실시간 진단</span>
                     </h5>
-                    <button id="btnAnalyze" class="btn btn-light btn-sm fw-bold text-primary">
-                        <i class="fas fa-magic"></i> AI 분석하기
-                    </button>
                 </div>
                 <hr class="border-light">
-                <p class="card-text fs-4 fw-light" id="aiText">버튼을 누르면 AI가 자산을 분석합니다.</p>
-                
-                <div id="aiLoader" class="spinner-border spinner-border-sm text-light d-none" role="status"></div>
+                <div class="mb-3">
+                    <label for="analysisMonth" class="form-label fw-bold">분석 기간</label>
+                    <input id="analysisMonth" type="month" class="form-control"
+                           th:value="${analysisMonth}" th:max="${analysisMonth}">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6" th:each="type, status : ${analysisTypes}">
+                        <input class="btn-check analysis-radio" type="radio" name="analysisType"
+                               th:id="'analysis-' + ${type.name()}" th:value="${type.name()}"
+                               th:checked="${status.first}">
+                        <label class="card analysis-option h-100 p-3"
+                               th:for="'analysis-' + ${type.name()}">
+                            <strong th:text="${type.title}"></strong>
+                            <span class="small text-muted mt-1" th:switch="${type.name()}">
+                                <span th:case="'SAVING_OPPORTUNITIES'">반복되거나 과도한 소비 후보를 찾아요.</span>
+                                <span th:case="'CATEGORY_REVIEW'">카테고리별 비중과 개선점을 평가해요.</span>
+                                <span th:case="'MONTHLY_COMPARISON'">선택한 달을 이전 달과 비교해요.</span>
+                                <span th:case="'NEXT_MONTH_PLAN'">실행 가능한 다음 달 절약 목표를 만들어요.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                <button id="btnAnalyze" class="btn btn-light fw-bold text-primary">
+                    <i class="fas fa-magic"></i> 선택한 분석 시작
+                </button>
+                <div id="aiLoader" class="spinner-border spinner-border-sm text-light d-none ms-2"
+                     role="status"></div>
+                <div id="aiText" class="alert alert-light mt-3 mb-0">
+                    분석 기간과 유형을 선택해 주세요.
+                </div>
             </div>
         </div>
     </div>
@@ -107,14 +140,33 @@
         const loader = document.getElementById('aiLoader');
         const btn = this;
 
-        // 로딩 상태 표시
-        aiTextField.innerText = "분석 중입니다. 잠시만 기다려주세요...";
+        const month = document.getElementById('analysisMonth').value;
+        const analysisType = document.querySelector('input[name="analysisType"]:checked')?.value;
+        if (!month || !analysisType) {
+            aiTextField.innerText = "분석 기간과 유형을 선택해 주세요.";
+            return;
+        }
+
+        aiTextField.innerText = "지출 데이터를 정리해 분석 중입니다. 잠시만 기다려주세요...";
         loader.classList.remove('d-none');
         btn.disabled = true;
 
-        // API 호출 (Fetch API 사용)
-        fetch('/api/ai/analyze')
-            .then(response => response.json())
+        const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+        fetch('/api/ai/spending-analysis', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [csrfHeader]: csrfToken
+            },
+            body: JSON.stringify({ month, analysisType })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('analysis request failed');
+                }
+                return response.json();
+            })
             .then(data => {
                 aiTextField.innerText = data.feedback;
                 loader.classList.add('d-none');

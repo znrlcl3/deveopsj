@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.deveopsj.assetplan.dto.AssetPlanSaveRequest;
+import com.deveopsj.assetplan.dto.AssetPlanUpdateRequest;
 import com.deveopsj.assetplan.entity.AssetPlan;
 import com.deveopsj.assetplan.entity.Goal;
 import com.deveopsj.assetplan.repository.AssetPlanRepository;
@@ -96,6 +97,52 @@ class AssetPlanServiceTest {
         verify(assetPlanRepository, never()).delete(org.mockito.ArgumentMatchers.any());
     }
 
+    @Test
+    void 본인의_자산플랜을_본인의_목표로_수정한다() {
+        Member member = member(7L);
+        AssetPlan plan = new AssetPlan();
+        Goal goal = new Goal();
+        AssetPlanUpdateRequest request = updateRequest(10L, 3L);
+        when(assetPlanRepository.findByIdAndMemberMemberId(10L, 7L)).thenReturn(Optional.of(plan));
+        allowAssetType();
+        when(goalRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.of(goal));
+
+        assetPlanService.update(request, member);
+
+        org.assertj.core.api.Assertions.assertThat(plan.getGoal()).isSameAs(goal);
+        org.assertj.core.api.Assertions.assertThat(plan.getAssetType()).isEqualTo("SAVINGS");
+        org.assertj.core.api.Assertions.assertThat(plan.getMonthlyAmount()).isEqualTo(200_000L);
+        org.assertj.core.api.Assertions.assertThat(plan.getMemo()).isEqualTo("수정 메모");
+    }
+
+    @Test
+    void 타인의_자산플랜은_수정하지_않는다() {
+        AssetPlanUpdateRequest request = updateRequest(10L, 3L);
+        when(assetPlanRepository.findByIdAndMemberMemberId(10L, 7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> assetPlanService.update(request, member(7L)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(masterCodeService, never()).getActiveCodesByGroup("ASSET_TYPE");
+        verify(goalRepository, never()).findByIdAndMemberMemberId(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void 타인의_목표로는_자산플랜을_수정하지_않는다() {
+        AssetPlan plan = new AssetPlan();
+        AssetPlanUpdateRequest request = updateRequest(10L, 3L);
+        when(assetPlanRepository.findByIdAndMemberMemberId(10L, 7L)).thenReturn(Optional.of(plan));
+        allowAssetType();
+        when(goalRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> assetPlanService.update(request, member(7L)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        org.assertj.core.api.Assertions.assertThat(plan.getGoal()).isNull();
+        org.assertj.core.api.Assertions.assertThat(plan.getAssetType()).isNull();
+    }
+
     private Member member(Long id) {
         Member member = new Member();
         member.setMemberId(id);
@@ -114,5 +161,15 @@ class AssetPlanServiceTest {
     private void allowAssetType() {
         when(masterCodeService.getActiveCodesByGroup("ASSET_TYPE")).thenReturn(java.util.List.of(
                 MasterCodeDto.builder().codeId("SAVINGS").codeName("예적금").build()));
+    }
+
+    private AssetPlanUpdateRequest updateRequest(Long id, Long goalId) {
+        AssetPlanUpdateRequest request = new AssetPlanUpdateRequest();
+        request.setId(id);
+        request.setGoalId(goalId);
+        request.setAssetType("SAVINGS");
+        request.setMonthlyAmount(200_000L);
+        request.setMemo(" 수정 메모 ");
+        return request;
     }
 }

@@ -7,9 +7,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 import java.time.LocalDate;
 
@@ -22,9 +24,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.http.MediaType;
 
 import com.deveopsj.common.service.DataInputService;
+import com.deveopsj.ai.service.SpendingAnalysisService;
 import com.deveopsj.member.entity.Member;
 import com.deveopsj.member.service.MemberService;
 import com.deveopsj.spending.service.SpendingService;
+import com.deveopsj.dashboard.dto.DashboardSummary;
+import com.deveopsj.dashboard.service.DashboardService;
+import com.deveopsj.assetplan.service.AssetPlanService;
+import com.deveopsj.assetplan.service.GoalService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -41,6 +48,18 @@ class CsrfProtectionTest {
 
     @MockitoBean
     private SpendingService spendingService;
+
+    @MockitoBean
+    private SpendingAnalysisService spendingAnalysisService;
+
+    @MockitoBean
+    private DashboardService dashboardService;
+
+    @MockitoBean
+    private AssetPlanService assetPlanService;
+
+    @MockitoBean
+    private GoalService goalService;
 
     @Test
     void 로그인_화면은_리디렉션없이_표시한다() throws Exception {
@@ -108,5 +127,79 @@ class CsrfProtectionTest {
 
         verify(spendingService).getSpendings(
                 member, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31));
+    }
+
+    @Test
+    void 미래월의_AI지출분석은_서비스호출전에_거부한다() throws Exception {
+        String futureMonth = java.time.YearMonth.now().plusMonths(1).toString();
+
+        mockMvc.perform(post("/api/ai/spending-analysis")
+                        .with(user("user"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "month": "%s",
+                                  "analysisType": "CATEGORY_REVIEW"
+                                }
+                                """.formatted(futureMonth)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(spendingAnalysisService);
+    }
+
+    @Test
+    void 대시보드에_네가지_AI지출분석카드를_표시한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+        when(dashboardService.getMonthlySummary(7L)).thenReturn(DashboardSummary.builder()
+                .totalInvestment(0L)
+                .totalSpending(0L)
+                .spendingByCategory(java.util.Map.of())
+                .investmentProgress(0.0)
+                .planProgressList(java.util.List.of())
+                .build());
+
+        mockMvc.perform(get("/dashboard/view")
+                        .with(user(new CustomUserDetails(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("절약 가능 지출 찾기")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("카테고리별 소비 평가")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("지난달과 비교")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("다음 달 절약 계획")));
+    }
+
+    @Test
+    void 자산플랜_내역화면은_수정삭제_기능을_표시한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+        when(assetPlanService.getPlansByMember(member)).thenReturn(java.util.List.of());
+        when(goalService.getGoalsByMember(member)).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/assetplan/list")
+                        .with(user(new CustomUserDetails(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("자산 플랜 내역")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("새 플랜 등록")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("등록된 자산 플랜이 없습니다.")));
+    }
+
+    @Test
+    void CSRF토큰이_없는_자산플랜수정은_거부한다() throws Exception {
+        mockMvc.perform(post("/assetplan/update")
+                        .with(user("user"))
+                        .param("id", "10")
+                        .param("goalId", "3")
+                        .param("assetType", "SAVINGS")
+                        .param("monthlyAmount", "100000"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(assetPlanService);
     }
 }

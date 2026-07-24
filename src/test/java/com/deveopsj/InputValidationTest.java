@@ -8,9 +8,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.deveopsj.assetplan.dto.AssetPlanSaveRequest;
+import com.deveopsj.assetplan.dto.AssetPlanUpdateRequest;
 import com.deveopsj.assetplan.dto.AssetSavingsSaveRequest;
 import com.deveopsj.assetplan.dto.GoalSaveRequest;
 import com.deveopsj.assetplan.entity.Goal.GoalType;
+import com.deveopsj.ai.dto.SpendingAnalysisRequest;
+import com.deveopsj.ai.dto.SpendingAnalysisType;
 import com.deveopsj.spending.dto.SpendingSaveRequest;
 import com.deveopsj.spending.dto.SpendingUpdateRequest;
 
@@ -49,6 +52,17 @@ class InputValidationTest {
     }
 
     @Test
+    void 자산계획수정은_ID와_필수선택_양수금액을_검증한다() {
+        AssetPlanUpdateRequest request = new AssetPlanUpdateRequest();
+        request.setAssetType(" ");
+        request.setMonthlyAmount(0L);
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("id", "goalId", "assetType", "monthlyAmount");
+    }
+
+    @Test
     void 적립은_미래날짜와_0원이_허용되지_않는다() {
         AssetSavingsSaveRequest request = new AssetSavingsSaveRequest();
         request.setAssetPlanId(1L);
@@ -83,5 +97,16 @@ class InputValidationTest {
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
                 .contains("id", "category");
+    }
+
+    @Test
+    void 미래월의_AI지출분석은_허용하지_않는다() {
+        SpendingAnalysisRequest request = new SpendingAnalysisRequest();
+        request.setMonth(java.time.YearMonth.now().plusMonths(1));
+        request.setAnalysisType(SpendingAnalysisType.CATEGORY_REVIEW);
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("monthValid");
     }
 }

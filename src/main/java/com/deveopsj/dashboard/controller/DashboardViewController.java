@@ -1,11 +1,14 @@
 package com.deveopsj.dashboard.controller;
 
+import java.time.YearMonth;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import com.deveopsj.ai.config.GeminiProperties;
+import com.deveopsj.ai.dto.SpendingAnalysisType;
 import com.deveopsj.dashboard.service.DashboardService;
 
 import lombok.RequiredArgsConstructor;
@@ -26,6 +29,8 @@ public class DashboardViewController {
         var summary = dashboardService.getMonthlySummary(member.getMemberId());
         model.addAttribute("summary", summary);
         model.addAttribute("aiModel", geminiProperties.getModel());
+        model.addAttribute("analysisMonth", YearMonth.now());
+        model.addAttribute("analysisTypes", SpendingAnalysisType.values());
         return "dashboard";
     }
     

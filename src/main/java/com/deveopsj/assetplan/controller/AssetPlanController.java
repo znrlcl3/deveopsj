@@ -8,6 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 
 import com.deveopsj.assetplan.dto.AssetPlanSaveRequest;
+import com.deveopsj.assetplan.dto.AssetPlanUpdateRequest;
 import com.deveopsj.assetplan.service.AssetPlanService;
 import com.deveopsj.assetplan.service.GoalService;
 import com.deveopsj.common.service.MasterCodeService;
@@ -29,8 +30,14 @@ public class AssetPlanController {
     public String assetPlanForm(Model model, Member member) {
         model.addAttribute("codeMap", masterCodeService.getAllActiveCodesGrouped());
         model.addAttribute("goals", goalService.getGoalsByMember(member));
-        model.addAttribute("plans", assetPlanService.getPlansByMember(member));
         return "assetplan/form";
+    }
+
+    @GetMapping("/list")
+    public String assetPlanList(Model model, Member member) {
+        model.addAttribute("goals", goalService.getGoalsByMember(member));
+        model.addAttribute("plans", assetPlanService.getPlansByMember(member));
+        return "assetplan/list";
     }
 
     @PostMapping("/save")
@@ -46,8 +53,26 @@ public class AssetPlanController {
             redirectAttributes.addFlashAttribute("message", "자산 플랜이 성공적으로 저장되었습니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/assetplan/form";
         }
-        return "redirect:/assetplan/form";
+        return "redirect:/assetplan/list";
+    }
+
+    @PostMapping("/update")
+    public String update(@Valid AssetPlanUpdateRequest request, BindingResult bindingResult, Member member,
+            org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    bindingResult.getAllErrors().get(0).getDefaultMessage());
+            return "redirect:/assetplan/list";
+        }
+        try {
+            assetPlanService.update(request, member);
+            redirectAttributes.addFlashAttribute("message", "자산 플랜이 수정되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/assetplan/list";
     }
 
     @PostMapping("/delete")
@@ -58,6 +83,6 @@ public class AssetPlanController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
-        return "redirect:/assetplan/form";
+        return "redirect:/assetplan/list";
     }
 }
