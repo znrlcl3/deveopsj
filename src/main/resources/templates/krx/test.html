@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>종목정보 테스트 | AI 자산관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Pretendard', sans-serif; }
+        .content-container { max-width: 1300px; margin: 50px auto; }
+        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        .table-wrap { max-height: 650px; overflow: auto; }
+        thead th { position: sticky; top: 0; background: white !important; z-index: 1; }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <div th:replace="~{common/navigation :: sidebar('krx')}"></div>
+    <main class="flex-grow-1" style="margin-left: 280px; min-height: 100vh;">
+        <div class="container content-container">
+            <h3 class="fw-bold mb-2">국내·미국 종목정보 테스트</h3>
+            <p class="text-muted mb-4">
+                국내는 KRX API, 미국은 Nasdaq Symbol Directory 공식 파일을 사용합니다.
+            </p>
+
+            <div class="card p-4 mb-4">
+                <form action="/krx/test" method="get" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="date" class="form-label fw-bold">조회 기준일</label>
+                        <input id="date" type="date" name="date" class="form-control"
+                               th:value="${requestedDate}" th:max="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"
+                               required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="market" class="form-label fw-bold">조회 시장</label>
+                        <select id="market" name="market" class="form-select">
+                            <option th:each="marketOption : ${markets}"
+                                    th:value="${marketOption.name()}"
+                                    th:text="${marketOption.displayName}"
+                                    th:selected="${marketOption == selectedMarket}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">API 조회</button>
+                    </div>
+                    <div class="col-md-4 text-md-end" th:if="${errorMessage == null}">
+                        <div class="text-muted">실제 데이터 기준일</div>
+                        <strong th:text="${baseDate}"></strong>
+                        <span class="badge bg-primary ms-2"
+                              th:text="${#numbers.formatInteger(totalCount, 0, 'COMMA')} + '개 종목'"></span>
+                    </div>
+                </form>
+            </div>
+
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+            <div th:if="${displayLimited}" class="alert alert-info">
+                미국 종목은 화면 성능을 위해 전체 건수 중 앞 1,000건만 표시합니다.
+            </div>
+
+            <div class="card p-4" th:if="${errorMessage == null}">
+                <div class="table-wrap">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                        <tr>
+                            <th>단축코드</th>
+                            <th>종목명</th>
+                            <th>정식명칭</th>
+                            <th>시장</th>
+                            <th>증권구분</th>
+                            <th>주식종류</th>
+                            <th>상장일</th>
+                            <th class="text-end">상장주식수</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(stocks)}">
+                            <td colspan="8" class="text-center text-muted py-5">
+                                최근 10일 내 조회 가능한 데이터가 없습니다.
+                            </td>
+                        </tr>
+                        <tr th:each="stock : ${stocks}">
+                            <td class="fw-bold" th:text="${stock.shortCode}"></td>
+                            <td th:text="${stock.abbreviatedName}"></td>
+                            <td th:text="${stock.name}"></td>
+                            <td th:text="${stock.market}"></td>
+                            <td th:text="${stock.securityGroup}"></td>
+                            <td th:text="${stock.stockType}"></td>
+                            <td th:text="${stock.listingDate}"></td>
+                            <td class="text-end" th:text="${stock.listedShares}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

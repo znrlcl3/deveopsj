@@ -54,6 +54,13 @@
                     주식·ETF 매매
                 </a>
             </li>
+            <li class="nav-item mb-2">
+                <a href="/krx/test" class="nav-link text-white d-flex align-items-center py-2 px-3"
+                   th:classappend="${activeMenu == 'krx'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
+                    <i class="fas fa-magnifying-glass-chart me-3" style="width: 20px;"></i>
+                    종목정보 테스트
+                </a>
+            </li>
         </ul>
         <hr class="border-secondary">
         <div class="d-flex align-items-center text-white text-decoration-none px-2" sec:authorize="isAuthenticated()">
