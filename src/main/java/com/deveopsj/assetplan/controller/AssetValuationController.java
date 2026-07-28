@@ -26,7 +26,7 @@ public class AssetValuationController {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("errorMessage",
                     bindingResult.getAllErrors().get(0).getDefaultMessage());
-            return "redirect:/savings/form";
+            return "redirect:/trades/form";
         }
 
         try {
@@ -35,6 +35,6 @@ public class AssetValuationController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
-        return "redirect:/savings/form";
+        return "redirect:/trades/form";
     }
 }

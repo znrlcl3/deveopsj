@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import com.deveopsj.assetplan.repository.AssetPlanRepository;
 import com.deveopsj.assetplan.repository.AssetSavingsRepository;
 import com.deveopsj.assetplan.repository.AssetTradeRepository;
 import com.deveopsj.assetplan.repository.AssetValuationRepository;
+import com.deveopsj.assetplan.entity.AssetSavings.DepositType;
 import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 import com.deveopsj.dashboard.dto.DashboardSummary;
 import com.deveopsj.spending.repository.DailySpendingRepository;
@@ -27,6 +29,8 @@ import java.util.ArrayList;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class DashboardService {
+
+    private static final Set<String> SECURITIES_ASSET_TYPES = Set.of("STOCK", "ETF", "FUND");
 
     private final AssetPlanRepository assetPlanRepository;
     private final AssetSavingsRepository assetSavingsRepository;
@@ -60,11 +64,7 @@ public class DashboardService {
             totalTarget += plan.getMonthlyAmount();
             Long savings = assetSavingsRepository.getTotalSavingsByPlanIdAndDepositDateBetween(
                     plan.getId(), start, end);
-            Long buyAmount = assetTradeRepository.getTotalSettlementByPlanIdAndTypeAndTradeDateBetween(
-                    plan.getId(), TradeType.BUY, start, end);
-            long actual = Math.addExact(
-                    savings != null ? savings : 0,
-                    buyAmount != null ? buyAmount : 0);
+            long actual = savings != null ? savings : 0;
             totalActual += actual;
 
             var latestValuation = assetValuationRepository
@@ -73,9 +73,10 @@ public class DashboardService {
                 Long savingsPrincipal = assetSavingsRepository.getTotalSavingsByPlanId(plan.getId());
                 Long tradePrincipal = assetTradeRepository.getTotalSettlementByPlanIdAndType(
                         plan.getId(), TradeType.BUY);
-                valuationPrincipal = Math.addExact(valuationPrincipal, Math.addExact(
-                        savingsPrincipal != null ? savingsPrincipal : 0,
-                        tradePrincipal != null ? tradePrincipal : 0));
+                long planPrincipal = SECURITIES_ASSET_TYPES.contains(plan.getAssetType())
+                        ? (tradePrincipal != null ? tradePrincipal : 0)
+                        : (savingsPrincipal != null ? savingsPrincipal : 0);
+                valuationPrincipal = Math.addExact(valuationPrincipal, planPrincipal);
                 currentValuation += latestValuation.get().getValuationAmount();
                 valuedPlanCount++;
             }
@@ -90,6 +91,11 @@ public class DashboardService {
                 .progress(Math.min(progress, 100.0))
                 .build());
         }
+
+        Long extraInvestmentValue = assetSavingsRepository.getTotalByMemberIdAndTypeAndDepositDateBetween(
+                memberId, DepositType.EXTRA, start, end);
+        long extraInvestment = extraInvestmentValue != null ? extraInvestmentValue : 0;
+        totalActual = Math.addExact(totalActual, extraInvestment);
 
         // 2. 이번 달 지출 내역 계산
         var spendings = dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(memberId, start, end);
@@ -108,6 +114,7 @@ public class DashboardService {
         return DashboardSummary.builder()
                 .totalInvestmentTarget(totalTarget)
                 .totalInvestment(totalActual)
+                .extraInvestment(extraInvestment)
                 .valuationPrincipal(valuationPrincipal)
                 .currentValuation(currentValuation)
                 .valuationProfit(currentValuation - valuationPrincipal)

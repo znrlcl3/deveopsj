@@ -81,19 +81,17 @@ class DashboardServiceTest {
                 .thenReturn(Map.of("ASSET_TYPE", List.of(savingsCode)));
         when(assetSavingsRepository.getTotalSavingsByPlanIdAndDepositDateBetween(
                 plan.getId(), start, end)).thenReturn(200_000L);
-        when(assetTradeRepository.getTotalSettlementByPlanIdAndTypeAndTradeDateBetween(
-                plan.getId(), TradeType.BUY, start, end)).thenReturn(50_000L);
         when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(
                 memberId, start, end)).thenReturn(List.of());
 
         DashboardSummary summary = dashboardService.getMonthlySummary(memberId);
 
         assertThat(summary.getTotalInvestmentTarget()).isEqualTo(500_000L);
-        assertThat(summary.getTotalInvestment()).isEqualTo(250_000L);
-        assertThat(summary.getInvestmentProgress()).isEqualTo(50.0);
+        assertThat(summary.getTotalInvestment()).isEqualTo(200_000L);
+        assertThat(summary.getInvestmentProgress()).isEqualTo(40.0);
         assertThat(summary.getPlanProgressList()).singleElement().satisfies(progress -> {
-            assertThat(progress.getActualAmount()).isEqualTo(250_000L);
-            assertThat(progress.getProgress()).isEqualTo(50.0);
+            assertThat(progress.getActualAmount()).isEqualTo(200_000L);
+            assertThat(progress.getProgress()).isEqualTo(40.0);
         });
         verify(assetSavingsRepository).getTotalSavingsByPlanIdAndDepositDateBetween(
                 plan.getId(), start, end);
@@ -134,6 +132,28 @@ class DashboardServiceTest {
     }
 
     @Test
+    void 기타추가납입을_이번달_실제납입원금에_포함한다() {
+        Long memberId = 7L;
+        LocalDate today = LocalDate.now();
+        LocalDate start = today.with(TemporalAdjusters.firstDayOfMonth());
+        LocalDate end = today.with(TemporalAdjusters.lastDayOfMonth());
+
+        when(assetPlanRepository.findByMemberMemberId(memberId)).thenReturn(List.of());
+        when(masterCodeService.getAllActiveCodesGrouped()).thenReturn(Map.of());
+        when(assetSavingsRepository.getTotalByMemberIdAndTypeAndDepositDateBetween(
+                memberId, com.deveopsj.assetplan.entity.AssetSavings.DepositType.EXTRA, start, end))
+                .thenReturn(300_000L);
+        when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(
+                memberId, start, end)).thenReturn(List.of());
+
+        DashboardSummary summary = dashboardService.getMonthlySummary(memberId);
+
+        assertThat(summary.getTotalInvestment()).isEqualTo(300_000L);
+        assertThat(summary.getExtraInvestment()).isEqualTo(300_000L);
+        assertThat(summary.getInvestmentProgress()).isZero();
+    }
+
+    @Test
     void 최신_평가금액과_누적납입원금으로_평가손익을_계산한다() {
         Long memberId = 7L;
         LocalDate today = LocalDate.now();
@@ -163,12 +183,13 @@ class DashboardServiceTest {
                 .thenReturn(Optional.of(latestValuation));
         when(assetSavingsRepository.getTotalSavingsByPlanId(plan.getId())).thenReturn(800_000L);
         when(assetTradeRepository.getTotalSettlementByPlanIdAndType(plan.getId(), TradeType.BUY))
-                .thenReturn(200_000L);
+                .thenReturn(1_000_000L);
         when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(
                 memberId, start, end)).thenReturn(List.of());
 
         DashboardSummary summary = dashboardService.getMonthlySummary(memberId);
 
+        assertThat(summary.getTotalInvestment()).isEqualTo(200_000L);
         assertThat(summary.getValuationPrincipal()).isEqualTo(1_000_000L);
         assertThat(summary.getCurrentValuation()).isEqualTo(1_150_000L);
         assertThat(summary.getValuationProfit()).isEqualTo(150_000L);

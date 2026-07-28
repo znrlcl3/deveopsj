@@ -51,10 +51,10 @@ public class AssetTradeSaveRequest {
     @Digits(integer = 11, fraction = 8, message = "수량의 자릿수를 확인해 주세요.")
     private BigDecimal quantity;
 
-    @NotNull(message = "체결 단가를 입력해 주세요.")
-    @DecimalMin(value = "0.0001", message = "체결 단가는 0보다 커야 합니다.")
-    @Digits(integer = 15, fraction = 4, message = "체결 단가의 자릿수를 확인해 주세요.")
-    private BigDecimal unitPrice;
+    @NotNull(message = "총 매매금액을 입력해 주세요.")
+    @DecimalMin(value = "0.0001", message = "총 매매금액은 0보다 커야 합니다.")
+    @Digits(integer = 15, fraction = 4, message = "총 매매금액의 자릿수를 확인해 주세요.")
+    private BigDecimal tradeAmount;
 
     @NotBlank(message = "통화를 선택해 주세요.")
     @Pattern(regexp = "KRW|USD", message = "지원하지 않는 통화입니다.")

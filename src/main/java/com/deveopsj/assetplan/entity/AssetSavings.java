@@ -14,13 +14,25 @@ import com.deveopsj.common.entity.BaseEntity;
 @Builder
 public class AssetSavings extends BaseEntity {
 
+    public enum DepositType {
+        PLAN, EXTRA
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "plan_id", nullable = false)
+    @JoinColumn(name = "plan_id")
     private AssetPlan assetPlan;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "goal_id")
+    private Goal goal;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private DepositType depositType;
 
     @Column(nullable = false)
     private Long amount;

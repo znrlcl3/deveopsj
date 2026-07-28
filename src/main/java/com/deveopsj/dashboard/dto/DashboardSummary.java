@@ -11,6 +11,7 @@ import lombok.Getter;
 public class DashboardSummary {
     private Long totalInvestmentTarget;
     private Long totalInvestment;
+    private Long extraInvestment;
     private Long valuationPrincipal;
     private Long currentValuation;
     private Long valuationProfit;

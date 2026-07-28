@@ -10,8 +10,10 @@ import org.junit.jupiter.api.Test;
 import com.deveopsj.assetplan.dto.AssetPlanSaveRequest;
 import com.deveopsj.assetplan.dto.AssetPlanUpdateRequest;
 import com.deveopsj.assetplan.dto.AssetSavingsSaveRequest;
+import com.deveopsj.assetplan.dto.AssetSavingsUpdateRequest;
 import com.deveopsj.assetplan.dto.AssetTradeSaveRequest;
 import com.deveopsj.assetplan.dto.AssetValuationSaveRequest;
+import com.deveopsj.assetplan.entity.AssetSavings.DepositType;
 import com.deveopsj.assetplan.dto.GoalSaveRequest;
 import com.deveopsj.assetplan.entity.Goal.GoalType;
 import com.deveopsj.ai.dto.SpendingAnalysisRequest;
@@ -50,7 +52,7 @@ class InputValidationTest {
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
-                .contains("goalId", "assetType", "monthlyAmount");
+                .contains("goalId", "planName", "assetType", "monthlyAmount");
     }
 
     @Test
@@ -61,19 +63,32 @@ class InputValidationTest {
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
-                .contains("id", "goalId", "assetType", "monthlyAmount");
+                .contains("id", "goalId", "planName", "assetType", "monthlyAmount");
     }
 
     @Test
     void 적립은_미래날짜와_0원이_허용되지_않는다() {
         AssetSavingsSaveRequest request = new AssetSavingsSaveRequest();
         request.setAssetPlanId(1L);
+        request.setDepositType(DepositType.PLAN);
         request.setAmount(0L);
         request.setDepositDate(LocalDate.now().plusDays(1));
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
                 .contains("amount", "depositDate");
+    }
+
+    @Test
+    void 납입수정은_ID와_플랜이_필요하다() {
+        AssetSavingsUpdateRequest request = new AssetSavingsUpdateRequest();
+        request.setDepositType(DepositType.PLAN);
+        request.setAmount(10_000L);
+        request.setDepositDate(LocalDate.now());
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("id", "targetValid");
     }
 
     @Test
@@ -93,7 +108,7 @@ class InputValidationTest {
         AssetTradeSaveRequest request = new AssetTradeSaveRequest();
         request.setTradeDate(LocalDate.now().plusDays(1));
         request.setQuantity(java.math.BigDecimal.ZERO);
-        request.setUnitPrice(java.math.BigDecimal.ZERO);
+        request.setTradeAmount(java.math.BigDecimal.ZERO);
         request.setCurrency("KRW");
         request.setExchangeRate(java.math.BigDecimal.ONE);
         request.setFeeKrw(0L);
@@ -102,7 +117,7 @@ class InputValidationTest {
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
                 .contains("assetPlanId", "symbol", "assetName", "market", "assetClass",
-                        "tradeType", "tradeDate", "quantity", "unitPrice");
+                        "tradeType", "tradeDate", "quantity", "tradeAmount");
     }
 
     @Test

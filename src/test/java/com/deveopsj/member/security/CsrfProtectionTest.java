@@ -30,6 +30,8 @@ import com.deveopsj.member.service.MemberService;
 import com.deveopsj.spending.service.SpendingService;
 import com.deveopsj.dashboard.dto.DashboardSummary;
 import com.deveopsj.dashboard.service.DashboardService;
+import com.deveopsj.assetplan.entity.AssetPlan;
+import com.deveopsj.assetplan.entity.Goal;
 import com.deveopsj.assetplan.service.AssetPlanService;
 import com.deveopsj.assetplan.service.AssetSavingsService;
 import com.deveopsj.assetplan.service.AssetTradeService;
@@ -203,21 +205,52 @@ class CsrfProtectionTest {
     }
 
     @Test
-    void 적립화면에_평가금액_입력영역을_렌더링한다() throws Exception {
+    void 납입등록화면은_단순납입항목만_렌더링한다() throws Exception {
         Member member = new Member();
         member.setMemberId(7L);
         member.setLoginId("user");
         member.setPassword("password");
         member.setRole("USER");
-        when(assetPlanService.getPlansByMember(member)).thenReturn(java.util.List.of());
-        when(assetSavingsService.getSavingsByMember(member)).thenReturn(java.util.List.of());
-        when(assetValuationService.getValuationsByMember(member)).thenReturn(java.util.List.of());
+        Goal goal = new Goal();
+        goal.setTitle("1억 모으기");
+        AssetPlan plan = new AssetPlan();
+        plan.setId(3L);
+        plan.setPlanName("ISA 계좌");
+        plan.setGoal(goal);
+        plan.setAssetType("SECURITIES");
+        plan.setMonthlyAmount(1_100_000L);
+        when(assetSavingsService.getDepositPlansByMember(member)).thenReturn(java.util.List.of(plan));
 
         mockMvc.perform(get("/savings/form")
                         .with(user(new CustomUserDetails(member))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("현재 평가금액 기록")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/valuations/save")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("납입 등록")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "ISA 계좌 · 목표: 1억 모으기 · 월 1,100,000원")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("inputmode=\"numeric\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("amount-input")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/savings/list")))
+                .andExpect(content().string(not(org.hamcrest.Matchers.containsString("/valuations/save"))));
+    }
+
+    @Test
+    void 납입내역화면은_월조회와_수정삭제기능을_표시한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+        java.time.YearMonth month = java.time.YearMonth.now();
+        when(assetSavingsService.getDepositPlansByMember(member)).thenReturn(java.util.List.of());
+        when(assetSavingsService.getSavingsByMemberAndMonth(member, month)).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/savings/list")
+                        .with(user(new CustomUserDetails(member)))
+                        .param("month", month.toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("납입 내역")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("월 납입 합계")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("새 납입 등록")));
     }
 
     @Test
@@ -228,13 +261,33 @@ class CsrfProtectionTest {
         member.setPassword("password");
         member.setRole("USER");
         when(assetPlanService.getPlansByMember(member)).thenReturn(java.util.List.of());
-        when(assetTradeService.getTradesByMember(member)).thenReturn(java.util.List.of());
 
         mockMvc.perform(get("/trades/form")
                         .with(user(new CustomUserDetails(member))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("주식·ETF 매매 등록")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/trades/list")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/trades/save")));
+    }
+
+    @Test
+    void 매매내역화면은_월조회와_수정삭제기능을_표시한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+        java.time.YearMonth month = java.time.YearMonth.now();
+        when(assetPlanService.getPlansByMember(member)).thenReturn(java.util.List.of());
+        when(assetTradeService.getTradesByMemberAndMonth(member, month)).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/trades/list")
+                        .with(user(new CustomUserDetails(member)))
+                        .param("month", month.toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("주식·ETF 매매 내역")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("조회 월")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("새 매매 등록")));
     }
 
     @Test
@@ -274,7 +327,7 @@ class CsrfProtectionTest {
                         .param("tradeType", "BUY")
                         .param("tradeDate", LocalDate.now().toString())
                         .param("quantity", "10")
-                        .param("unitPrice", "23500")
+                        .param("tradeAmount", "235000")
                         .param("currency", "KRW")
                         .param("exchangeRate", "1")
                         .param("feeKrw", "0")
@@ -282,5 +335,42 @@ class CsrfProtectionTest {
                 .andExpect(status().isForbidden());
 
         verifyNoInteractions(assetTradeService);
+    }
+
+    @Test
+    void CSRF토큰이_없는_매매수정은_거부한다() throws Exception {
+        mockMvc.perform(post("/trades/update")
+                        .with(user("user"))
+                        .param("id", "9")
+                        .param("month", java.time.YearMonth.now().toString())
+                        .param("assetPlanId", "10")
+                        .param("symbol", "123456")
+                        .param("assetName", "ACE 다우100")
+                        .param("market", "KOSPI")
+                        .param("assetClass", "ETF")
+                        .param("tradeType", "BUY")
+                        .param("tradeDate", LocalDate.now().toString())
+                        .param("quantity", "10")
+                        .param("tradeAmount", "235000")
+                        .param("currency", "KRW")
+                        .param("exchangeRate", "1")
+                        .param("feeKrw", "0")
+                        .param("taxKrw", "0"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(assetTradeService);
+    }
+
+    @Test
+    void CSRF토큰이_없는_납입수정은_거부한다() throws Exception {
+        mockMvc.perform(post("/savings/update")
+                        .with(user("user"))
+                        .param("id", "9")
+                        .param("assetPlanId", "3")
+                        .param("amount", "150000")
+                        .param("depositDate", LocalDate.now().toString()))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(assetSavingsService);
     }
 }

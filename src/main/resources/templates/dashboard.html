@@ -57,6 +57,9 @@
                             </div>
                         </div>
                         <p class="text-muted small mb-1">* 월 목표 대비 이번 달 실제 납입 원금 기준입니다.</p>
+                        <p class="text-muted small mb-1"
+                           th:if="${summary.extraInvestment > 0}"
+                           th:text="'* 기타 추가 납입 ' + ${#numbers.formatInteger(summary.extraInvestment, 0, 'COMMA')} + '원이 포함되었습니다.'"></p>
                         <p class="text-muted small mb-0">* 주가·펀드 가격 변동에 따른 평가손익은 실행률에 포함하지 않습니다.</p>
                     </div>
                 </div>

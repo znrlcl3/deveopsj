@@ -2,6 +2,7 @@ package com.deveopsj.assetplan.repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,11 @@ import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 public interface AssetTradeRepository extends JpaRepository<AssetTrade, Long> {
 
     List<AssetTrade> findByAssetPlanMemberMemberIdOrderByTradeDateDescIdDesc(Long memberId);
+
+    List<AssetTrade> findByAssetPlanMemberMemberIdAndTradeDateBetweenOrderByTradeDateDescIdDesc(
+            Long memberId, LocalDate startDate, LocalDate endDate);
+
+    Optional<AssetTrade> findByIdAndAssetPlanMemberMemberId(Long id, Long memberId);
 
     @Query("""
             SELECT SUM(t.settlementAmountKrw)

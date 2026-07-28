@@ -41,6 +41,7 @@
                     <table class="table table-hover align-middle">
                         <thead>
                         <tr>
+                            <th>플랜 이름</th>
                             <th>목표</th>
                             <th>자산 유형</th>
                             <th class="text-end">월 투자액</th>
@@ -50,9 +51,10 @@
                         </thead>
                         <tbody>
                         <tr th:if="${#lists.isEmpty(plans)}">
-                            <td colspan="5" class="text-center text-muted py-5">등록된 자산 플랜이 없습니다.</td>
+                            <td colspan="6" class="text-center text-muted py-5">등록된 자산 플랜이 없습니다.</td>
                         </tr>
                         <tr th:each="plan : ${plans}">
+                            <td th:text="${#strings.isEmpty(plan.planName) ? plan.goal.title : plan.planName}"></td>
                             <td th:text="${plan.goal.title}"></td>
                             <td th:text="${@masterCodeService.getCodeName('ASSET_TYPE', plan.assetType)}"></td>
                             <td class="text-end"
@@ -93,6 +95,11 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
                     </div>
                     <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">플랜 이름</label>
+                            <input type="text" name="planName" class="form-control"
+                                   th:value="${plan.planName}" maxlength="100" required>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">관련 목표</label>
                             <select name="goalId" class="form-select" required>

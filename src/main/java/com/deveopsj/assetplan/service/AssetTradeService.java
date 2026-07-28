@@ -2,6 +2,7 @@ package com.deveopsj.assetplan.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Locale;
 
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.deveopsj.assetplan.dto.AssetTradeSaveRequest;
+import com.deveopsj.assetplan.dto.AssetTradeUpdateRequest;
 import com.deveopsj.assetplan.entity.AssetPlan;
 import com.deveopsj.assetplan.entity.AssetTrade;
 import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
@@ -30,6 +32,26 @@ public class AssetTradeService {
     private final AssetPlanRepository assetPlanRepository;
 
     public void save(AssetTradeSaveRequest request, Member member) {
+        AssetTrade trade = new AssetTrade();
+        applyTrade(trade, request, member);
+        assetTradeRepository.save(trade);
+    }
+
+    public void update(AssetTradeUpdateRequest request, Member member) {
+        AssetTrade trade = assetTradeRepository
+                .findByIdAndAssetPlanMemberMemberId(request.getId(), member.getMemberId())
+                .orElseThrow(() -> new IllegalArgumentException("수정할 매매 내역을 찾을 수 없습니다."));
+        applyTrade(trade, request, member);
+    }
+
+    public void delete(Long id, Member member) {
+        AssetTrade trade = assetTradeRepository
+                .findByIdAndAssetPlanMemberMemberId(id, member.getMemberId())
+                .orElseThrow(() -> new IllegalArgumentException("삭제할 매매 내역을 찾을 수 없습니다."));
+        assetTradeRepository.delete(trade);
+    }
+
+    private void applyTrade(AssetTrade trade, AssetTradeSaveRequest request, Member member) {
         AssetPlan assetPlan = assetPlanRepository
                 .findByIdAndMemberMemberId(request.getAssetPlanId(), member.getMemberId())
                 .orElseThrow(() -> new IllegalArgumentException("선택한 자산 플랜을 사용할 수 없습니다."));
@@ -38,11 +60,16 @@ public class AssetTradeService {
         String symbol = normalizeCode(request.getSymbol());
         String currency = normalizeCode(request.getCurrency());
         InvestmentAsset investmentAsset = investmentAssetRepository.findByMarketAndSymbol(market, symbol)
+                .map(asset -> updateInvestmentAsset(asset, request, currency))
                 .orElseGet(() -> investmentAssetRepository.save(
                         newInvestmentAsset(request, market, symbol, currency)));
 
-        long grossAmount = request.getQuantity()
-                .multiply(request.getUnitPrice())
+        BigDecimal unitPrice = request.getTradeAmount()
+                .divide(request.getQuantity(), 4, RoundingMode.HALF_UP);
+        if (unitPrice.precision() - unitPrice.scale() > 15) {
+            throw new IllegalArgumentException("계산된 체결 단가가 허용 범위를 초과합니다.");
+        }
+        long grossAmount = request.getTradeAmount()
                 .multiply(request.getExchangeRate())
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValueExact();
@@ -53,20 +80,18 @@ public class AssetTradeService {
             throw new IllegalArgumentException("수수료와 세금이 거래금액보다 클 수 없습니다.");
         }
 
-        AssetTrade trade = new AssetTrade();
         trade.setAssetPlan(assetPlan);
         trade.setInvestmentAsset(investmentAsset);
         trade.setTradeType(request.getTradeType());
         trade.setTradeDate(request.getTradeDate());
         trade.setQuantity(request.getQuantity());
-        trade.setUnitPrice(request.getUnitPrice());
+        trade.setUnitPrice(unitPrice);
         trade.setCurrency(currency);
         trade.setExchangeRate(request.getExchangeRate());
         trade.setFeeKrw(request.getFeeKrw());
         trade.setTaxKrw(request.getTaxKrw());
         trade.setSettlementAmountKrw(settlementAmount);
         trade.setMemo(request.getMemo() == null ? null : request.getMemo().trim());
-        assetTradeRepository.save(trade);
     }
 
     @Transactional(readOnly = true)
@@ -75,11 +100,23 @@ public class AssetTradeService {
                 .findByAssetPlanMemberMemberIdOrderByTradeDateDescIdDesc(member.getMemberId());
     }
 
+    @Transactional(readOnly = true)
+    public List<AssetTrade> getTradesByMemberAndMonth(Member member, YearMonth month) {
+        return assetTradeRepository
+                .findByAssetPlanMemberMemberIdAndTradeDateBetweenOrderByTradeDateDescIdDesc(
+                        member.getMemberId(), month.atDay(1), month.atEndOfMonth());
+    }
+
     private InvestmentAsset newInvestmentAsset(AssetTradeSaveRequest request,
             String market, String symbol, String currency) {
         InvestmentAsset asset = new InvestmentAsset();
         asset.setMarket(market);
         asset.setSymbol(symbol);
+        return updateInvestmentAsset(asset, request, currency);
+    }
+
+    private InvestmentAsset updateInvestmentAsset(InvestmentAsset asset,
+            AssetTradeSaveRequest request, String currency) {
         asset.setAssetName(request.getAssetName().trim());
         asset.setAssetClass(normalizeCode(request.getAssetClass()));
         asset.setCurrency(currency);

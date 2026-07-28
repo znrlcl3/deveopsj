@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>주식·ETF 매매 내역 | AI 자산관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Pretendard', sans-serif; }
+        .content-container { max-width: 1200px; margin: 50px auto; }
+        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <div th:replace="~{common/navigation :: sidebar('trades')}"></div>
+    <main class="flex-grow-1" style="margin-left: 280px; min-height: 100vh;">
+        <div class="container content-container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold mb-0">주식·ETF 매매 내역</h3>
+                <a href="/trades/form" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> 새 매매 등록
+                </a>
+            </div>
+
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item"><a class="nav-link" href="/trades/form">매매 등록</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/trades/list">매매 내역</a></li>
+            </ul>
+
+            <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+            <div class="card p-4 mb-4">
+                <form action="/trades/list" method="get" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="month" class="form-label fw-bold">조회 월</label>
+                        <input id="month" type="month" name="month" class="form-control"
+                               th:value="${selectedMonth}" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-outline-primary w-100">조회</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                        <tr>
+                            <th>거래일</th>
+                            <th>플랜/계좌</th>
+                            <th>종목</th>
+                            <th>구분</th>
+                            <th class="text-end">수량</th>
+                            <th class="text-end">체결가</th>
+                            <th class="text-end">원화 거래금액</th>
+                            <th class="text-end">관리</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(trades)}">
+                            <td colspan="8" class="text-center text-muted py-5">조회한 월의 매매 내역이 없습니다.</td>
+                        </tr>
+                        <tr th:each="trade : ${trades}">
+                            <td th:text="${trade.tradeDate}"></td>
+                            <td th:text="${#strings.isEmpty(trade.assetPlan.planName)
+                                    ? trade.assetPlan.goal.title : trade.assetPlan.planName}"></td>
+                            <td>
+                                <div th:text="${trade.investmentAsset.assetName}"></div>
+                                <small class="text-muted"
+                                       th:text="${trade.investmentAsset.market + ':' + trade.investmentAsset.symbol}"></small>
+                            </td>
+                            <td th:text="${trade.tradeType.name() == 'BUY' ? '매수' : '매도'}"></td>
+                            <td class="text-end" th:text="${trade.quantity.stripTrailingZeros().toPlainString()}"></td>
+                            <td class="text-end"
+                                th:text="${#numbers.formatDecimal(trade.unitPrice, 1, 'COMMA', 0, 'POINT')
+                                        + ' ' + trade.currency}"></td>
+                            <td class="text-end"
+                                th:text="${#numbers.formatInteger(trade.settlementAmountKrw, 0, 'COMMA')} + '원'"></td>
+                            <td>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            th:attr="data-bs-target='#editModal-' + ${trade.id}">수정</button>
+                                    <form action="/trades/delete" method="post"
+                                          onsubmit="return confirm('이 매매 내역을 삭제하시겠습니까?');">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                        <input type="hidden" name="id" th:value="${trade.id}">
+                                        <input type="hidden" name="month" th:value="${selectedMonth}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<th:block th:each="trade : ${trades}">
+    <div class="modal fade" th:id="'editModal-' + ${trade.id}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form action="/trades/update" method="post" class="trade-calculation-form">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <input type="hidden" name="id" th:value="${trade.id}">
+                    <input type="hidden" name="month" th:value="${selectedMonth}">
+                    <div class="modal-header">
+                        <h5 class="modal-title">매매 내역 수정</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">자산플랜</label>
+                                <select name="assetPlanId" class="form-select" required>
+                                    <option th:each="plan : ${plans}" th:value="${plan.id}"
+                                            th:text="${(#strings.isEmpty(plan.planName)
+                                                    ? plan.goal.title : plan.planName)
+                                                    + ' · 목표: ' + plan.goal.title}"
+                                            th:selected="${plan.id == trade.assetPlan.id}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">거래 유형</label>
+                                <select name="tradeType" class="form-select" required>
+                                    <option value="BUY" th:selected="${trade.tradeType.name() == 'BUY'}">매수</option>
+                                    <option value="SELL" th:selected="${trade.tradeType.name() == 'SELL'}">매도</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">거래일</label>
+                                <input type="date" name="tradeDate" class="form-control"
+                                       th:value="${trade.tradeDate}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">종목코드</label>
+                                <input type="text" name="symbol" class="form-control" maxlength="30"
+                                       th:value="${trade.investmentAsset.symbol}" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">종목명</label>
+                                <input type="text" name="assetName" class="form-control" maxlength="100"
+                                       th:value="${trade.investmentAsset.assetName}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">시장</label>
+                                <input type="text" name="market" class="form-control" maxlength="20"
+                                       th:value="${trade.investmentAsset.market}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">분류</label>
+                                <select name="assetClass" class="form-select" required>
+                                    <option value="ETF" th:selected="${trade.investmentAsset.assetClass == 'ETF'}">ETF</option>
+                                    <option value="STOCK" th:selected="${trade.investmentAsset.assetClass == 'STOCK'}">주식</option>
+                                    <option value="FUND" th:selected="${trade.investmentAsset.assetClass == 'FUND'}">펀드</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">수량</label>
+                                <input type="number" name="quantity" class="form-control"
+                                       min="0.00000001" step="0.00000001" th:value="${trade.quantity}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">총 매매금액</label>
+                                <input type="number" name="tradeAmount" class="form-control trade-amount"
+                                       min="0.0001" step="0.0001"
+                                       th:value="${trade.quantity.multiply(trade.unitPrice).stripTrailingZeros().toPlainString()}"
+                                       required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">통화</label>
+                                <select name="currency" class="form-select" required>
+                                    <option value="KRW" th:selected="${trade.currency == 'KRW'}">KRW</option>
+                                    <option value="USD" th:selected="${trade.currency == 'USD'}">USD</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">적용 환율</label>
+                                <input type="number" name="exchangeRate" class="form-control"
+                                       min="0.000001" step="0.000001" th:value="${trade.exchangeRate}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">자동 계산 체결단가</label>
+                                <input type="text" class="form-control calculated-unit-price" readonly>
+                                <div class="form-text">총 매매금액 ÷ 수량</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">수수료(원)</label>
+                                <input type="number" name="feeKrw" class="form-control"
+                                       min="0" th:value="${trade.feeKrw}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">세금(원)</label>
+                                <input type="number" name="taxKrw" class="form-control"
+                                       min="0" th:value="${trade.taxKrw}" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">메모</label>
+                                <input type="text" name="memo" class="form-control" maxlength="200"
+                                       th:value="${trade.memo}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                        <button type="submit" class="btn btn-primary">수정 저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</th:block>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.querySelectorAll('.trade-calculation-form').forEach(form => {
+        const quantity = form.querySelector('[name="quantity"]');
+        const tradeAmount = form.querySelector('[name="tradeAmount"]');
+        const unitPrice = form.querySelector('.calculated-unit-price');
+        const calculate = () => {
+            const quantityValue = Number(quantity.value);
+            const amountValue = Number(tradeAmount.value);
+            unitPrice.value = quantityValue > 0 && amountValue > 0
+                ? (amountValue / quantityValue).toLocaleString('ko-KR', {
+                    maximumFractionDigits: 4
+                })
+                : '';
+        };
+        quantity.addEventListener('input', calculate);
+        tradeAmount.addEventListener('input', calculate);
+        calculate();
+    });
+</script>
+</body>
+</html>

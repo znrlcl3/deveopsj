@@ -16,7 +16,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.deveopsj.assetplan.dto.AssetTradeSaveRequest;
+import com.deveopsj.assetplan.dto.AssetTradeUpdateRequest;
 import com.deveopsj.assetplan.entity.AssetPlan;
+import com.deveopsj.assetplan.entity.AssetTrade;
 import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 import com.deveopsj.assetplan.repository.AssetPlanRepository;
 import com.deveopsj.assetplan.repository.AssetTradeRepository;
@@ -70,6 +72,45 @@ class AssetTradeServiceTest {
         verify(assetTradeRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
+    @Test
+    void 본인의_매매내역을_수정하면_정산금액을_다시_계산한다() {
+        Member member = member(7L);
+        AssetPlan plan = new AssetPlan();
+        AssetTrade trade = new AssetTrade();
+        AssetTradeUpdateRequest request = updateRequest(9L, 3L);
+        request.setQuantity(new BigDecimal("5"));
+        request.setTradeAmount(new BigDecimal("117500"));
+        when(assetTradeRepository.findByIdAndAssetPlanMemberMemberId(9L, 7L))
+                .thenReturn(Optional.of(trade));
+        when(assetPlanRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.of(plan));
+        when(investmentAssetRepository.findByMarketAndSymbol("KOSPI", "123456"))
+                .thenReturn(Optional.empty());
+        when(investmentAssetRepository.save(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assetTradeService.update(request, member);
+
+        org.assertj.core.api.Assertions.assertThat(trade.getSettlementAmountKrw()).isEqualTo(117_500L);
+        org.assertj.core.api.Assertions.assertThat(trade.getUnitPrice())
+                .isEqualByComparingTo(new BigDecimal("23500.0000"));
+        org.assertj.core.api.Assertions.assertThat(trade.getAssetPlan()).isSameAs(plan);
+        verify(assetTradeRepository, never()).save(trade);
+    }
+
+    @Test
+    void 타인의_매매내역은_수정하거나_삭제할수없다() {
+        Member member = member(7L);
+        AssetTradeUpdateRequest request = updateRequest(9L, 3L);
+        when(assetTradeRepository.findByIdAndAssetPlanMemberMemberId(9L, 7L))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> assetTradeService.update(request, member))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> assetTradeService.delete(9L, member))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(assetTradeRepository, never()).delete(org.mockito.ArgumentMatchers.any());
+    }
+
     private Member member(Long id) {
         Member member = new Member();
         member.setMemberId(id);
@@ -86,11 +127,31 @@ class AssetTradeServiceTest {
         request.setTradeType(TradeType.BUY);
         request.setTradeDate(LocalDate.of(2026, 7, 28));
         request.setQuantity(new BigDecimal("10"));
-        request.setUnitPrice(new BigDecimal("23500"));
+        request.setTradeAmount(new BigDecimal("235000"));
         request.setCurrency("KRW");
         request.setExchangeRate(BigDecimal.ONE);
         request.setFeeKrw(0L);
         request.setTaxKrw(0L);
+        return request;
+    }
+
+    private AssetTradeUpdateRequest updateRequest(Long id, Long assetPlanId) {
+        AssetTradeSaveRequest source = request(assetPlanId);
+        AssetTradeUpdateRequest request = new AssetTradeUpdateRequest();
+        request.setId(id);
+        request.setAssetPlanId(source.getAssetPlanId());
+        request.setSymbol(source.getSymbol());
+        request.setAssetName(source.getAssetName());
+        request.setMarket(source.getMarket());
+        request.setAssetClass(source.getAssetClass());
+        request.setTradeType(source.getTradeType());
+        request.setTradeDate(source.getTradeDate());
+        request.setQuantity(source.getQuantity());
+        request.setTradeAmount(source.getTradeAmount());
+        request.setCurrency(source.getCurrency());
+        request.setExchangeRate(source.getExchangeRate());
+        request.setFeeKrw(source.getFeeKrw());
+        request.setTaxKrw(source.getTaxKrw());
         return request;
     }
 }

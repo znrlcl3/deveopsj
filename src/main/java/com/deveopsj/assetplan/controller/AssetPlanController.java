@@ -35,6 +35,7 @@ public class AssetPlanController {
 
     @GetMapping("/list")
     public String assetPlanList(Model model, Member member) {
+        model.addAttribute("codeMap", masterCodeService.getAllActiveCodesGrouped());
         model.addAttribute("goals", goalService.getGoalsByMember(member));
         model.addAttribute("plans", assetPlanService.getPlansByMember(member));
         return "assetplan/list";

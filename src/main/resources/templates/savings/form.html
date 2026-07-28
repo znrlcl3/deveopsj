@@ -2,150 +2,138 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>적립 내역 등록 | AI 자산관리</title>
+    <title>납입 등록 | AI 자산관리</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { background-color: #f4f7f6; font-family: 'Pretendard', sans-serif; }
-        .form-container { max-width: 550px; margin: 60px auto; }
+        .form-container { max-width: 600px; margin: 60px auto; }
         .card { border: none; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
         .btn-save { background: #1cc88a; color: white; border: none; padding: 12px; font-weight: 600; }
-        .btn-save:hover { background: #17a673; color: white; }
     </style>
 </head>
 <body>
-
 <div class="d-flex">
     <div th:replace="~{common/navigation :: sidebar('savings')}"></div>
-
-    <div class="flex-grow-1" style="margin-left: 280px; min-height: 100vh;">
+    <main class="flex-grow-1" style="margin-left: 280px; min-height: 100vh;">
         <div class="container form-container">
-            <div class="d-flex align-items-center mb-4">
-                <a href="/dashboard/view" class="btn btn-light rounded-circle shadow-sm me-3">
-                    <i class="fas fa-chevron-left"></i>
-                </a>
-                <h3 class="fw-bold mb-0">적립 내역 등록</h3>
-            </div>
+            <h3 class="fw-bold mb-4">납입 등록</h3>
+
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item"><a class="nav-link active" href="/savings/form">납입 등록</a></li>
+                <li class="nav-item"><a class="nav-link" href="/savings/list">납입 내역</a></li>
+            </ul>
+
+            <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
             <div class="card p-4">
                 <div class="card-body">
-                    <form action="/savings/save" method="post">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                        <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
-                        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small"><i class="fas fa-bullseye me-1"></i> 대상 플랜</label>
-                            <select name="assetPlanId" class="form-select form-select-lg border-0 bg-light" required>
-                                <option value="">플랜을 선택하세요</option>
-                                <option th:each="plan : ${plans}" th:value="${plan.id}" th:text="${@masterCodeService.getCodeName('ASSET_TYPE', plan.assetType) + ' (' + #numbers.formatInteger(plan.monthlyAmount, 0, 'COMMA') + '원)'}"></option>
-                            </select>
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small"><i class="far fa-calendar-alt me-1"></i> 적립 날짜</label>
-                            <input type="date" name="depositDate" class="form-control form-control-lg border-0 bg-light" th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}" required>
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small"><i class="fas fa-won-sign me-1"></i> 적립 금액</label>
-                            <input type="number" name="amount" class="form-control form-control-lg border-0 bg-light" min="1" placeholder="0" required>
-                        </div>
-                        <div class="mb-5">
-                            <label class="form-label fw-bold small"><i class="fas fa-pen me-1"></i> 메모</label>
-                            <input type="text" name="memo" class="form-control form-control-lg border-0 bg-light" maxlength="200">
-                        </div>
-                        <button type="submit" class="btn btn-save w-100 rounded-pill shadow-sm">
-                            <i class="fas fa-check me-2"></i> 적립 완료
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="card p-4 mt-4">
-                <div class="card-body">
-                    <h5 class="card-title mb-2">현재 평가금액 기록</h5>
                     <p class="text-muted small">
-                        주식·펀드 등 가격이 변하는 자산의 현재 평가금액을 기록합니다.
-                        이 값은 투자 실행률과 별도로 평가손익 계산에 사용됩니다.
+                        계좌에 실제로 넣은 금액을 기록합니다. 주식·ETF 매매는 납입금의 사용 내역으로 별도 등록합니다.
                     </p>
-                    <form action="/valuations/save" method="post">
+                    <form action="/savings/save" method="post" class="savings-amount-form">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">대상 플랜</label>
-                            <select name="assetPlanId" class="form-select border-0 bg-light" required>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold d-block">납입 유형</label>
+                            <div class="form-check form-check-inline">
+                                <input id="depositTypePlan" class="form-check-input" type="radio"
+                                       name="depositType" value="PLAN" checked>
+                                <label class="form-check-label" for="depositTypePlan">계획 납입</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input id="depositTypeExtra" class="form-check-input" type="radio"
+                                       name="depositType" value="EXTRA">
+                                <label class="form-check-label" for="depositTypeExtra">기타 추가 납입</label>
+                            </div>
+                        </div>
+                        <div id="planTarget" class="mb-4">
+                            <label class="form-label fw-bold">대상 플랜/계좌</label>
+                            <select id="assetPlanId" name="assetPlanId"
+                                    class="form-select form-select-lg border-0 bg-light" required>
                                 <option value="">플랜을 선택하세요</option>
                                 <option th:each="plan : ${plans}" th:value="${plan.id}"
-                                        th:text="${@masterCodeService.getCodeName('ASSET_TYPE', plan.assetType) + ' - ' + plan.goal.title}">
+                                        th:text="${(#strings.isEmpty(plan.planName)
+                                                ? @masterCodeService.getCodeName('ASSET_TYPE', plan.assetType) + ' 플랜'
+                                                : plan.planName)
+                                                + ' · 목표: ' + plan.goal.title
+                                                + ' · 월 ' + #numbers.formatInteger(plan.monthlyAmount, 0, 'COMMA') + '원'}">
                                 </option>
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">평가 기준일</label>
-                            <input type="date" name="valuationDate" class="form-control border-0 bg-light"
+                        <div id="goalTarget" class="mb-4 d-none">
+                            <label class="form-label fw-bold">대상 목표</label>
+                            <select id="goalId" name="goalId"
+                                    class="form-select form-select-lg border-0 bg-light">
+                                <option value="">목표를 선택하세요</option>
+                                <option th:each="goal : ${goals}" th:value="${goal.id}"
+                                        th:text="${goal.title}"></option>
+                            </select>
+                            <div class="form-text">특정 계좌 플랜에 속하지 않는 추가 저축으로 기록됩니다.</div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">납입일</label>
+                            <input type="date" name="depositDate"
+                                   class="form-control form-control-lg border-0 bg-light"
                                    th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}" required>
                         </div>
                         <div class="mb-4">
-                            <label class="form-label fw-bold small">현재 평가금액</label>
-                            <input type="number" name="valuationAmount" class="form-control border-0 bg-light"
-                                   min="0" placeholder="0" required>
+                            <label class="form-label fw-bold">납입금액</label>
+                            <input type="text" name="amount" inputmode="numeric"
+                                   class="form-control form-control-lg border-0 bg-light amount-input"
+                                   pattern="[0-9,]+" placeholder="0" autocomplete="off" required>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100 rounded-pill">
-                            <i class="fas fa-chart-line me-2"></i> 평가금액 저장
+                        <div class="mb-5">
+                            <label class="form-label fw-bold">메모</label>
+                            <input type="text" name="memo"
+                                   class="form-control form-control-lg border-0 bg-light" maxlength="200">
+                        </div>
+                        <button type="submit" class="btn btn-save w-100 rounded-pill shadow-sm">
+                            납입 저장
                         </button>
                     </form>
                 </div>
             </div>
-
-            <div class="card p-4 mt-4" th:if="${!valuations.isEmpty()}">
-                <div class="card-body">
-                    <h5 class="card-title mb-3">평가금액 기록</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>플랜</th>
-                                    <th>기준일</th>
-                                    <th class="text-end">평가금액</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="valuation : ${valuations}">
-                                    <td th:text="${valuation.assetPlan.goal.title}"></td>
-                                    <td th:text="${valuation.valuationDate}"></td>
-                                    <td class="text-end"
-                                        th:text="${#numbers.formatInteger(valuation.valuationAmount, 0, 'COMMA')} + '원'"></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card p-4 mt-4">
-                <div class="card-body">
-                    <h5 class="card-title mb-3">최근 적립 내역</h5>
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>플랜</th>
-                                <th>적립 날짜</th>
-                                <th>금액</th>
-                                <th>메모</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="s : ${savings}">
-                                <td th:text="${@masterCodeService.getCodeName('ASSET_TYPE', s.assetPlan.assetType)}"></td>
-                                <td th:text="${s.depositDate}"></td>
-                                <td th:text="${#numbers.formatInteger(s.amount, 0, 'COMMA')} + '원'"></td>
-                                <td th:text="${s.memo}"></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-                </div>
-            </div>
         </div>
-    </div>
+    </main>
 </div>
+<script>
+    const planTarget = document.getElementById('planTarget');
+    const goalTarget = document.getElementById('goalTarget');
+    const planSelect = document.getElementById('assetPlanId');
+    const goalSelect = document.getElementById('goalId');
+
+    document.querySelectorAll('input[name="depositType"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const extra = radio.value === 'EXTRA' && radio.checked;
+            planTarget.classList.toggle('d-none', extra);
+            goalTarget.classList.toggle('d-none', !extra);
+            planSelect.required = !extra;
+            goalSelect.required = extra;
+            if (extra) {
+                planSelect.value = '';
+            } else {
+                goalSelect.value = '';
+            }
+        });
+    });
+
+    function formatAmountInput(input) {
+        const digits = input.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+        input.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    document.querySelectorAll('.amount-input').forEach(input => {
+        input.addEventListener('input', () => formatAmountInput(input));
+        formatAmountInput(input);
+    });
+
+    document.querySelectorAll('.savings-amount-form').forEach(form => {
+        form.addEventListener('submit', () => {
+            const amountInput = form.querySelector('.amount-input');
+            amountInput.value = amountInput.value.replace(/,/g, '');
+        });
+    });
+</script>
 </body>
 </html>

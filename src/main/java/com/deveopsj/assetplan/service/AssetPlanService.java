@@ -33,6 +33,7 @@ public class AssetPlanService {
         AssetPlan assetPlan = new AssetPlan();
         assetPlan.setMember(member);
         assetPlan.setGoal(goal);
+        assetPlan.setPlanName(request.getPlanName().trim());
         assetPlan.setAssetType(request.getAssetType());
         assetPlan.setMonthlyAmount(request.getMonthlyAmount());
         assetPlan.setMemo(request.getMemo() == null ? null : request.getMemo().trim());
@@ -52,6 +53,7 @@ public class AssetPlanService {
                 .orElseThrow(() -> new IllegalArgumentException("선택한 목표를 사용할 수 없습니다."));
 
         assetPlan.setGoal(goal);
+        assetPlan.setPlanName(request.getPlanName().trim());
         assetPlan.setAssetType(request.getAssetType());
         assetPlan.setMonthlyAmount(request.getMonthlyAmount());
         assetPlan.setMemo(request.getMemo() == null ? null : request.getMemo().trim());

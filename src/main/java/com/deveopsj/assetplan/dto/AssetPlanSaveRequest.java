@@ -14,6 +14,10 @@ public class AssetPlanSaveRequest {
     @NotNull(message = "관련 목표를 선택해 주세요.")
     private Long goalId;
 
+    @NotBlank(message = "플랜 이름을 입력해 주세요.")
+    @Size(max = 100, message = "플랜 이름은 100자 이하여야 합니다.")
+    private String planName;
+
     @NotBlank(message = "자산 유형을 선택해 주세요.")
     @Size(max = 20, message = "자산 유형은 20자 이하여야 합니다.")
     private String assetType;

@@ -49,7 +49,8 @@ class AssetPlanServiceTest {
         assetPlanService.save(request, member);
 
         verify(assetPlanRepository).save(org.mockito.ArgumentMatchers.argThat(plan ->
-                plan.getMember() == member && plan.getGoal() == goal));
+                plan.getMember() == member && plan.getGoal() == goal
+                        && plan.getPlanName().equals("국민은행 정기적금")));
     }
 
     @Test
@@ -110,6 +111,7 @@ class AssetPlanServiceTest {
         assetPlanService.update(request, member);
 
         org.assertj.core.api.Assertions.assertThat(plan.getGoal()).isSameAs(goal);
+        org.assertj.core.api.Assertions.assertThat(plan.getPlanName()).isEqualTo("국민은행 정기적금");
         org.assertj.core.api.Assertions.assertThat(plan.getAssetType()).isEqualTo("SAVINGS");
         org.assertj.core.api.Assertions.assertThat(plan.getMonthlyAmount()).isEqualTo(200_000L);
         org.assertj.core.api.Assertions.assertThat(plan.getMemo()).isEqualTo("수정 메모");
@@ -152,6 +154,7 @@ class AssetPlanServiceTest {
     private AssetPlanSaveRequest request(Long goalId) {
         AssetPlanSaveRequest request = new AssetPlanSaveRequest();
         request.setGoalId(goalId);
+        request.setPlanName(" 국민은행 정기적금 ");
         request.setAssetType("SAVINGS");
         request.setMonthlyAmount(100_000L);
         request.setMemo("테스트");
@@ -167,6 +170,7 @@ class AssetPlanServiceTest {
         AssetPlanUpdateRequest request = new AssetPlanUpdateRequest();
         request.setId(id);
         request.setGoalId(goalId);
+        request.setPlanName(" 국민은행 정기적금 ");
         request.setAssetType("SAVINGS");
         request.setMonthlyAmount(200_000L);
         request.setMemo(" 수정 메모 ");

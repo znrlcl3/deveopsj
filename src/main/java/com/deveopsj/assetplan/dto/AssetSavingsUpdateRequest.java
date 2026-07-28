@@ -14,7 +14,10 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class AssetSavingsSaveRequest {
+public class AssetSavingsUpdateRequest {
+
+    @NotNull(message = "수정할 납입 내역을 선택해 주세요.")
+    private Long id;
 
     private Long assetPlanId;
 
@@ -23,12 +26,12 @@ public class AssetSavingsSaveRequest {
     @NotNull(message = "납입 유형을 선택해 주세요.")
     private DepositType depositType;
 
-    @NotNull(message = "적립 금액을 입력해 주세요.")
-    @Positive(message = "적립 금액은 0보다 커야 합니다.")
+    @NotNull(message = "납입 금액을 입력해 주세요.")
+    @Positive(message = "납입 금액은 0보다 커야 합니다.")
     private Long amount;
 
-    @NotNull(message = "적립 날짜를 입력해 주세요.")
-    @PastOrPresent(message = "적립 날짜는 미래일 수 없습니다.")
+    @NotNull(message = "납입 날짜를 입력해 주세요.")
+    @PastOrPresent(message = "납입 날짜는 미래일 수 없습니다.")
     private LocalDate depositDate;
 
     @Size(max = 200, message = "메모는 200자 이하여야 합니다.")

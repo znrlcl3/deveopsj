@@ -26,6 +26,10 @@ public class AssetPlan extends BaseEntity {
 
     @Column(nullable = false, length = 20)
     private String assetType;
+
+    @Column(length = 100)
+    private String planName;
+
     @Column(nullable = false)
     private Long monthlyAmount;
 
