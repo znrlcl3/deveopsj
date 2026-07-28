@@ -31,6 +31,9 @@ import com.deveopsj.spending.service.SpendingService;
 import com.deveopsj.dashboard.dto.DashboardSummary;
 import com.deveopsj.dashboard.service.DashboardService;
 import com.deveopsj.assetplan.service.AssetPlanService;
+import com.deveopsj.assetplan.service.AssetSavingsService;
+import com.deveopsj.assetplan.service.AssetTradeService;
+import com.deveopsj.assetplan.service.AssetValuationService;
 import com.deveopsj.assetplan.service.GoalService;
 
 @SpringBootTest
@@ -57,6 +60,15 @@ class CsrfProtectionTest {
 
     @MockitoBean
     private AssetPlanService assetPlanService;
+
+    @MockitoBean
+    private AssetSavingsService assetSavingsService;
+
+    @MockitoBean
+    private AssetTradeService assetTradeService;
+
+    @MockitoBean
+    private AssetValuationService assetValuationService;
 
     @MockitoBean
     private GoalService goalService;
@@ -191,6 +203,41 @@ class CsrfProtectionTest {
     }
 
     @Test
+    void 적립화면에_평가금액_입력영역을_렌더링한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+        when(assetPlanService.getPlansByMember(member)).thenReturn(java.util.List.of());
+        when(assetSavingsService.getSavingsByMember(member)).thenReturn(java.util.List.of());
+        when(assetValuationService.getValuationsByMember(member)).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/savings/form")
+                        .with(user(new CustomUserDetails(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("현재 평가금액 기록")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/valuations/save")));
+    }
+
+    @Test
+    void 매매등록화면을_렌더링한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+        when(assetPlanService.getPlansByMember(member)).thenReturn(java.util.List.of());
+        when(assetTradeService.getTradesByMember(member)).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/trades/form")
+                        .with(user(new CustomUserDetails(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("주식·ETF 매매 등록")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/trades/save")));
+    }
+
+    @Test
     void CSRF토큰이_없는_자산플랜수정은_거부한다() throws Exception {
         mockMvc.perform(post("/assetplan/update")
                         .with(user("user"))
@@ -201,5 +248,39 @@ class CsrfProtectionTest {
                 .andExpect(status().isForbidden());
 
         verifyNoInteractions(assetPlanService);
+    }
+
+    @Test
+    void CSRF토큰이_없는_자산평가등록은_거부한다() throws Exception {
+        mockMvc.perform(post("/valuations/save")
+                        .with(user("user"))
+                        .param("assetPlanId", "10")
+                        .param("valuationAmount", "120000")
+                        .param("valuationDate", LocalDate.now().toString()))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(assetValuationService);
+    }
+
+    @Test
+    void CSRF토큰이_없는_매매등록은_거부한다() throws Exception {
+        mockMvc.perform(post("/trades/save")
+                        .with(user("user"))
+                        .param("assetPlanId", "10")
+                        .param("symbol", "123456")
+                        .param("assetName", "ACE 다우100")
+                        .param("market", "KOSPI")
+                        .param("assetClass", "ETF")
+                        .param("tradeType", "BUY")
+                        .param("tradeDate", LocalDate.now().toString())
+                        .param("quantity", "10")
+                        .param("unitPrice", "23500")
+                        .param("currency", "KRW")
+                        .param("exchangeRate", "1")
+                        .param("feeKrw", "0")
+                        .param("taxKrw", "0"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(assetTradeService);
     }
 }

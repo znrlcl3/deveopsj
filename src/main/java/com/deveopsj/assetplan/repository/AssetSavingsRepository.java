@@ -21,5 +21,12 @@ public interface AssetSavingsRepository extends JpaRepository<AssetSavings, Long
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
+    @Query("""
+            SELECT SUM(s.amount)
+            FROM AssetSavings s
+            WHERE s.assetPlan.id = :planId
+            """)
+    Long getTotalSavingsByPlanId(@Param("planId") Long planId);
+
     List<AssetSavings> findByAssetPlanMemberMemberId(Long memberId);
 }

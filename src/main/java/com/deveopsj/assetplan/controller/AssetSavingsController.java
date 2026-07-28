@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import com.deveopsj.assetplan.dto.AssetSavingsSaveRequest;
 import com.deveopsj.assetplan.service.AssetPlanService;
 import com.deveopsj.assetplan.service.AssetSavingsService;
+import com.deveopsj.assetplan.service.AssetValuationService;
 import com.deveopsj.member.entity.Member;
 
 import jakarta.validation.Valid;
@@ -22,11 +23,13 @@ public class AssetSavingsController {
 
     private final AssetSavingsService assetSavingsService;
     private final AssetPlanService assetPlanService;
+    private final AssetValuationService assetValuationService;
 
     @GetMapping("/form")
     public String savingsForm(Model model, Member member) {
         model.addAttribute("plans", assetPlanService.getPlansByMember(member));
         model.addAttribute("savings", assetSavingsService.getSavingsByMember(member));
+        model.addAttribute("valuations", assetValuationService.getValuationsByMember(member));
         return "savings/form";
     }
 

@@ -40,10 +40,14 @@
             <div class="col-md-7 mb-4">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
-                        <h5 class="card-title mb-4">이번 달 투자 달성 현황</h5>
+                        <h5 class="card-title mb-4">이번 달 투자 실행 현황</h5>
                         <div class="d-flex justify-content-between mb-2">
-                            <span>현재 적립액: <strong th:text="${#numbers.formatInteger(summary.totalInvestment, 0, 'COMMA')} + '원'"></strong></span>
-                            <span>목표 합계: <strong id="totalTarget">--원</strong></span>
+                            <span>실제 납입 원금:
+                                <strong th:text="${#numbers.formatInteger(summary.totalInvestment, 0, 'COMMA')} + '원'"></strong>
+                            </span>
+                            <span>월 목표 합계:
+                                <strong th:text="${#numbers.formatInteger(summary.totalInvestmentTarget, 0, 'COMMA')} + '원'"></strong>
+                            </span>
                         </div>
                         <div class="progress mb-4">
                             <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
@@ -52,7 +56,8 @@
                                  th:text="${#numbers.formatDecimal(summary.investmentProgress, 1, 1)} + '%'">
                             </div>
                         </div>
-                        <p class="text-muted small">* 목표 금액 대비 실제 자산 플랜 실행 기준입니다.</p>
+                        <p class="text-muted small mb-1">* 월 목표 대비 이번 달 실제 납입 원금 기준입니다.</p>
+                        <p class="text-muted small mb-0">* 주가·펀드 가격 변동에 따른 평가손익은 실행률에 포함하지 않습니다.</p>
                     </div>
                 </div>
             </div>
@@ -63,6 +68,34 @@
                         <h5 class="card-title mb-4">카테고리별 지출</h5>
                         <canvas id="spendingChart"></canvas>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">현재 자산 평가 현황</h5>
+                <div th:if="${summary.valuedPlanCount > 0}">
+                    <div class="row text-center g-3">
+                        <div class="col-md-4">
+                            <div class="text-muted small">누적 납입 원금</div>
+                            <strong th:text="${#numbers.formatInteger(summary.valuationPrincipal, 0, 'COMMA')} + '원'"></strong>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">현재 평가금액</div>
+                            <strong th:text="${#numbers.formatInteger(summary.currentValuation, 0, 'COMMA')} + '원'"></strong>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">평가손익</div>
+                            <strong th:classappend="${summary.valuationProfit >= 0} ? 'text-success' : 'text-danger'"
+                                    th:text="${(summary.valuationProfit >= 0 ? '+' : '') + #numbers.formatInteger(summary.valuationProfit, 0, 'COMMA') + '원'}"></strong>
+                        </div>
+                    </div>
+                    <p class="text-muted small mt-3 mb-0"
+                       th:text="'* 최근 평가금액을 입력한 ' + ${summary.valuedPlanCount} + '개 플랜 기준입니다.'"></p>
+                </div>
+                <div th:unless="${summary.valuedPlanCount > 0}" class="text-muted">
+                    아직 등록된 평가금액이 없습니다. 적립 내역 화면에서 현재 평가금액을 기록해 주세요.
                 </div>
             </div>
         </div>

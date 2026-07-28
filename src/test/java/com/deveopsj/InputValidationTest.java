@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import com.deveopsj.assetplan.dto.AssetPlanSaveRequest;
 import com.deveopsj.assetplan.dto.AssetPlanUpdateRequest;
 import com.deveopsj.assetplan.dto.AssetSavingsSaveRequest;
+import com.deveopsj.assetplan.dto.AssetTradeSaveRequest;
+import com.deveopsj.assetplan.dto.AssetValuationSaveRequest;
 import com.deveopsj.assetplan.dto.GoalSaveRequest;
 import com.deveopsj.assetplan.entity.Goal.GoalType;
 import com.deveopsj.ai.dto.SpendingAnalysisRequest;
@@ -72,6 +74,35 @@ class InputValidationTest {
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
                 .contains("amount", "depositDate");
+    }
+
+    @Test
+    void 자산평가는_미래날짜와_음수금액이_허용되지_않는다() {
+        AssetValuationSaveRequest request = new AssetValuationSaveRequest();
+        request.setAssetPlanId(1L);
+        request.setValuationAmount(-1L);
+        request.setValuationDate(LocalDate.now().plusDays(1));
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("valuationAmount", "valuationDate");
+    }
+
+    @Test
+    void 주식거래는_필수종목정보와_양수수량을_검증한다() {
+        AssetTradeSaveRequest request = new AssetTradeSaveRequest();
+        request.setTradeDate(LocalDate.now().plusDays(1));
+        request.setQuantity(java.math.BigDecimal.ZERO);
+        request.setUnitPrice(java.math.BigDecimal.ZERO);
+        request.setCurrency("KRW");
+        request.setExchangeRate(java.math.BigDecimal.ONE);
+        request.setFeeKrw(0L);
+        request.setTaxKrw(0L);
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("assetPlanId", "symbol", "assetName", "market", "assetClass",
+                        "tradeType", "tradeDate", "quantity", "unitPrice");
     }
 
     @Test
