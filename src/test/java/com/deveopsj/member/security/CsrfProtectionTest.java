@@ -37,6 +37,7 @@ import com.deveopsj.assetplan.service.AssetSavingsService;
 import com.deveopsj.assetplan.service.AssetTradeService;
 import com.deveopsj.assetplan.service.AssetValuationService;
 import com.deveopsj.assetplan.service.GoalService;
+import com.deveopsj.market.service.InvestmentAssetSyncService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -74,6 +75,9 @@ class CsrfProtectionTest {
 
     @MockitoBean
     private GoalService goalService;
+
+    @MockitoBean
+    private InvestmentAssetSyncService investmentAssetSyncService;
 
     @Test
     void 로그인_화면은_리디렉션없이_표시한다() throws Exception {
@@ -335,6 +339,17 @@ class CsrfProtectionTest {
                 .andExpect(status().isForbidden());
 
         verifyNoInteractions(assetTradeService);
+    }
+
+    @Test
+    void CSRF토큰이_없는_종목마스터동기화는_거부한다() throws Exception {
+        mockMvc.perform(post("/krx/sync")
+                        .with(user("user"))
+                        .param("date", LocalDate.now().toString())
+                        .param("market", "KOSPI"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(investmentAssetSyncService);
     }
 
     @Test

@@ -20,6 +20,7 @@ import com.deveopsj.assetplan.dto.AssetTradeUpdateRequest;
 import com.deveopsj.assetplan.entity.AssetPlan;
 import com.deveopsj.assetplan.entity.AssetTrade;
 import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
+import com.deveopsj.assetplan.entity.InvestmentAsset;
 import com.deveopsj.assetplan.repository.AssetPlanRepository;
 import com.deveopsj.assetplan.repository.AssetTradeRepository;
 import com.deveopsj.assetplan.repository.InvestmentAssetRepository;
@@ -44,12 +45,10 @@ class AssetTradeServiceTest {
     void 매수수량과_체결가로_원화정산금액을_계산한다() {
         Member member = member(7L);
         AssetPlan plan = new AssetPlan();
+        InvestmentAsset asset = asset(11L);
         AssetTradeSaveRequest request = request(3L);
         when(assetPlanRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.of(plan));
-        when(investmentAssetRepository.findByMarketAndSymbol("KOSPI", "123456"))
-                .thenReturn(Optional.empty());
-        when(investmentAssetRepository.save(org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(investmentAssetRepository.findByIdAndActiveTrue(11L)).thenReturn(Optional.of(asset));
 
         assetTradeService.save(request, member);
 
@@ -57,7 +56,7 @@ class AssetTradeServiceTest {
                 trade.getAssetPlan() == plan
                         && trade.getSettlementAmountKrw().equals(235_000L)
                         && trade.getQuantity().compareTo(new BigDecimal("10")) == 0
-                        && trade.getInvestmentAsset().getSymbol().equals("123456")));
+                        && trade.getInvestmentAsset() == asset));
     }
 
     @Test
@@ -68,7 +67,7 @@ class AssetTradeServiceTest {
 
         assertThatThrownBy(() -> assetTradeService.save(request, member))
                 .isInstanceOf(IllegalArgumentException.class);
-        verify(investmentAssetRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(investmentAssetRepository, never()).findByIdAndActiveTrue(org.mockito.ArgumentMatchers.any());
         verify(assetTradeRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -76,6 +75,7 @@ class AssetTradeServiceTest {
     void 본인의_매매내역을_수정하면_정산금액을_다시_계산한다() {
         Member member = member(7L);
         AssetPlan plan = new AssetPlan();
+        InvestmentAsset asset = asset(11L);
         AssetTrade trade = new AssetTrade();
         AssetTradeUpdateRequest request = updateRequest(9L, 3L);
         request.setQuantity(new BigDecimal("5"));
@@ -83,10 +83,7 @@ class AssetTradeServiceTest {
         when(assetTradeRepository.findByIdAndAssetPlanMemberMemberId(9L, 7L))
                 .thenReturn(Optional.of(trade));
         when(assetPlanRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.of(plan));
-        when(investmentAssetRepository.findByMarketAndSymbol("KOSPI", "123456"))
-                .thenReturn(Optional.empty());
-        when(investmentAssetRepository.save(org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(investmentAssetRepository.findByIdAndActiveTrue(11L)).thenReturn(Optional.of(asset));
 
         assetTradeService.update(request, member);
 
@@ -120,15 +117,11 @@ class AssetTradeServiceTest {
     private AssetTradeSaveRequest request(Long assetPlanId) {
         AssetTradeSaveRequest request = new AssetTradeSaveRequest();
         request.setAssetPlanId(assetPlanId);
-        request.setSymbol("123456");
-        request.setAssetName("ACE 다우100");
-        request.setMarket("KOSPI");
-        request.setAssetClass("ETF");
+        request.setInvestmentAssetId(11L);
         request.setTradeType(TradeType.BUY);
         request.setTradeDate(LocalDate.of(2026, 7, 28));
         request.setQuantity(new BigDecimal("10"));
         request.setTradeAmount(new BigDecimal("235000"));
-        request.setCurrency("KRW");
         request.setExchangeRate(BigDecimal.ONE);
         request.setFeeKrw(0L);
         request.setTaxKrw(0L);
@@ -140,18 +133,26 @@ class AssetTradeServiceTest {
         AssetTradeUpdateRequest request = new AssetTradeUpdateRequest();
         request.setId(id);
         request.setAssetPlanId(source.getAssetPlanId());
-        request.setSymbol(source.getSymbol());
-        request.setAssetName(source.getAssetName());
-        request.setMarket(source.getMarket());
-        request.setAssetClass(source.getAssetClass());
+        request.setInvestmentAssetId(source.getInvestmentAssetId());
         request.setTradeType(source.getTradeType());
         request.setTradeDate(source.getTradeDate());
         request.setQuantity(source.getQuantity());
         request.setTradeAmount(source.getTradeAmount());
-        request.setCurrency(source.getCurrency());
         request.setExchangeRate(source.getExchangeRate());
         request.setFeeKrw(source.getFeeKrw());
         request.setTaxKrw(source.getTaxKrw());
         return request;
+    }
+
+    private InvestmentAsset asset(Long id) {
+        InvestmentAsset asset = new InvestmentAsset();
+        asset.setId(id);
+        asset.setSymbol("123456");
+        asset.setAssetName("ACE 다우100");
+        asset.setMarket("KOSPI");
+        asset.setAssetClass("ETF");
+        asset.setCurrency("KRW");
+        asset.setActive(true);
+        return asset;
     }
 }

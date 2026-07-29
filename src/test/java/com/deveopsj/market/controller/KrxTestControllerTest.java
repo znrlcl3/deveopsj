@@ -17,6 +17,7 @@ import com.deveopsj.market.dto.KrxStockItem;
 import com.deveopsj.market.dto.KrxMarket;
 import com.deveopsj.market.dto.KrxStockSnapshot;
 import com.deveopsj.market.service.KrxStockService;
+import com.deveopsj.market.service.InvestmentAssetSyncService;
 import com.deveopsj.market.service.NasdaqDirectoryService;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,6 +28,9 @@ class KrxTestControllerTest {
 
     @Mock
     private NasdaqDirectoryService nasdaqDirectoryService;
+
+    @Mock
+    private InvestmentAssetSyncService investmentAssetSyncService;
 
     @InjectMocks
     private KrxTestController controller;

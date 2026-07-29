@@ -9,6 +9,8 @@
         body { background-color: #f4f7f6; font-family: 'Pretendard', sans-serif; }
         .content-container { max-width: 1200px; margin: 50px auto; }
         .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        .asset-search-wrap { position: relative; }
+        .asset-search-results { position: absolute; z-index: 1060; width: 100%; max-height: 240px; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -138,28 +140,18 @@
                                 <input type="date" name="tradeDate" class="form-control"
                                        th:value="${trade.tradeDate}" required>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">종목코드</label>
-                                <input type="text" name="symbol" class="form-control" maxlength="30"
-                                       th:value="${trade.investmentAsset.symbol}" required>
-                            </div>
-                            <div class="col-md-5">
-                                <label class="form-label">종목명</label>
-                                <input type="text" name="assetName" class="form-control" maxlength="100"
-                                       th:value="${trade.investmentAsset.assetName}" required>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">시장</label>
-                                <input type="text" name="market" class="form-control" maxlength="20"
-                                       th:value="${trade.investmentAsset.market}" required>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">분류</label>
-                                <select name="assetClass" class="form-select" required>
-                                    <option value="ETF" th:selected="${trade.investmentAsset.assetClass == 'ETF'}">ETF</option>
-                                    <option value="STOCK" th:selected="${trade.investmentAsset.assetClass == 'STOCK'}">주식</option>
-                                    <option value="FUND" th:selected="${trade.investmentAsset.assetClass == 'FUND'}">펀드</option>
-                                </select>
+                            <div class="col-12 asset-search-wrap">
+                                <label class="form-label">종목 검색</label>
+                                <input type="hidden" name="investmentAssetId"
+                                       th:value="${trade.investmentAsset.id}" required>
+                                <input type="search" class="form-control asset-search" autocomplete="off"
+                                       th:value="${trade.investmentAsset.assetName + ' (' + trade.investmentAsset.symbol + ')'}"
+                                       required>
+                                <div class="list-group shadow asset-search-results d-none"></div>
+                                <div class="form-text selected-asset-info"
+                                     th:text="${trade.investmentAsset.market + ' · '
+                                             + trade.investmentAsset.assetClass + ' · ' + trade.investmentAsset.currency}">
+                                </div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">수량</label>
@@ -175,10 +167,8 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">통화</label>
-                                <select name="currency" class="form-select" required>
-                                    <option value="KRW" th:selected="${trade.currency == 'KRW'}">KRW</option>
-                                    <option value="USD" th:selected="${trade.currency == 'USD'}">USD</option>
-                                </select>
+                                <input type="text" class="form-control asset-currency"
+                                       th:value="${trade.investmentAsset.currency}" readonly>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">적용 환율</label>
@@ -218,6 +208,52 @@
 </th:block>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    document.querySelectorAll('.asset-search-wrap').forEach(wrap => {
+        const searchInput = wrap.querySelector('.asset-search');
+        const assetId = wrap.querySelector('[name="investmentAssetId"]');
+        const results = wrap.querySelector('.asset-search-results');
+        const info = wrap.querySelector('.selected-asset-info');
+        const form = wrap.closest('form');
+        const currency = form.querySelector('.asset-currency');
+        const exchangeRate = form.querySelector('[name="exchangeRate"]');
+        let timer;
+
+        searchInput.addEventListener('input', () => {
+            assetId.value = '';
+            clearTimeout(timer);
+            results.replaceChildren();
+            results.classList.add('d-none');
+            const keyword = searchInput.value.trim();
+            if (keyword.length < 2) return;
+            timer = setTimeout(async () => {
+                try {
+                    const response = await fetch('/api/investment-assets/search?keyword='
+                        + encodeURIComponent(keyword));
+                    if (!response.ok) throw new Error();
+                    const assets = await response.json();
+                    assets.forEach(asset => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'list-group-item list-group-item-action';
+                        button.textContent = `${asset.assetName} (${asset.symbol}) · ${asset.market} · ${asset.assetClass}`;
+                        button.addEventListener('click', () => {
+                            assetId.value = asset.id;
+                            searchInput.value = `${asset.assetName} (${asset.symbol})`;
+                            info.textContent = `${asset.market} · ${asset.assetClass} · ${asset.currency}`;
+                            currency.value = asset.currency;
+                            if (asset.currency === 'KRW') exchangeRate.value = '1';
+                            results.classList.add('d-none');
+                        });
+                        results.appendChild(button);
+                    });
+                    results.classList.remove('d-none');
+                } catch (error) {
+                    info.textContent = '종목 검색에 실패했습니다.';
+                }
+            }, 250);
+        });
+    });
+
     document.querySelectorAll('.trade-calculation-form').forEach(form => {
         const quantity = form.querySelector('[name="quantity"]');
         const tradeAmount = form.querySelector('[name="tradeAmount"]');

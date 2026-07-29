@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,13 +55,10 @@ public class AssetTradeService {
                 .findByIdAndMemberMemberId(request.getAssetPlanId(), member.getMemberId())
                 .orElseThrow(() -> new IllegalArgumentException("선택한 자산 플랜을 사용할 수 없습니다."));
 
-        String market = normalizeCode(request.getMarket());
-        String symbol = normalizeCode(request.getSymbol());
-        String currency = normalizeCode(request.getCurrency());
-        InvestmentAsset investmentAsset = investmentAssetRepository.findByMarketAndSymbol(market, symbol)
-                .map(asset -> updateInvestmentAsset(asset, request, currency))
-                .orElseGet(() -> investmentAssetRepository.save(
-                        newInvestmentAsset(request, market, symbol, currency)));
+        InvestmentAsset investmentAsset = investmentAssetRepository
+                .findByIdAndActiveTrue(request.getInvestmentAssetId())
+                .orElseThrow(() -> new IllegalArgumentException("선택한 종목을 사용할 수 없습니다."));
+        String currency = investmentAsset.getCurrency();
 
         BigDecimal unitPrice = request.getTradeAmount()
                 .divide(request.getQuantity(), 4, RoundingMode.HALF_UP);
@@ -107,24 +103,4 @@ public class AssetTradeService {
                         member.getMemberId(), month.atDay(1), month.atEndOfMonth());
     }
 
-    private InvestmentAsset newInvestmentAsset(AssetTradeSaveRequest request,
-            String market, String symbol, String currency) {
-        InvestmentAsset asset = new InvestmentAsset();
-        asset.setMarket(market);
-        asset.setSymbol(symbol);
-        return updateInvestmentAsset(asset, request, currency);
-    }
-
-    private InvestmentAsset updateInvestmentAsset(InvestmentAsset asset,
-            AssetTradeSaveRequest request, String currency) {
-        asset.setAssetName(request.getAssetName().trim());
-        asset.setAssetClass(normalizeCode(request.getAssetClass()));
-        asset.setCurrency(currency);
-        asset.setActive(true);
-        return asset;
-    }
-
-    private String normalizeCode(String value) {
-        return value.trim().toUpperCase(Locale.ROOT);
-    }
 }

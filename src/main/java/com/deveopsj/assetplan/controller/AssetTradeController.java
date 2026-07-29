@@ -59,7 +59,9 @@ public class AssetTradeController {
         try {
             assetTradeService.save(request, member);
             redirectAttributes.addFlashAttribute("message", "매매 내역이 저장되었습니다.");
-        } catch (IllegalArgumentException | ArithmeticException e) {
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (ArithmeticException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "거래금액을 확인해 주세요.");
         }
         return "redirect:/trades/form";
@@ -76,7 +78,9 @@ public class AssetTradeController {
         try {
             assetTradeService.update(request, member);
             redirectAttributes.addFlashAttribute("message", "매매 내역이 수정되었습니다.");
-        } catch (IllegalArgumentException | ArithmeticException e) {
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (ArithmeticException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "수정할 매매 내역을 확인해 주세요.");
         }
         return "redirect:/trades/list?month=" + month;

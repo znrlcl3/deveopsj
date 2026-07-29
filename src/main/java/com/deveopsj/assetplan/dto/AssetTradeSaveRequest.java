@@ -7,10 +7,8 @@ import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -23,21 +21,8 @@ public class AssetTradeSaveRequest {
     @NotNull(message = "대상 플랜을 선택해 주세요.")
     private Long assetPlanId;
 
-    @NotBlank(message = "종목코드를 입력해 주세요.")
-    @Size(max = 30, message = "종목코드는 30자 이하여야 합니다.")
-    private String symbol;
-
-    @NotBlank(message = "종목명을 입력해 주세요.")
-    @Size(max = 100, message = "종목명은 100자 이하여야 합니다.")
-    private String assetName;
-
-    @NotBlank(message = "시장을 입력해 주세요.")
-    @Size(max = 20, message = "시장은 20자 이하여야 합니다.")
-    private String market;
-
-    @NotBlank(message = "자산 분류를 선택해 주세요.")
-    @Pattern(regexp = "STOCK|ETF|FUND", message = "올바른 자산 분류를 선택해 주세요.")
-    private String assetClass;
+    @NotNull(message = "종목을 검색해서 선택해 주세요.")
+    private Long investmentAssetId;
 
     @NotNull(message = "거래 유형을 선택해 주세요.")
     private TradeType tradeType;
@@ -55,10 +40,6 @@ public class AssetTradeSaveRequest {
     @DecimalMin(value = "0.0001", message = "총 매매금액은 0보다 커야 합니다.")
     @Digits(integer = 15, fraction = 4, message = "총 매매금액의 자릿수를 확인해 주세요.")
     private BigDecimal tradeAmount;
-
-    @NotBlank(message = "통화를 선택해 주세요.")
-    @Pattern(regexp = "KRW|USD", message = "지원하지 않는 통화입니다.")
-    private String currency;
 
     @NotNull(message = "환율을 입력해 주세요.")
     @DecimalMin(value = "0.000001", message = "환율은 0보다 커야 합니다.")

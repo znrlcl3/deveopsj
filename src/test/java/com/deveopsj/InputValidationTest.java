@@ -104,19 +104,18 @@ class InputValidationTest {
     }
 
     @Test
-    void 주식거래는_필수종목정보와_양수수량을_검증한다() {
+    void 주식거래는_선택종목과_양수수량을_검증한다() {
         AssetTradeSaveRequest request = new AssetTradeSaveRequest();
         request.setTradeDate(LocalDate.now().plusDays(1));
         request.setQuantity(java.math.BigDecimal.ZERO);
         request.setTradeAmount(java.math.BigDecimal.ZERO);
-        request.setCurrency("KRW");
         request.setExchangeRate(java.math.BigDecimal.ONE);
         request.setFeeKrw(0L);
         request.setTaxKrw(0L);
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
-                .contains("assetPlanId", "symbol", "assetName", "market", "assetClass",
+                .contains("assetPlanId", "investmentAssetId",
                         "tradeType", "tradeDate", "quantity", "tradeAmount");
     }
 
