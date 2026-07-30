@@ -43,6 +43,7 @@ import com.deveopsj.market.service.InvestmentAssetSyncService;
 import com.deveopsj.market.dto.PortfolioSummary;
 import com.deveopsj.market.dto.MonthlyPortfolioSummary;
 import com.deveopsj.market.service.PortfolioValuationService;
+import com.deveopsj.income.service.IncomeService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -86,6 +87,9 @@ class CsrfProtectionTest {
 
     @MockitoBean
     private PortfolioValuationService portfolioValuationService;
+
+    @MockitoBean
+    private IncomeService incomeService;
 
     @Test
     void 로그인_화면은_리디렉션없이_표시한다() throws Exception {
@@ -197,7 +201,10 @@ class CsrfProtectionTest {
         member.setRole("USER");
         when(dashboardService.getMonthlySummary(7L)).thenReturn(DashboardSummary.builder()
                 .totalInvestment(0L)
+                .totalIncome(0L)
                 .totalSpending(0L)
+                .availableCash(0L)
+                .savingsRate(0.0)
                 .spendingByCategory(java.util.Map.of())
                 .investmentProgress(0.0)
                 .planProgressList(java.util.List.of())
@@ -210,6 +217,71 @@ class CsrfProtectionTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("카테고리별 소비 평가")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("지난달과 비교")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("다음 달 절약 계획")));
+    }
+
+    @Test
+    void 로그인사용자는_수입등록화면을_조회한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+
+        mockMvc.perform(get("/income/form")
+                        .with(user(new CustomUserDetails(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("수입 등록")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("급여")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("fa-coins")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/income/list")));
+    }
+
+    @Test
+    void 로그인사용자는_선택월의_수입내역을_조회한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+        YearMonth month = YearMonth.of(2026, 7);
+        when(incomeService.getIncomesByMemberAndMonth(member, month))
+                .thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/income/list")
+                        .with(user(new CustomUserDetails(member)))
+                        .param("month", "2026-07"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("수입 내역")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("월 수입 합계")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "조회한 월의 수입 내역이 없습니다.")));
+
+        verify(incomeService).getIncomesByMemberAndMonth(member, month);
+    }
+
+    @Test
+    void 잘못된_수입등록은_서비스호출전에_거부한다() throws Exception {
+        mockMvc.perform(post("/income/save")
+                        .with(user("user"))
+                        .with(csrf())
+                        .param("incomeDate", LocalDate.now().plusDays(1).toString())
+                        .param("incomeType", "SALARY")
+                        .param("amount", "0"))
+                .andExpect(status().is3xxRedirection());
+
+        verifyNoInteractions(incomeService);
+    }
+
+    @Test
+    void CSRF토큰이_없는_수입등록은_거부한다() throws Exception {
+        mockMvc.perform(post("/income/save")
+                        .with(user("user"))
+                        .param("incomeDate", LocalDate.now().toString())
+                        .param("incomeType", "SALARY")
+                        .param("amount", "3000000"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(incomeService);
     }
 
     @Test

@@ -36,6 +36,48 @@
         </div>
         <h2 class="mb-4 fw-bold"><i class="fas fa-wallet text-primary"></i> My Wealth Dashboard</h2>
 
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small mb-1">이번 달 수입</div>
+                        <strong class="fs-5 text-info"
+                                th:text="${#numbers.formatInteger(summary.totalIncome, 0, 'COMMA')} + '원'"></strong>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small mb-1">이번 달 지출</div>
+                        <strong class="fs-5 text-danger"
+                                th:text="${#numbers.formatInteger(summary.totalSpending, 0, 'COMMA')} + '원'"></strong>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small mb-1">저축률</div>
+                        <strong class="fs-5 text-success"
+                                th:text="${#numbers.formatDecimal(summary.savingsRate, 1, 1)} + '%'"></strong>
+                        <div class="small text-muted">실제 납입 ÷ 수입</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small mb-1">가용 현금</div>
+                        <strong class="fs-5"
+                                th:classappend="${summary.availableCash < 0} ? 'text-danger' : 'text-primary'"
+                                th:text="${#numbers.formatInteger(summary.availableCash, 0, 'COMMA')} + '원'"></strong>
+                        <div class="small text-muted">수입 - 지출 - 실제 납입</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-md-7 mb-4">
                 <div class="card shadow-sm h-100">

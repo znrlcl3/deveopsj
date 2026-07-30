@@ -20,6 +20,13 @@
                 </a>
             </li>
             <li class="nav-item mb-2">
+                <a href="/income/form" class="nav-link text-white d-flex align-items-center py-2 px-3"
+                   th:classappend="${activeMenu == 'income'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
+                    <i class="fas fa-coins me-3" style="width: 20px;"></i>
+                    수입 관리
+                </a>
+            </li>
+            <li class="nav-item mb-2">
                 <a href="/spending/form" class="nav-link text-white d-flex align-items-center py-2 px-3" 
                    th:classappend="${activeMenu == 'spending'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
                     <i class="fas fa-receipt me-3" style="width: 20px;"></i>

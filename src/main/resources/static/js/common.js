@@ -30,3 +30,8 @@ async function loadMasterCodes(groupCode, targetId, defaultText = "선택하세�
         selectElement.innerHTML = `<option value="NONE">코드 불러오기 실패</option>`;
     }
 }
+
+function formatNumberInput(input) {
+    const digits = input.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+    input.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}

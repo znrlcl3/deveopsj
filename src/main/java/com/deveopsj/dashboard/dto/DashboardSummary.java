@@ -16,7 +16,10 @@ public class DashboardSummary {
     private Long currentValuation;
     private Long valuationProfit;
     private int valuedPlanCount;
-    private Long totalSpending;      
+    private Long totalIncome;
+    private Long totalSpending;
+    private Long availableCash;
+    private Double savingsRate;
     private Map<String, Long> spendingByCategory; 
     private Double investmentProgress; 
     private List<PlanProgressDto> planProgressList;

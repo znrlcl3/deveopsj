@@ -27,6 +27,7 @@ import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 import com.deveopsj.common.dto.MasterCodeDto;
 import com.deveopsj.common.service.MasterCodeService;
 import com.deveopsj.dashboard.dto.DashboardSummary;
+import com.deveopsj.income.repository.IncomeRepository;
 import com.deveopsj.spending.entity.DailySpending;
 import com.deveopsj.spending.repository.DailySpendingRepository;
 
@@ -47,6 +48,9 @@ class DashboardServiceTest {
 
     @Mock
     private DailySpendingRepository dailySpendingRepository;
+
+    @Mock
+    private IncomeRepository incomeRepository;
 
     @Mock
     private MasterCodeService masterCodeService;
@@ -194,5 +198,34 @@ class DashboardServiceTest {
         assertThat(summary.getCurrentValuation()).isEqualTo(1_150_000L);
         assertThat(summary.getValuationProfit()).isEqualTo(150_000L);
         assertThat(summary.getValuedPlanCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 이번달_수입으로_저축률과_가용현금을_계산한다() {
+        Long memberId = 7L;
+        LocalDate today = LocalDate.now();
+        LocalDate start = today.with(TemporalAdjusters.firstDayOfMonth());
+        LocalDate end = today.with(TemporalAdjusters.lastDayOfMonth());
+        DailySpending spending = DailySpending.builder()
+                .categoryCode("FOOD")
+                .amount(500_000L)
+                .build();
+
+        when(assetPlanRepository.findByMemberMemberId(memberId)).thenReturn(List.of());
+        when(masterCodeService.getAllActiveCodesGrouped()).thenReturn(Map.of());
+        when(assetSavingsRepository.getTotalByMemberIdAndTypeAndDepositDateBetween(
+                memberId, com.deveopsj.assetplan.entity.AssetSavings.DepositType.EXTRA, start, end))
+                .thenReturn(1_000_000L);
+        when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(
+                memberId, start, end)).thenReturn(List.of(spending));
+        when(incomeRepository.getTotalIncome(memberId, start, end)).thenReturn(3_000_000L);
+
+        DashboardSummary summary = dashboardService.getMonthlySummary(memberId);
+
+        assertThat(summary.getTotalIncome()).isEqualTo(3_000_000L);
+        assertThat(summary.getTotalSpending()).isEqualTo(500_000L);
+        assertThat(summary.getSavingsRate()).isCloseTo(
+                100.0 / 3.0, org.assertj.core.data.Offset.offset(0.0001));
+        assertThat(summary.getAvailableCash()).isEqualTo(1_500_000L);
     }
 }

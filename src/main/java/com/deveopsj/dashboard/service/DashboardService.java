@@ -18,6 +18,7 @@ import com.deveopsj.assetplan.repository.AssetValuationRepository;
 import com.deveopsj.assetplan.entity.AssetSavings.DepositType;
 import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 import com.deveopsj.dashboard.dto.DashboardSummary;
+import com.deveopsj.income.repository.IncomeRepository;
 import com.deveopsj.spending.repository.DailySpendingRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class DashboardService {
     private final AssetTradeRepository assetTradeRepository;
     private final AssetValuationRepository assetValuationRepository;
     private final DailySpendingRepository dailySpendingRepository;
+    private final IncomeRepository incomeRepository;
     private final MasterCodeService masterCodeService;
 
     public DashboardSummary getMonthlySummary(Long memberId) {
@@ -100,6 +102,8 @@ public class DashboardService {
         // 2. 이번 달 지출 내역 계산
         var spendings = dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(memberId, start, end);
         Long totalSpend = spendings.stream().mapToLong(s -> s.getAmount()).sum();
+        Long totalIncomeValue = incomeRepository.getTotalIncome(memberId, start, end);
+        long totalIncome = totalIncomeValue != null ? totalIncomeValue : 0;
         
         var categoryMap = spendings.stream()
                 .collect(Collectors.groupingBy(
@@ -110,6 +114,10 @@ public class DashboardService {
 
         // 3. 전체 투자 달성률 계산
         double totalProgress = (totalTarget == 0) ? 0 : (totalActual / (double)totalTarget) * 100;
+        double savingsRate = totalIncome == 0
+                ? 0 : (totalActual / (double) totalIncome) * 100;
+        long availableCash = Math.subtractExact(
+                Math.subtractExact(totalIncome, totalSpend), totalActual);
 
         return DashboardSummary.builder()
                 .totalInvestmentTarget(totalTarget)
@@ -119,7 +127,10 @@ public class DashboardService {
                 .currentValuation(currentValuation)
                 .valuationProfit(currentValuation - valuationPrincipal)
                 .valuedPlanCount(valuedPlanCount)
+                .totalIncome(totalIncome)
                 .totalSpending(totalSpend)
+                .availableCash(availableCash)
+                .savingsRate(savingsRate)
                 .spendingByCategory(categoryMap)
                 .investmentProgress(Math.min(totalProgress, 100.0))
                 .planProgressList(planProgressList)
