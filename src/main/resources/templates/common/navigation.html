@@ -55,6 +55,13 @@
                 </a>
             </li>
             <li class="nav-item mb-2">
+                <a href="/portfolio" class="nav-link text-white d-flex align-items-center py-2 px-3"
+                   th:classappend="${activeMenu == 'portfolio'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
+                    <i class="fas fa-chart-pie me-3" style="width: 20px;"></i>
+                    보유자산 수익률
+                </a>
+            </li>
+            <li class="nav-item mb-2">
                 <a href="/krx/test" class="nav-link text-white d-flex align-items-center py-2 px-3"
                    th:classappend="${activeMenu == 'krx'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
                     <i class="fas fa-magnifying-glass-chart me-3" style="width: 20px;"></i>

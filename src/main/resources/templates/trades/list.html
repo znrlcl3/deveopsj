@@ -152,6 +152,7 @@
                                      th:text="${trade.investmentAsset.market + ' · '
                                              + trade.investmentAsset.assetClass + ' · ' + trade.investmentAsset.currency}">
                                 </div>
+                                <div class="form-text current-price-info"></div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">수량</label>
@@ -216,10 +217,12 @@
         const form = wrap.closest('form');
         const currency = form.querySelector('.asset-currency');
         const exchangeRate = form.querySelector('[name="exchangeRate"]');
+        const priceInfo = wrap.querySelector('.current-price-info');
         let timer;
 
         searchInput.addEventListener('input', () => {
             assetId.value = '';
+            priceInfo.textContent = '';
             clearTimeout(timer);
             results.replaceChildren();
             results.classList.add('d-none');
@@ -243,6 +246,7 @@
                             currency.value = asset.currency;
                             if (asset.currency === 'KRW') exchangeRate.value = '1';
                             results.classList.add('d-none');
+                            loadCurrentPrice(asset.id, priceInfo);
                         });
                         results.appendChild(button);
                     });
@@ -253,6 +257,26 @@
             }, 250);
         });
     });
+
+    async function loadCurrentPrice(assetId, target) {
+        target.textContent = '현재가 조회 중...';
+        try {
+            const response = await fetch(`/api/market-prices/${assetId}`);
+            if (!response.ok) throw new Error();
+            const quote = await response.json();
+            const price = Number(quote.currentPrice).toLocaleString('ko-KR', {
+                maximumFractionDigits: 4
+            });
+            const rate = Number(quote.changeRate).toLocaleString('ko-KR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            target.textContent = `현재가 ${price} ${quote.currency} · 전일 대비 ${rate}%`;
+        } catch (error) {
+            target.textContent = '현재가를 불러오지 못했습니다.';
+            target.className = 'form-text current-price-info text-warning';
+        }
+    }
 
     document.querySelectorAll('.trade-calculation-form').forEach(form => {
         const quantity = form.querySelector('[name="quantity"]');

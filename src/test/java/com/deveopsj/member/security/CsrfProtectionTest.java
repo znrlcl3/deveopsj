@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,9 @@ import com.deveopsj.assetplan.service.AssetTradeService;
 import com.deveopsj.assetplan.service.AssetValuationService;
 import com.deveopsj.assetplan.service.GoalService;
 import com.deveopsj.market.service.InvestmentAssetSyncService;
+import com.deveopsj.market.dto.PortfolioSummary;
+import com.deveopsj.market.dto.MonthlyPortfolioSummary;
+import com.deveopsj.market.service.PortfolioValuationService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -79,6 +83,9 @@ class CsrfProtectionTest {
 
     @MockitoBean
     private InvestmentAssetSyncService investmentAssetSyncService;
+
+    @MockitoBean
+    private PortfolioValuationService portfolioValuationService;
 
     @Test
     void 로그인_화면은_리디렉션없이_표시한다() throws Exception {
@@ -307,6 +314,46 @@ class CsrfProtectionTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("주식·ETF 매매 내역")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("조회 월")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("새 매매 등록")));
+    }
+
+    @Test
+    void 로그인사용자는_보유자산수익률화면을_조회한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+        when(portfolioValuationService.getPortfolio(member))
+                .thenReturn(new PortfolioSummary(java.util.List.of(), 0L, 0L, 0L, 0L));
+
+        mockMvc.perform(get("/portfolio")
+                        .with(user(new CustomUserDetails(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("보유자산 수익률")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "현재 보유 중인 종목이 없습니다.")));
+    }
+
+    @Test
+    void 로그인사용자는_월별포트폴리오를_조회한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+        YearMonth month = YearMonth.of(2026, 7);
+        when(portfolioValuationService.getMonthlyPortfolio(member, month))
+                .thenReturn(new MonthlyPortfolioSummary(
+                        month, 0L, 0L, 0L, 0L, java.util.List.of()));
+
+        mockMvc.perform(get("/portfolio/monthly")
+                        .with(user(new CustomUserDetails(member)))
+                        .param("month", "2026-07"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "월별 포트폴리오")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "선택한 월말 기준 보유 종목이 없습니다.")));
     }
 
     @Test

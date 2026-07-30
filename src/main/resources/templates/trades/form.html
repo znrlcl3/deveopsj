@@ -67,6 +67,7 @@
                                 <div class="form-text selected-asset-info">
                                     먼저 종목정보 테스트 화면에서 국내·미국 종목을 동기화해 주세요.
                                 </div>
+                                <div class="form-text current-price-info"></div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">수량</label>
@@ -183,10 +184,12 @@
         const form = wrap.closest('form');
         const currency = form.querySelector('.asset-currency');
         const exchangeRate = form.querySelector('[name="exchangeRate"]');
+        const priceInfo = wrap.querySelector('.current-price-info');
         let timer;
 
         searchInput.addEventListener('input', () => {
             assetId.value = '';
+            priceInfo.textContent = '';
             clearTimeout(timer);
             results.replaceChildren();
             results.classList.add('d-none');
@@ -210,6 +213,7 @@
                             currency.value = asset.currency;
                             if (asset.currency === 'KRW') exchangeRate.value = '1';
                             results.classList.add('d-none');
+                            loadCurrentPrice(asset.id, priceInfo);
                         });
                         results.appendChild(button);
                     });
@@ -226,6 +230,30 @@
             }, 250);
         });
     });
+
+    async function loadCurrentPrice(assetId, target) {
+        target.textContent = '현재가 조회 중...';
+        try {
+            const response = await fetch(`/api/market-prices/${assetId}`);
+            if (!response.ok) throw new Error();
+            const quote = await response.json();
+            const price = Number(quote.currentPrice).toLocaleString('ko-KR', {
+                maximumFractionDigits: 4
+            });
+            const rate = Number(quote.changeRate).toLocaleString('ko-KR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            target.textContent = `현재가 ${price} ${quote.currency} · 전일 대비 ${rate}%`;
+            target.className = `form-text current-price-info ${
+                Number(quote.changeRate) > 0 ? 'text-danger'
+                    : Number(quote.changeRate) < 0 ? 'text-primary' : 'text-muted'
+            }`;
+        } catch (error) {
+            target.textContent = '현재가를 불러오지 못했습니다. KIS 설정 또는 거래소 정보를 확인해 주세요.';
+            target.className = 'form-text current-price-info text-warning';
+        }
+    }
 
     document.querySelectorAll('.trade-calculation-form').forEach(form => {
         const quantity = form.querySelector('[name="quantity"]');

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>보유자산 수익률 | AI 자산관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Pretendard', sans-serif; }
+        .content-container { max-width: 1400px; margin: 50px auto; }
+        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        .summary-value { font-size: 1.5rem; font-weight: 700; }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <div th:replace="~{common/navigation :: sidebar('portfolio')}"></div>
+    <main class="flex-grow-1" style="margin-left: 280px; min-height: 100vh;">
+        <div class="container content-container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="fw-bold mb-1">보유자산 수익률</h3>
+                    <p class="text-muted mb-0">매매내역과 KIS 현재가를 기준으로 계산합니다.</p>
+                </div>
+                <a href="/portfolio" class="btn btn-outline-primary">
+                    <i class="fas fa-rotate me-1"></i> 현재가 새로고침
+                </a>
+            </div>
+
+            <ul class="nav nav-pills mb-4">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/portfolio">현재 보유자산</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/portfolio/monthly">월별 포트폴리오</a>
+                </li>
+            </ul>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card p-4 h-100">
+                        <div class="text-muted mb-2">남은 매입원금</div>
+                        <div class="summary-value"
+                             th:text="${#numbers.formatInteger(summary.totalCostKrw, 0, 'COMMA')} + '원'"></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card p-4 h-100">
+                        <div class="text-muted mb-2">현재 평가금액</div>
+                        <div class="summary-value"
+                             th:text="${#numbers.formatInteger(summary.totalValuationKrw, 0, 'COMMA')} + '원'"></div>
+                        <small class="text-muted"
+                               th:if="${summary.quotedCostKrw != summary.totalCostKrw}">
+                            현재가 조회 성공 종목만 합산
+                        </small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card p-4 h-100">
+                        <div class="text-muted mb-2">평가손익</div>
+                        <div class="summary-value"
+                             th:classappend="${summary.totalProfitLossKrw > 0} ? 'text-danger'
+                                    : (${summary.totalProfitLossKrw < 0} ? 'text-primary' : '')"
+                             th:text="${#numbers.formatInteger(summary.totalProfitLossKrw, 0, 'COMMA')} + '원'"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                매도 시 이동평균 원가를 차감합니다. 미국 종목의 원화 평가는 해당 종목의 가장 최근 매매 환율을 사용합니다.
+            </div>
+
+            <div class="card p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                        <tr>
+                            <th>플랜/계좌</th>
+                            <th>종목</th>
+                            <th class="text-end">보유수량</th>
+                            <th class="text-end">평균매입가</th>
+                            <th class="text-end">현재가</th>
+                            <th class="text-end">매입원금</th>
+                            <th class="text-end">평가금액</th>
+                            <th class="text-end">평가손익</th>
+                            <th class="text-end">수익률</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(summary.positions)}">
+                            <td colspan="9" class="text-center text-muted py-5">
+                                현재 보유 중인 종목이 없습니다.
+                            </td>
+                        </tr>
+                        <tr th:each="position : ${summary.positions}">
+                            <td th:text="${position.planName}"></td>
+                            <td>
+                                <div class="fw-bold" th:text="${position.assetName}"></div>
+                                <small class="text-muted"
+                                       th:text="${position.market + ':' + position.symbol}"></small>
+                            </td>
+                            <td class="text-end" th:text="${position.quantity.toPlainString()}"></td>
+                            <td class="text-end"
+                                th:text="${#numbers.formatDecimal(position.averageUnitPrice, 1, 'COMMA', 0, 'POINT')
+                                        + ' ' + position.currency}"></td>
+                            <td class="text-end" th:if="${position.quoteAvailable}"
+                                >
+                                <div th:text="${#numbers.formatDecimal(position.currentPrice, 1, 'COMMA', 0, 'POINT')
+                                        + ' ' + position.currency}"></div>
+                                <small class="text-muted"
+                                       th:text="${#temporals.format(position.quoteFetchedAt, 'MM-dd HH:mm:ss')
+                                            + (position.staleQuote ? ' 이전 조회값' : (position.cachedQuote ? ' 캐시' : ' 실시간'))}">
+                                </small>
+                            </td>
+                            <td class="text-end text-warning" th:unless="${position.quoteAvailable}"
+                                th:text="${position.quoteError}"></td>
+                            <td class="text-end"
+                                th:text="${#numbers.formatInteger(position.remainingCostKrw, 0, 'COMMA')} + '원'"></td>
+                            <td class="text-end" th:text="${position.quoteAvailable
+                                    ? #numbers.formatInteger(position.valuationAmountKrw, 0, 'COMMA') + '원' : '-'}"></td>
+                            <td class="text-end"
+                                th:classappend="${position.quoteAvailable && position.profitLossKrw > 0} ? 'text-danger'
+                                        : (${position.quoteAvailable && position.profitLossKrw < 0} ? 'text-primary' : '')"
+                                th:text="${position.quoteAvailable
+                                    ? #numbers.formatInteger(position.profitLossKrw, 0, 'COMMA') + '원' : '-'}"></td>
+                            <td class="text-end fw-bold"
+                                th:text="${position.quoteAvailable ? position.returnRate + '%' : '-'}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

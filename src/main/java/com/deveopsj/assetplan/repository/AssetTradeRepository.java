@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,6 +15,13 @@ import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 public interface AssetTradeRepository extends JpaRepository<AssetTrade, Long> {
 
     List<AssetTrade> findByAssetPlanMemberMemberIdOrderByTradeDateDescIdDesc(Long memberId);
+
+    @EntityGraph(attributePaths = {"assetPlan", "assetPlan.goal", "investmentAsset"})
+    List<AssetTrade> findByAssetPlanMemberMemberIdOrderByTradeDateAscIdAsc(Long memberId);
+
+    @EntityGraph(attributePaths = {"assetPlan", "assetPlan.goal", "investmentAsset"})
+    List<AssetTrade> findByAssetPlanMemberMemberIdAndTradeDateLessThanEqualOrderByTradeDateAscIdAsc(
+            Long memberId, LocalDate endDate);
 
     List<AssetTrade> findByAssetPlanMemberMemberIdAndTradeDateBetweenOrderByTradeDateDescIdDesc(
             Long memberId, LocalDate startDate, LocalDate endDate);
