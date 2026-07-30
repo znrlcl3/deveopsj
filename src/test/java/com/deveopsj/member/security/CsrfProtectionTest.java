@@ -5,6 +5,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -83,6 +84,20 @@ class CsrfProtectionTest {
     void 로그인_화면은_리디렉션없이_표시한다() throws Exception {
         mockMvc.perform(get("/member/login"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void 로그인사용자가_루트주소에_접속하면_대시보드로_이동한다() throws Exception {
+        mockMvc.perform(get("/").with(user("user")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/dashboard/view"));
+    }
+
+    @Test
+    void 비로그인사용자가_루트주소에_접속하면_로그인화면으로_이동한다() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/member/login"));
     }
 
     @Test
