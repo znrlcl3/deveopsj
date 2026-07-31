@@ -44,8 +44,16 @@
         <span th:text="${successMessage}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
+    <div th:if="${errorMessage}" class="alert alert-warning alert-dismissible fade show small" role="alert">
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
     <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show small" role="alert">
         <span>아이디 또는 비밀번호가 올바르지 않습니다.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${param.blocked}" class="alert alert-warning alert-dismissible fade show small" role="alert">
+        <span>로그인 시도가 잠시 제한되었습니다. 잠시 후 다시 시도해 주세요.</span>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     <div th:if="${param.logout}" class="alert alert-info alert-dismissible fade show small" role="alert">
@@ -73,9 +81,9 @@
 
         <button type="submit" class="btn btn-primary w-100 py-2 fw-bold mb-3">로그인</button>
 
-        <div class="text-center">
+        <div class="text-center" th:if="${registrationEnabled}">
             <span class="text-muted small">아직 계정이 없으신가요?</span>
-            <a href="/member/join" class="small fw-bold text-decoration-none ms-1">회원가입</a>
+            <a th:href="@{/member/join}" class="small fw-bold text-decoration-none ms-1">회원가입</a>
         </div>
     </form>
 </div>

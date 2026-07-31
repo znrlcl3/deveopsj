@@ -51,6 +51,15 @@ class ProductionConfigurationTest {
         assertThat(property("management.endpoint.health.probes.enabled")).isEqualTo(true);
     }
 
+    @Test
+    void productionProfileControlsRegistrationAndLoginProtectionWithEnvironmentVariables() {
+        assertThat(property("app.registration.enabled")).isEqualTo("${REGISTRATION_ENABLED:true}");
+        assertThat(property("app.security.login.max-attempts"))
+                .isEqualTo("${LOGIN_MAX_ATTEMPTS:5}");
+        assertThat(property("app.security.login.block-duration"))
+                .isEqualTo("${LOGIN_BLOCK_DURATION:10m}");
+    }
+
     private Object property(String name) {
         return propertySources.stream()
                 .map(source -> source.getProperty(name))

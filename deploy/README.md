@@ -29,6 +29,28 @@ Linux:
 환경변수 파일은 실제 값으로 수정하고 소유자를 `root:deveopsj`, 권한을 `640`으로
 제한한다. 실제 비밀값이 들어간 파일은 Git에 커밋하지 않는다.
 
+현재 템플릿은 최초 사용자 준비를 위해 `REGISTRATION_ENABLED=true`로 되어 있다.
+필요한 사용자의 가입이 끝나면 `false`로 변경한다.
+
+로그인은 같은 ID와 접속 IP 조합에서 기본 5회 실패하면 10분 동안 차단된다.
+`LOGIN_MAX_ATTEMPTS`와 `LOGIN_BLOCK_DURATION`으로 조정할 수 있다. 차단 기록은 서버
+메모리에만 저장되므로 애플리케이션을 재시작하면 초기화된다.
+
+## 최초 관리자 지정
+
+회원가입으로 만든 계정은 모두 `USER` 권한이다. DB 연결 후 관리자 ID를 정확히
+확인하고 다음 명령을 한 번만 실행한다. 실제 배포 전에는 실행하지 않는다.
+
+```sql
+START TRANSACTION;
+UPDATE members SET role = 'ADMIN' WHERE login_id = '관리자_로그인_ID';
+SELECT member_id, login_id, role FROM members WHERE login_id = '관리자_로그인_ID';
+COMMIT;
+```
+
+조회 결과가 정확히 한 명인지 확인한다. 관리자는 종목 동기화 등 `/krx/**` 관리
+기능에 접근할 수 있으므로 일반 사용자에게 부여하지 않는다.
+
 ## 3. systemd 실행
 
 ```text

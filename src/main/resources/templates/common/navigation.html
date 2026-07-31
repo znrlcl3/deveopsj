@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
 </head>
@@ -75,11 +76,19 @@
                     보유자산 수익률
                 </a>
             </li>
-            <li class="nav-item mb-2">
+            <li class="nav-item mb-2" sec:authorize="hasRole('ADMIN')">
                 <a href="/krx/test" class="nav-link text-white d-flex align-items-center py-2 px-3"
                    th:classappend="${activeMenu == 'krx'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
                     <i class="fas fa-magnifying-glass-chart me-3" style="width: 20px;"></i>
                     종목정보 테스트
+                </a>
+            </li>
+            <li class="nav-item mb-2" sec:authorize="hasRole('ADMIN')">
+                <a th:href="@{/admin/members}"
+                   class="nav-link text-white d-flex align-items-center py-2 px-3"
+                   th:classappend="${activeMenu == 'members'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
+                    <i class="fas fa-users-gear me-3" style="width: 20px;"></i>
+                    회원 관리
                 </a>
             </li>
         </ul>
@@ -88,6 +97,15 @@
             <i class="fas fa-user-circle fs-4 me-2 text-secondary"></i>
             <span class="fw-bold" sec:authentication="principal.member.name">사용자</span>
             <span class="ms-1">님</span>
+        </div>
+        <div class="d-flex gap-2 px-2 mt-2" sec:authorize="isAuthenticated()">
+            <a th:href="@{/member/password}" class="btn btn-sm btn-outline-light flex-grow-1">
+                비밀번호 변경
+            </a>
+            <form th:action="@{/member/logout}" method="post" class="flex-grow-1">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button type="submit" class="btn btn-sm btn-outline-light w-100">로그아웃</button>
+            </form>
         </div>
         <div class="d-flex align-items-center text-white text-decoration-none px-2" sec:authorize="!isAuthenticated()">
             <a href="/member/login" class="text-white text-decoration-none">로그인</a>

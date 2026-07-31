@@ -3,3 +3,11 @@ spring:
     gemini:
       base-url: https://generativelanguage.googleapis.com/v1/models
       model: gemini-3.1-flash-lite
+
+app:
+  registration:
+    enabled: true
+  security:
+    login:
+      max-attempts: 5
+      block-duration: 10m
