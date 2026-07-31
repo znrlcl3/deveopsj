@@ -8,6 +8,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.switchuser.SwitchUserFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 @Configuration
 @EnableWebSecurity
@@ -21,7 +28,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
             LoginAttemptFilter loginAttemptFilter,
-            LoginAttemptService loginAttemptService) throws Exception {
+            LoginAttemptService loginAttemptService,
+            SwitchUserFilter switchUserFilter) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/error", "/actuator/health", "/actuator/health/**",
@@ -43,9 +51,13 @@ public class SecurityConfig {
                     response.sendRedirect(request.getContextPath() + "/dashboard/view");
                 })
                 .failureHandler((request, response, exception) -> {
-                    loginAttemptService.loginFailed(
-                            request.getParameter("loginId"), request.getRemoteAddr());
-                    response.sendRedirect(request.getContextPath() + "/member/login?error");
+                    if (hasCause(exception, DisabledException.class)) {
+                        response.sendRedirect(request.getContextPath() + "/member/login?disabled");
+                    } else {
+                        loginAttemptService.loginFailed(
+                                request.getParameter("loginId"), request.getRemoteAddr());
+                        response.sendRedirect(request.getContextPath() + "/member/login?error");
+                    }
                 })
                 .permitAll()
             )
@@ -56,8 +68,61 @@ public class SecurityConfig {
                 .deleteCookies("JSESSIONID")
                 .permitAll()
             )
-            .addFilterBefore(loginAttemptFilter, UsernamePasswordAuthenticationFilter.class);
+            .exceptionHandling(exceptions ->
+                    exceptions.accessDeniedPage("/access-denied"))
+            .sessionManagement(session ->
+                    session.invalidSessionUrl("/member/login?expired"))
+            .addFilterBefore(loginAttemptFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(switchUserFilter, AuthorizationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public SwitchUserFilter switchUserFilter(UserDetailsService userDetailsService) {
+        SwitchUserFilter filter = new SwitchUserFilter();
+        filter.setUserDetailsService(userDetailsService);
+        filter.setUsernameParameter("loginId");
+        filter.setSwitchUserUrl("/admin/members/impersonate");
+        filter.setExitUserUrl("/impersonation/exit");
+        filter.setTargetUrl("/dashboard/view");
+        filter.setSwitchFailureUrl("/admin/members?impersonationError");
+        filter.setSecurityContextRepository(new HttpSessionSecurityContextRepository());
+        filter.setSwitchUserMatcher(request ->
+                "POST".equals(request.getMethod())
+                        && "/admin/members/impersonate".equals(request.getServletPath())
+                        && hasAuthority("ROLE_ADMIN")
+                        && !hasAuthority(SwitchUserFilter.ROLE_PREVIOUS_ADMINISTRATOR));
+        filter.setExitUserMatcher(request ->
+                "POST".equals(request.getMethod())
+                        && "/impersonation/exit".equals(request.getServletPath())
+                        && hasAuthority(SwitchUserFilter.ROLE_PREVIOUS_ADMINISTRATOR));
+        filter.setUserDetailsChecker(user -> {
+            if (!user.isEnabled()) {
+                throw new DisabledException("비활성화된 계정입니다.");
+            }
+            if (user.getAuthorities().stream()
+                    .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()))) {
+                throw new BadCredentialsException("관리자 계정으로는 전환할 수 없습니다.");
+            }
+        });
+        return filter;
+    }
+
+    private boolean hasAuthority(String expectedAuthority) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> expectedAuthority.equals(authority.getAuthority()));
+    }
+
+    private boolean hasCause(Throwable throwable, Class<? extends Throwable> type) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (type.isInstance(current)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }

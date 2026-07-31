@@ -7,6 +7,15 @@
 <body>
     <!-- 공통 네비게이션 사이드바 Fragment -->
     <div th:fragment="sidebar(activeMenu)" class="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark" style="width: 280px; height: 100vh; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 4px 0 10px rgba(0,0,0,0.1);">
+        <div class="alert alert-warning py-2 px-2 small"
+             sec:authorize="hasRole('PREVIOUS_ADMINISTRATOR')">
+            <strong>회원 화면 확인 중</strong>
+            <div class="mt-1" sec:authentication="principal.member.name"></div>
+            <form th:action="@{/impersonation/exit}" method="post" class="mt-2">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button type="submit" class="btn btn-sm btn-dark w-100">관리자로 돌아가기</button>
+            </form>
+        </div>
         <a href="/dashboard/view" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
             <i class="fas fa-wallet fs-3 me-2 text-primary"></i>
             <span class="fs-4 fw-bold">AI 자산관리</span>

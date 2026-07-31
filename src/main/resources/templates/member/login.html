@@ -56,8 +56,16 @@
         <span>로그인 시도가 잠시 제한되었습니다. 잠시 후 다시 시도해 주세요.</span>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
+    <div th:if="${param.disabled}" class="alert alert-warning alert-dismissible fade show small" role="alert">
+        <span>비활성화된 계정입니다. 관리자에게 문의해 주세요.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
     <div th:if="${param.logout}" class="alert alert-info alert-dismissible fade show small" role="alert">
         <span>로그아웃 되었습니다.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${param.expired}" class="alert alert-info alert-dismissible fade show small" role="alert">
+        <span>로그인 세션이 만료되었습니다. 다시 로그인해 주세요.</span>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 

@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -75,6 +77,21 @@ public class LoginAttemptService {
         attempts.remove(key(loginId, remoteAddress));
     }
 
+    public boolean clearLoginAttempts(String loginId) {
+        String suffix = "\n" + normalizeLoginId(loginId);
+        return attempts.keySet().removeIf(key -> key.endsWith(suffix));
+    }
+
+    public Set<String> blockedLoginIds() {
+        Instant now = clock.instant();
+        removeExpiredEntries();
+        return attempts.entrySet().stream()
+                .filter(entry -> entry.getValue().blockedUntil() != null
+                        && now.isBefore(entry.getValue().blockedUntil()))
+                .map(entry -> entry.getKey().substring(entry.getKey().indexOf('\n') + 1))
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
     private void removeExpiredEntries() {
         Instant now = clock.instant();
         attempts.entrySet().removeIf(entry ->
@@ -82,9 +99,13 @@ public class LoginAttemptService {
     }
 
     private String key(String loginId, String remoteAddress) {
-        String id = loginId == null ? "" : loginId.strip().toLowerCase(Locale.ROOT);
+        String id = normalizeLoginId(loginId);
         String address = remoteAddress == null ? "" : remoteAddress;
         return address + '\n' + id;
+    }
+
+    private String normalizeLoginId(String loginId) {
+        return loginId == null ? "" : loginId.strip().toLowerCase(Locale.ROOT);
     }
 
     private record Attempt(int failures, Instant blockedUntil, Instant lastAttemptAt) {

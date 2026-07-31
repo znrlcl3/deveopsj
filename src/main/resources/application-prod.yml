@@ -23,6 +23,7 @@ server:
   forward-headers-strategy: framework
   servlet:
     session:
+      timeout: ${SESSION_TIMEOUT:30m}
       cookie:
         http-only: true
         secure: true

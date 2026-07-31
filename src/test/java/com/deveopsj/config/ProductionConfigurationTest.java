@@ -39,6 +39,8 @@ class ProductionConfigurationTest {
         assertThat(property("server.servlet.session.cookie.http-only")).isEqualTo(true);
         assertThat(property("server.servlet.session.cookie.secure")).isEqualTo(true);
         assertThat(property("server.servlet.session.cookie.same-site")).isEqualTo("lax");
+        assertThat(property("server.servlet.session.timeout"))
+                .isEqualTo("${SESSION_TIMEOUT:30m}");
         assertThat(property("spring.web.error.include-message")).isEqualTo("never");
         assertThat(property("spring.web.error.include-binding-errors")).isEqualTo("never");
         assertThat(property("spring.web.error.include-stacktrace")).isEqualTo("never");

@@ -11,3 +11,8 @@ app:
     login:
       max-attempts: 5
       block-duration: 10m
+
+server:
+  servlet:
+    session:
+      timeout: 30m

@@ -82,6 +82,24 @@ class LoginAttemptServiceTest {
         assertThat(service.isBlocked("user", "127.0.0.1")).isFalse();
     }
 
+    @Test
+    void 관리자는_IP와_관계없이_회원의_로그인차단을_해제한다() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-07-31T00:00:00Z"));
+        LoginAttemptService service = new LoginAttemptService(3, Duration.ofMinutes(10), clock);
+        for (int index = 0; index < 3; index++) {
+            service.loginFailed("user", "127.0.0.1");
+            service.loginFailed("user", "10.0.0.1");
+        }
+        assertThat(service.blockedLoginIds()).containsExactly("user");
+
+        boolean cleared = service.clearLoginAttempts("USER");
+
+        assertThat(cleared).isTrue();
+        assertThat(service.isBlocked("user", "127.0.0.1")).isFalse();
+        assertThat(service.isBlocked("user", "10.0.0.1")).isFalse();
+        assertThat(service.blockedLoginIds()).isEmpty();
+    }
+
     private static final class MutableClock extends Clock {
         private Instant instant;
 
