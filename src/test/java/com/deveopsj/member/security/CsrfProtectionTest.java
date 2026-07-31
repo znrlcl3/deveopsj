@@ -555,4 +555,29 @@ class CsrfProtectionTest {
 
         verifyNoInteractions(assetSavingsService);
     }
+
+    @Test
+    void 잘못된_회원가입_입력은_서비스_호출_전에_거부한다() throws Exception {
+        mockMvc.perform(post("/member/join-proc")
+                        .with(csrf())
+                        .param("loginId", "한")
+                        .param("password", "short")
+                        .param("name", " "))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/member/join"));
+
+        verifyNoInteractions(memberService);
+    }
+
+    @Test
+    void 일반_사용자는_종목_동기화_관리기능을_실행할_수_없다() throws Exception {
+        mockMvc.perform(post("/krx/sync")
+                        .with(user("user").roles("USER"))
+                        .with(csrf())
+                        .param("date", LocalDate.now().toString())
+                        .param("market", "KOSPI"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(investmentAssetSyncService);
+    }
 }

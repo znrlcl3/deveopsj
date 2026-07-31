@@ -6,10 +6,12 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.validation.BindingResult;
 
 import com.deveopsj.member.dto.MemberJoinDto;
 import com.deveopsj.member.service.MemberService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @Controller
@@ -30,7 +32,13 @@ public class MemberController {
     }
 
     @PostMapping("/join-proc")
-    public String joinProc(@ModelAttribute MemberJoinDto joinDto, RedirectAttributes redirectAttributes) {
+    public String joinProc(@Valid @ModelAttribute MemberJoinDto joinDto,
+            BindingResult bindingResult, RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    bindingResult.getAllErrors().get(0).getDefaultMessage());
+            return "redirect:/member/join";
+        }
         try {
             memberService.join(joinDto);
             redirectAttributes.addFlashAttribute("successMessage", "회원가입이 완료되었습니다. 로그인해 주세요.");

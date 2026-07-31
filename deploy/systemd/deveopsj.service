@@ -1,0 +1,25 @@
+[Unit]
+Description=DeveopsJ personal finance application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deveopsj
+Group=deveopsj
+WorkingDirectory=/opt/deveopsj
+EnvironmentFile=/etc/deveopsj/deveopsj.env
+ExecStart=/usr/bin/java -Xms128m -Xmx512m -jar /opt/deveopsj/app.jar --spring.profiles.active=prod
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/deveopsj
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

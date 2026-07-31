@@ -44,6 +44,13 @@ class ProductionConfigurationTest {
         assertThat(property("spring.web.error.include-stacktrace")).isEqualTo("never");
     }
 
+    @Test
+    void productionProfileExposesOnlyHealthWithoutDetails() {
+        assertThat(property("management.endpoints.web.exposure.include")).isEqualTo("health");
+        assertThat(property("management.endpoint.health.show-details")).isEqualTo("never");
+        assertThat(property("management.endpoint.health.probes.enabled")).isEqualTo(true);
+    }
+
     private Object property(String name) {
         return propertySources.stream()
                 .map(source -> source.getProperty(name))
