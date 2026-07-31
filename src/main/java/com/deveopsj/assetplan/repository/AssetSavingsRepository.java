@@ -59,6 +59,21 @@ public interface AssetSavingsRepository extends JpaRepository<AssetSavings, Long
     @Query("""
             SELECT s
             FROM AssetSavings s
+            LEFT JOIN FETCH s.assetPlan p
+            LEFT JOIN FETCH p.goal
+            LEFT JOIN FETCH s.goal g
+            WHERE (p.member.memberId = :memberId
+                   OR g.member.memberId = :memberId)
+              AND s.depositDate <= :endDate
+            ORDER BY s.depositDate ASC, s.id ASC
+            """)
+    List<AssetSavings> findAllByMemberIdAndDepositDateLessThanEqual(
+            @Param("memberId") Long memberId,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("""
+            SELECT s
+            FROM AssetSavings s
             LEFT JOIN s.assetPlan p
             LEFT JOIN s.goal g
             WHERE s.id = :id

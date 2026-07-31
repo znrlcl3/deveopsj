@@ -1,0 +1,30 @@
+# Copy this file to application.properties only for local development.
+# Never put real credentials in a tracked file.
+
+# MySQL connection
+spring.datasource.url=${DB_URL}
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# JPA (local development)
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+# External APIs
+spring.ai.gemini.api-key=${GEMINI_API_KEY}
+
+krx.api.base-url=https://data-dbg.krx.co.kr/svc/apis
+krx.api.auth-key=${KRX_API_AUTH_KEY}
+krx.api.timeout=10s
+
+nasdaq.directory.nasdaq-listed-url=https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt
+nasdaq.directory.other-listed-url=https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt
+
+kis.api.base-url=https://openapi.koreainvestment.com:9443
+kis.api.app-key=${KIS_API_APP_KEY}
+kis.api.app-secret=${KIS_API_APP_SECRET}
+kis.api.timeout=5000
+
+logging.level.org.hibernate.SQL=debug
+logging.level.org.hibernate.orm.jdbc.bind=trace

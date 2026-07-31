@@ -44,6 +44,8 @@ import com.deveopsj.market.dto.PortfolioSummary;
 import com.deveopsj.market.dto.MonthlyPortfolioSummary;
 import com.deveopsj.market.service.PortfolioValuationService;
 import com.deveopsj.income.service.IncomeService;
+import com.deveopsj.cashflow.dto.MonthlyCashFlowSummary;
+import com.deveopsj.cashflow.service.MonthlyCashFlowService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -90,6 +92,9 @@ class CsrfProtectionTest {
 
     @MockitoBean
     private IncomeService incomeService;
+
+    @MockitoBean
+    private MonthlyCashFlowService monthlyCashFlowService;
 
     @Test
     void 로그인_화면은_리디렉션없이_표시한다() throws Exception {
@@ -234,6 +239,34 @@ class CsrfProtectionTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("급여")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("fa-coins")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/income/list")));
+    }
+
+    @Test
+    void 로그인사용자는_월간자금흐름을_조회한다() throws Exception {
+        Member member = new Member();
+        member.setMemberId(7L);
+        member.setLoginId("user");
+        member.setPassword("password");
+        member.setRole("USER");
+        YearMonth month = YearMonth.of(2026, 7);
+        when(monthlyCashFlowService.getMonthlyCashFlow(member, month))
+                .thenReturn(new MonthlyCashFlowSummary(
+                        month, 3_000_000L, 1_000_000L, 1_400_000L, 600_000L,
+                        1_100_000L, 1_000_000L, 100_000L, 900_000L, 200_000L, 300_000L,
+                        java.util.List.of()));
+
+        mockMvc.perform(get("/cashflow")
+                        .with(user(new CustomUserDetails(member)))
+                        .param("month", "2026-07"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "월간 자금 흐름")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "미배분 현금")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "누적 계좌 현금 추정액")));
+
+        verify(monthlyCashFlowService).getMonthlyCashFlow(member, month);
     }
 
     @Test

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>월간 자금 흐름 | AI 자산관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Pretendard', sans-serif; }
+        .content-container { max-width: 1300px; margin: 50px auto; }
+        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        .flow-card { min-height: 145px; }
+        .flow-value { font-size: 1.35rem; font-weight: 700; }
+        .flow-arrow { color: #adb5bd; font-size: 1.5rem; }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <div th:replace="~{common/navigation :: sidebar('cashflow')}"></div>
+    <main class="flex-grow-1" style="margin-left: 280px; min-height: 100vh;">
+        <div class="container content-container">
+            <div class="d-flex justify-content-between align-items-end mb-4">
+                <div>
+                    <h3 class="fw-bold mb-1">월간 자금 흐름</h3>
+                    <p class="text-muted mb-0">이번 달에 들어온 돈이 어디에 사용됐는지 확인합니다.</p>
+                </div>
+                <form action="/cashflow" method="get" class="d-flex gap-2">
+                    <input type="month" name="month" class="form-control"
+                           th:value="${summary.selectedMonth}" th:max="${currentMonth}" required>
+                    <button type="submit" class="btn btn-primary text-nowrap">조회</button>
+                </form>
+            </div>
+
+            <div th:if="${errorMessage}" class="alert alert-warning" th:text="${errorMessage}"></div>
+
+            <div class="row g-2 align-items-center mb-4">
+                <div class="col">
+                    <div class="card flow-card p-4">
+                        <div class="text-muted mb-2"><i class="fas fa-coins me-1"></i> 월 수입</div>
+                        <div class="flow-value text-info"
+                             th:text="${#numbers.formatInteger(summary.totalIncomeKrw, 0, 'COMMA')} + '원'"></div>
+                    </div>
+                </div>
+                <div class="col-auto flow-arrow"><i class="fas fa-minus"></i></div>
+                <div class="col">
+                    <div class="card flow-card p-4">
+                        <div class="text-muted mb-2"><i class="fas fa-receipt me-1"></i> 생활 지출</div>
+                        <div class="flow-value text-danger"
+                             th:text="${#numbers.formatInteger(summary.totalSpendingKrw, 0, 'COMMA')} + '원'"></div>
+                    </div>
+                </div>
+                <div class="col-auto flow-arrow"><i class="fas fa-minus"></i></div>
+                <div class="col">
+                    <div class="card flow-card p-4">
+                        <div class="text-muted mb-2"><i class="fas fa-piggy-bank me-1"></i> 실제 납입</div>
+                        <div class="flow-value text-success"
+                             th:text="${#numbers.formatInteger(summary.totalDepositKrw, 0, 'COMMA')} + '원'"></div>
+                    </div>
+                </div>
+                <div class="col-auto flow-arrow"><i class="fas fa-equals"></i></div>
+                <div class="col">
+                    <div class="card flow-card p-4">
+                        <div class="text-muted mb-2"><i class="fas fa-wallet me-1"></i> 미배분 현금</div>
+                        <div class="flow-value"
+                             th:classappend="${summary.remainingCashKrw < 0} ? 'text-danger' : 'text-primary'"
+                             th:text="${#numbers.formatInteger(summary.remainingCashKrw, 0, 'COMMA')} + '원'"></div>
+                        <small class="text-danger" th:if="${summary.remainingCashKrw < 0}">
+                            수입보다 지출과 납입이 많습니다.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-1">증권계좌 투자 흐름</h5>
+                        <p class="text-muted small mb-0">증권형 플랜의 월 납입과 매매금액을 비교합니다.</p>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-muted small">누적 계좌 현금 추정액</div>
+                        <strong class="fs-4"
+                                th:classappend="${summary.estimatedSecuritiesAccountCashKrw < 0} ? 'text-danger' : 'text-primary'"
+                                th:text="${#numbers.formatInteger(summary.estimatedSecuritiesAccountCashKrw, 0, 'COMMA')} + '원'"></strong>
+                        <div class="text-muted small"
+                             th:text="'이번 달 증감 '
+                                + ${#numbers.formatInteger(summary.uninvestedSecuritiesCashKrw, 0, 'COMMA')} + '원'"></div>
+                    </div>
+                </div>
+                <div class="row text-center g-3">
+                    <div class="col-md-3">
+                        <div class="bg-light rounded-3 p-3">
+                            <div class="text-muted small">증권계좌 납입</div>
+                            <strong th:text="${#numbers.formatInteger(summary.securitiesDepositKrw, 0, 'COMMA')} + '원'"></strong>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="bg-light rounded-3 p-3">
+                            <div class="text-muted small">매수</div>
+                            <strong th:text="${#numbers.formatInteger(summary.totalBuyKrw, 0, 'COMMA')} + '원'"></strong>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="bg-light rounded-3 p-3">
+                            <div class="text-muted small">매도</div>
+                            <strong th:text="${#numbers.formatInteger(summary.totalSellKrw, 0, 'COMMA')} + '원'"></strong>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="bg-light rounded-3 p-3">
+                            <div class="text-muted small">순매수</div>
+                            <strong th:text="${#numbers.formatInteger(summary.netPurchaseKrw, 0, 'COMMA')} + '원'"></strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="alert alert-warning mt-3 mb-0"
+                     th:if="${summary.estimatedSecuritiesAccountCashKrw < 0}">
+                    누적 순매수액이 누적 납입액보다 큽니다. 납입 내역 누락 또는 초기 보유현금 입력 여부를 확인해 주세요.
+                </div>
+            </div>
+
+            <div class="card p-4">
+                <h5 class="fw-bold mb-3">플랜별 투자 연결</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                        <tr>
+                            <th>플랜/계좌</th>
+                            <th class="text-end">월 납입</th>
+                            <th class="text-end">월 순매수</th>
+                            <th class="text-end">월 현금 증감</th>
+                            <th class="text-end">누적 납입</th>
+                            <th class="text-end">누적 순매수</th>
+                            <th class="text-end">계좌 현금 추정액</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(summary.planFlows)}">
+                            <td colspan="7" class="text-center text-muted py-5">
+                                선택한 월의 증권계좌 납입·매매 내역이 없습니다.
+                            </td>
+                        </tr>
+                        <tr th:each="flow : ${summary.planFlows}">
+                            <td class="fw-bold" th:text="${flow.planName}"></td>
+                            <td class="text-end"
+                                th:text="${#numbers.formatInteger(flow.depositAmountKrw, 0, 'COMMA')} + '원'"></td>
+                            <td class="text-end"
+                                th:text="${#numbers.formatInteger(flow.netPurchaseAmountKrw, 0, 'COMMA')} + '원'"></td>
+                            <td class="text-end fw-bold"
+                                th:classappend="${flow.uninvestedAmountKrw < 0} ? 'text-danger' : ''"
+                                th:text="${#numbers.formatInteger(flow.uninvestedAmountKrw, 0, 'COMMA')} + '원'"></td>
+                            <td class="text-end"
+                                th:text="${#numbers.formatInteger(flow.cumulativeDepositAmountKrw, 0, 'COMMA')} + '원'"></td>
+                            <td class="text-end"
+                                th:text="${#numbers.formatInteger(flow.cumulativeNetPurchaseAmountKrw, 0, 'COMMA')} + '원'"></td>
+                            <td class="text-end fw-bold"
+                                th:classappend="${flow.estimatedAccountCashKrw < 0} ? 'text-danger' : 'text-primary'"
+                                th:text="${#numbers.formatInteger(flow.estimatedAccountCashKrw, 0, 'COMMA')} + '원'"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <p class="text-muted small mt-3">
+                계좌 현금 추정액은 선택한 월말까지의 누적 납입 - 누적 매수 + 누적 매도로 계산합니다.
+                서비스 사용 전부터 계좌에 있던 초기 현금은 포함하지 않습니다.
+            </p>
+        </div>
+    </main>
+</div>
+</body>
+</html>

@@ -23,6 +23,7 @@ public interface AssetTradeRepository extends JpaRepository<AssetTrade, Long> {
     List<AssetTrade> findByAssetPlanMemberMemberIdAndTradeDateLessThanEqualOrderByTradeDateAscIdAsc(
             Long memberId, LocalDate endDate);
 
+    @EntityGraph(attributePaths = {"assetPlan", "assetPlan.goal", "investmentAsset"})
     List<AssetTrade> findByAssetPlanMemberMemberIdAndTradeDateBetweenOrderByTradeDateDescIdDesc(
             Long memberId, LocalDate startDate, LocalDate endDate);
 

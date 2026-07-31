@@ -1,0 +1,53 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  thymeleaf:
+    cache: true
+  ai:
+    gemini:
+      api-key: ${GEMINI_API_KEY}
+  web:
+    error:
+      include-message: never
+      include-binding-errors: never
+      include-stacktrace: never
+
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: true
+        same-site: lax
+
+krx:
+  api:
+    base-url: https://data-dbg.krx.co.kr/svc/apis
+    auth-key: ${KRX_API_AUTH_KEY}
+    timeout: 10s
+
+nasdaq:
+  directory:
+    nasdaq-listed-url: https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt
+    other-listed-url: https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt
+
+kis:
+  api:
+    base-url: https://openapi.koreainvestment.com:9443
+    app-key: ${KIS_API_APP_KEY}
+    app-secret: ${KIS_API_APP_SECRET}
+    timeout: 5000
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
