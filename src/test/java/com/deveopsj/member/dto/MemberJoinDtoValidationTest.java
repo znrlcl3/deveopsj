@@ -27,11 +27,24 @@ class MemberJoinDtoValidationTest {
                 .contains("loginId", "password", "name");
     }
 
+    @Test
+    void 성인확인과_개인정보동의가_없으면_회원가입을_거부한다() {
+        MemberJoinDto request = request("member_01", "password123!", "사용자");
+        request.setAdultConfirmed(false);
+        request.setPrivacyAgreed(false);
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("adultConfirmed", "privacyAgreed");
+    }
+
     private MemberJoinDto request(String loginId, String password, String name) {
         MemberJoinDto request = new MemberJoinDto();
         request.setLoginId(loginId);
         request.setPassword(password);
         request.setName(name);
+        request.setAdultConfirmed(true);
+        request.setPrivacyAgreed(true);
         return request;
     }
 }

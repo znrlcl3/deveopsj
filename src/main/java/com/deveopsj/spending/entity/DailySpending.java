@@ -14,10 +14,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.*;
 
 @Entity
-@Table(name = "daily_spending")
+@Table(name = "daily_spending", uniqueConstraints = @UniqueConstraint(
+        name = "uk_daily_spending_recurring_month",
+        columnNames = {"recurring_expense_id", "recurring_year_month"}))
 @Getter @Setter
 @Builder
 @NoArgsConstructor 
@@ -42,4 +45,11 @@ public class DailySpending extends BaseEntity {
 
     @Column(length = 200)
     private String memo;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recurring_expense_id")
+    private RecurringExpense recurringExpense;
+
+    @Column(name = "recurring_year_month", length = 7)
+    private String recurringYearMonth;
 }

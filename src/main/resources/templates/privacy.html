@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>개인정보 처리방침 - AI 자산관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<main class="container py-5" style="max-width: 900px;">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4 p-md-5">
+            <h1 class="fw-bold mb-2">개인정보 처리방침</h1>
+            <p class="text-muted">시행일: 2026년 7월 31일</p>
+
+            <div class="alert alert-warning" th:if="${contactEmail == 'CHANGE_ME'}">
+                운영 전 개인정보 문의 이메일을 반드시 설정해야 합니다.
+            </div>
+
+            <p>
+                AI 자산관리 서비스 운영자(이하 “운영자”)는 회원의 개인정보와 금융
+                입력정보를 다음과 같이 처리합니다.
+            </p>
+
+            <h2 class="h5 fw-bold mt-4">1. 처리 목적</h2>
+            <ul>
+                <li>회원가입, 로그인, 계정 보안 및 사용자 식별</li>
+                <li>목표·수입·지출·납입·자산계획·주식 및 ETF 거래 관리</li>
+                <li>사용자가 요청한 AI 지출 분류와 소비 분석 제공</li>
+                <li>서비스 장애 대응, 부정 로그인 방지 및 관리자 지원</li>
+            </ul>
+
+            <h2 class="h5 fw-bold mt-4">2. 처리하는 정보</h2>
+            <ul>
+                <li>회원정보: 로그인 ID, 이름, 암호화된 비밀번호, 권한, 가입·수정·비활성화 시각</li>
+                <li>금융 입력정보: 목표, 수입, 지출, 메모, 자산계획, 납입, 거래 및 평가정보</li>
+                <li>자동 생성정보: 접속 IP, 세션 정보, 로그인 실패·관리자 대리 로그인·오류 로그</li>
+            </ul>
+            <p class="small text-muted">
+                주민등록번호, 계좌 비밀번호, 카드번호 전체와 같은 민감한 인증정보는
+                입력하지 마세요.
+            </p>
+
+            <h2 class="h5 fw-bold mt-4">3. Gemini AI 처리</h2>
+            <p>
+                AI 기능을 사용할 때 Google LLC의 Gemini API로 지출 메모, 날짜 또는 월,
+                금액, 카테고리, 카테고리별 합계와 금액 상위 지출 최대 20건이 전송될 수
+                있습니다. 이름, 로그인 ID와 비밀번호는 AI 요청에 포함하지 않습니다.
+            </p>
+            <p>
+                무료 Gemini API 사용 시 Google은 입력과 생성 응답을 제품·서비스 및
+                머신러닝 기술 개선에 사용할 수 있고, 품질 개선을 위해 검토자가 처리할
+                수 있습니다. 결제가 연결된 유료 API는 Google 약관에 따라 입력과 응답을
+                제품 개선에 사용하지 않지만 안전 및 악용 방지를 위해 제한적으로 보관할
+                수 있습니다. 지출 메모에 본인이나 타인의 개인정보·민감정보를 입력하지
+                마세요.
+            </p>
+
+            <h2 class="h5 fw-bold mt-4">4. 관리자 지원 및 대리 로그인</h2>
+            <p>
+                장애 확인과 사용자 문의 대응을 위해 관리자는 활성 일반회원의 화면으로
+                일시 전환할 수 있습니다. 전환 중에는 관리자 기능이 차단되며 관리자 ID,
+                대상 회원 ID와 전환 시각이 서버 로그에 기록됩니다. 운영자는 필요한
+                경우에만 이 기능을 사용해야 합니다.
+            </p>
+
+            <h2 class="h5 fw-bold mt-4">5. 보유·파기</h2>
+            <p>
+                계정과 금융 입력정보는 서비스 이용 기간 동안 보유합니다. 현재 회원 탈퇴는
+                계정을 비활성화하고 데이터를 보존하는 방식입니다. 완전 삭제를 원하는 경우
+                아래 연락처로 요청할 수 있습니다. 법적 보존 의무가 없는 정보는 요청 확인
+                및 복구 필요성 검토 후 안전한 방법으로 삭제합니다.
+            </p>
+            <div class="alert alert-danger">
+                공개 운영 전 탈퇴 데이터의 구체적인 보존 기간과 자동 파기 절차를 확정하고
+                실제 기능과 동일하게 이 항목을 갱신해야 합니다.
+            </div>
+
+            <h2 class="h5 fw-bold mt-4">6. 안전성 확보 조치</h2>
+            <ul>
+                <li>비밀번호 BCrypt 단방향 암호화</li>
+                <li>사용자별 금융 데이터 접근 격리 및 관리자 경로 권한 통제</li>
+                <li>CSRF 보호, 로그인 실패 차단, HTTPS 전용 운영 쿠키</li>
+                <li>API 키와 DB 비밀번호의 환경변수 분리</li>
+            </ul>
+
+            <h2 class="h5 fw-bold mt-4">7. 정보주체의 권리</h2>
+            <p>
+                회원은 자신의 정보를 조회·수정하고 계정을 비활성화할 수 있으며,
+                개인정보 열람·정정·삭제·처리정지를 운영자에게 요청할 수 있습니다.
+            </p>
+
+            <h2 class="h5 fw-bold mt-4">8. 개인정보 문의</h2>
+            <dl class="row">
+                <dt class="col-sm-3">운영자</dt>
+                <dd class="col-sm-9" th:text="${operatorName}"></dd>
+                <dt class="col-sm-3">이메일</dt>
+                <dd class="col-sm-9" th:text="${contactEmail}"></dd>
+            </dl>
+
+            <h2 class="h5 fw-bold mt-4">9. 방침 변경</h2>
+            <p>
+                처리방침이 변경되면 시행 전에 서비스 화면을 통해 알립니다. 중요한
+                변경은 회원이 쉽게 확인할 수 있는 방법으로 별도 안내합니다.
+            </p>
+
+            <div class="mt-4">
+                <a th:href="@{/member/login}" class="btn btn-outline-primary">로그인 화면으로</a>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

@@ -7,6 +7,7 @@ import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -36,10 +37,15 @@ public class AssetTradeSaveRequest {
     @Digits(integer = 11, fraction = 8, message = "수량의 자릿수를 확인해 주세요.")
     private BigDecimal quantity;
 
-    @NotNull(message = "총 매매금액을 입력해 주세요.")
     @DecimalMin(value = "0.0001", message = "총 매매금액은 0보다 커야 합니다.")
     @Digits(integer = 15, fraction = 4, message = "총 매매금액의 자릿수를 확인해 주세요.")
     private BigDecimal tradeAmount;
+
+    @DecimalMin(value = "0.0001", message = "체결단가는 0보다 커야 합니다.")
+    @Digits(integer = 15, fraction = 4, message = "체결단가의 자릿수를 확인해 주세요.")
+    private BigDecimal unitPrice;
+
+    private String calculationBasis;
 
     @NotNull(message = "환율을 입력해 주세요.")
     @DecimalMin(value = "0.000001", message = "환율은 0보다 커야 합니다.")
@@ -56,4 +62,9 @@ public class AssetTradeSaveRequest {
 
     @Size(max = 200, message = "메모는 200자 이하여야 합니다.")
     private String memo;
+
+    @AssertTrue(message = "총 매매금액 또는 체결단가를 입력해 주세요.")
+    public boolean isTradePricePresent() {
+        return tradeAmount != null || unitPrice != null;
+    }
 }

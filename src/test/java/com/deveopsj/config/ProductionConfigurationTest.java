@@ -23,6 +23,10 @@ class ProductionConfigurationTest {
         assertThat(property("krx.api.auth-key")).isEqualTo("${KRX_API_AUTH_KEY}");
         assertThat(property("kis.api.app-key")).isEqualTo("${KIS_API_APP_KEY}");
         assertThat(property("kis.api.app-secret")).isEqualTo("${KIS_API_APP_SECRET}");
+        assertThat(property("app.privacy.operator-name"))
+                .isEqualTo("${PRIVACY_OPERATOR_NAME}");
+        assertThat(property("app.privacy.contact-email"))
+                .isEqualTo("${PRIVACY_CONTACT_EMAIL}");
     }
 
     @Test

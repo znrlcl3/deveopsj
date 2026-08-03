@@ -17,6 +17,9 @@ import com.deveopsj.common.service.DataInputService;
 import com.deveopsj.spending.dto.SpendingSaveRequest;
 import com.deveopsj.spending.dto.SpendingUpdateRequest;
 import com.deveopsj.spending.service.SpendingService;
+import com.deveopsj.spending.service.RecurringExpenseService;
+import com.deveopsj.spending.service.SpendingExcelImportService;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,8 @@ public class SpendingController {
 
     private final DataInputService dataInputService;
     private final SpendingService spendingService;
+    private final RecurringExpenseService recurringExpenseService;
+    private final SpendingExcelImportService spendingExcelImportService;
 
     @GetMapping("/form")
     public String spendingForm() {
@@ -52,6 +57,15 @@ public class SpendingController {
         model.addAttribute("selectedMonth", selectedMonth);
         model.addAttribute("totalAmount",
                 spendings.stream().mapToLong(spending -> spending.getAmount()).sum());
+        var recurringOccurrences = recurringExpenseService.getOccurrences(member, selectedMonth);
+        model.addAttribute("recurringOccurrences", recurringOccurrences);
+        model.addAttribute("scheduledRecurringAmount", recurringOccurrences.stream()
+                .filter(occurrence -> !occurrence.confirmed())
+                .mapToLong(occurrence -> occurrence.rule().getAmount())
+                .sum());
+        model.addAttribute("unconfirmedRecurringCount", recurringOccurrences.stream()
+                .filter(occurrence -> !occurrence.confirmed())
+                .count());
         return "spending/list";
     }
 
@@ -89,6 +103,20 @@ public class SpendingController {
             spendingService.deleteById(id, member);
             redirectAttributes.addFlashAttribute("message", "지출 내역이 삭제되었습니다.");
         } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/spending/list";
+    }
+
+    @PostMapping("/import")
+    public String importExcel(@RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) String month, Member member,
+            org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        preserveMonth(month, redirectAttributes);
+        try {
+            int count = spendingExcelImportService.importFile(file, member);
+            redirectAttributes.addFlashAttribute("message", "지출 내역 " + count + "건을 등록했습니다.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/spending/list";

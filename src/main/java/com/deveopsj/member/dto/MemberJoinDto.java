@@ -3,6 +3,7 @@ package com.deveopsj.member.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,4 +23,10 @@ public class MemberJoinDto {
     @NotBlank(message = "이름을 입력해 주세요.")
     @Size(max = 50, message = "이름은 50자 이하로 입력해 주세요.")
     private String name;
+
+    @AssertTrue(message = "만 18세 이상임을 확인해 주세요.")
+    private boolean adultConfirmed;
+
+    @AssertTrue(message = "개인정보 처리방침에 동의해 주세요.")
+    private boolean privacyAgreed;
 }

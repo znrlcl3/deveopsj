@@ -32,6 +32,9 @@ server:
 app:
   registration:
     enabled: ${REGISTRATION_ENABLED:true}
+  privacy:
+    operator-name: ${PRIVACY_OPERATOR_NAME}
+    contact-email: ${PRIVACY_CONTACT_EMAIL}
   security:
     login:
       max-attempts: ${LOGIN_MAX_ATTEMPTS:5}

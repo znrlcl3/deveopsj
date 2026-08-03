@@ -17,6 +17,7 @@ import com.deveopsj.member.entity.Member;
 import lombok.RequiredArgsConstructor;
 import java.util.List;
 import java.time.YearMonth;
+import java.time.LocalDate;
 
 @Service
 @Transactional
@@ -58,6 +59,12 @@ public class AssetSavingsService {
         return assetSavingsRepository
                 .findAllByMemberIdAndDepositDateBetween(
                         member.getMemberId(), month.atDay(1), month.atEndOfMonth());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AssetSavings> getSavingsByMemberAndPeriod(Member member, LocalDate start, LocalDate end) {
+        return assetSavingsRepository.findAllByMemberIdAndDepositDateBetween(
+                member.getMemberId(), start, end);
     }
 
     public void update(AssetSavingsUpdateRequest request, Member member) {

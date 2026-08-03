@@ -1,6 +1,7 @@
 package com.deveopsj.income.service;
 
 import java.time.YearMonth;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -33,6 +34,12 @@ public class IncomeService {
         return incomeRepository
                 .findByMemberMemberIdAndIncomeDateBetweenOrderByIncomeDateDescIdDesc(
                         member.getMemberId(), month.atDay(1), month.atEndOfMonth());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Income> getIncomesByMemberAndPeriod(Member member, LocalDate start, LocalDate end) {
+        return incomeRepository.findByMemberMemberIdAndIncomeDateBetweenOrderByIncomeDateDescIdDesc(
+                member.getMemberId(), start, end);
     }
 
     public void update(IncomeUpdateRequest request, Member member) {

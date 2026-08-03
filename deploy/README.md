@@ -3,6 +3,9 @@
 OCI 계정 생성 전에도 저장소에서 배포 JAR를 만들 수 있다. 실제 서버 생성, DB 연결,
 도메인 및 HTTPS 설정은 OCI 계정 준비 후 진행한다.
 
+운영 DB는 `ddl-auto: validate`를 사용하므로 고정지출 기능 배포 전에
+`deploy/sql/20260803_add_recurring_expense.sql`을 적용한다.
+
 ## 1. JAR 빌드
 
 Windows:
@@ -28,6 +31,9 @@ Linux:
 
 환경변수 파일은 실제 값으로 수정하고 소유자를 `root:deveopsj`, 권한을 `640`으로
 제한한다. 실제 비밀값이 들어간 파일은 Git에 커밋하지 않는다.
+
+`PRIVACY_OPERATOR_NAME`과 `PRIVACY_CONTACT_EMAIL`은 개인정보 처리방침에 그대로
+표시되므로 공개 운영 전에 실제 담당자 정보로 설정한다.
 
 현재 템플릿은 최초 사용자 준비를 위해 `REGISTRATION_ENABLED=true`로 되어 있다.
 필요한 사용자의 가입이 끝나면 `false`로 변경한다.

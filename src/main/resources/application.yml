@@ -7,6 +7,9 @@ spring:
 app:
   registration:
     enabled: true
+  privacy:
+    operator-name: 서비스 운영자
+    contact-email: CHANGE_ME
   security:
     login:
       max-attempts: 5

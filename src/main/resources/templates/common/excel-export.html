@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="controls(exportUrl, selectedMonth, modalId)" class="d-flex justify-content-end gap-2 mb-3">
+    <a class="btn btn-outline-success"
+       th:href="${exportUrl + '?month=' + selectedMonth}">
+        <i class="fas fa-file-excel me-1"></i> 조회 월 엑셀 다운로드
+    </a>
+    <button type="button" class="btn btn-success" data-bs-toggle="modal"
+            th:attr="data-bs-target='#' + ${modalId}">
+        <i class="fas fa-calendar-days me-1"></i> 기간 지정 다운로드
+    </button>
+
+    <div class="modal fade" th:id="${modalId}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="get" th:action="${exportUrl}" class="excel-range-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title">엑셀 다운로드 기간</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">시작일</label>
+                            <input type="date" name="startDate" class="form-control export-start-date" required
+                                   th:value="${selectedMonth.atDay(1)}">
+                        </div>
+                        <div>
+                            <label class="form-label">종료일</label>
+                            <input type="date" name="endDate" class="form-control export-end-date" required
+                                   th:value="${selectedMonth.atEndOfMonth()}">
+                        </div>
+                        <div class="form-text mt-2">최대 1년까지 다운로드할 수 있습니다.</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                        <button type="submit" class="btn btn-success">엑셀 다운로드</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script th:inline="javascript">
+    (() => {
+        const modal = document.getElementById(/*[[${modalId}]]*/ '');
+        const start = modal.querySelector('.export-start-date');
+        const end = modal.querySelector('.export-end-date');
+        const updateRange = () => {
+            if (!start.value) return;
+            const [year, month, day] = start.value.split('-').map(Number);
+            const maxDate = new Date(year + 1, month - 1, day);
+            maxDate.setDate(maxDate.getDate() - 1);
+            const max = `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
+            end.min = start.value;
+            end.max = max;
+            if (!end.value || end.value < start.value || end.value > max) end.value = max;
+        };
+        start.addEventListener('change', updateRange);
+        updateRange();
+    })();
+    </script>
+</div>
+</body>
+</html>

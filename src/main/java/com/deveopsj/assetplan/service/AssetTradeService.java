@@ -3,6 +3,7 @@ package com.deveopsj.assetplan.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -60,12 +61,21 @@ public class AssetTradeService {
                 .orElseThrow(() -> new IllegalArgumentException("선택한 종목을 사용할 수 없습니다."));
         String currency = investmentAsset.getCurrency();
 
-        BigDecimal unitPrice = request.getTradeAmount()
-                .divide(request.getQuantity(), 4, RoundingMode.HALF_UP);
+        boolean unitPriceBasis = request.getUnitPrice() != null
+                && ("UNIT_PRICE".equals(request.getCalculationBasis()) || request.getTradeAmount() == null);
+        BigDecimal unitPrice = unitPriceBasis
+                ? request.getUnitPrice().setScale(4, RoundingMode.HALF_UP)
+                : request.getTradeAmount().divide(request.getQuantity(), 4, RoundingMode.HALF_UP);
+        BigDecimal tradeAmount = unitPriceBasis
+                ? unitPrice.multiply(request.getQuantity()).setScale(4, RoundingMode.HALF_UP)
+                : request.getTradeAmount();
         if (unitPrice.precision() - unitPrice.scale() > 15) {
             throw new IllegalArgumentException("계산된 체결 단가가 허용 범위를 초과합니다.");
         }
-        long grossAmount = request.getTradeAmount()
+        if (tradeAmount.precision() - tradeAmount.scale() > 15) {
+            throw new IllegalArgumentException("계산된 총 매매금액이 허용 범위를 초과합니다.");
+        }
+        long grossAmount = tradeAmount
                 .multiply(request.getExchangeRate())
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValueExact();
@@ -101,6 +111,13 @@ public class AssetTradeService {
         return assetTradeRepository
                 .findByAssetPlanMemberMemberIdAndTradeDateBetweenOrderByTradeDateDescIdDesc(
                         member.getMemberId(), month.atDay(1), month.atEndOfMonth());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AssetTrade> getTradesByMemberAndPeriod(Member member, LocalDate start, LocalDate end) {
+        return assetTradeRepository
+                .findByAssetPlanMemberMemberIdAndTradeDateBetweenOrderByTradeDateDescIdDesc(
+                        member.getMemberId(), start, end);
     }
 
 }

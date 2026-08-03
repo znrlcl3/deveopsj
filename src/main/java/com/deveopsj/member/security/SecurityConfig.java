@@ -33,6 +33,7 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/error", "/actuator/health", "/actuator/health/**",
+                        "/privacy",
                         "/member/login", "/member/join", "/member/join-proc",
                         "/css/**", "/js/**", "/images/**").permitAll()
                 .requestMatchers("/krx/**").hasRole("ADMIN")

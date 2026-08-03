@@ -60,6 +60,25 @@ class AssetTradeServiceTest {
     }
 
     @Test
+    void 체결단가를_입력하면_총매매금액과_정산금액을_계산한다() {
+        Member member = member(7L);
+        AssetPlan plan = new AssetPlan();
+        InvestmentAsset asset = asset(11L);
+        AssetTradeSaveRequest request = request(3L);
+        request.setCalculationBasis("UNIT_PRICE");
+        request.setUnitPrice(new BigDecimal("12345.6789"));
+        request.setTradeAmount(new BigDecimal("1"));
+        when(assetPlanRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.of(plan));
+        when(investmentAssetRepository.findByIdAndActiveTrue(11L)).thenReturn(Optional.of(asset));
+
+        assetTradeService.save(request, member);
+
+        verify(assetTradeRepository).save(org.mockito.ArgumentMatchers.argThat(trade ->
+                trade.getUnitPrice().compareTo(new BigDecimal("12345.6789")) == 0
+                        && trade.getSettlementAmountKrw().equals(123_457L)));
+    }
+
+    @Test
     void 타인의_플랜에는_매매내역을_등록하지_않는다() {
         Member member = member(7L);
         AssetTradeSaveRequest request = request(3L);

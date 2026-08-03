@@ -29,6 +29,7 @@
 
             <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+            <div th:replace="~{common/excel-export :: controls('/income/export', ${selectedMonth}, 'incomeExportModal')}"></div>
 
             <div class="card p-4 mb-4">
                 <form action="/income/list" method="get" class="row g-3 align-items-end">

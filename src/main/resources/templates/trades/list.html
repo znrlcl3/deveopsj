@@ -32,6 +32,7 @@
 
             <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+            <div th:replace="~{common/excel-export :: controls('/trades/export', ${selectedMonth}, 'tradesExportModal')}"></div>
 
             <div class="card p-4 mb-4">
                 <form action="/trades/list" method="get" class="row g-3 align-items-end">
@@ -77,7 +78,7 @@
                             <td th:text="${trade.tradeType.name() == 'BUY' ? '매수' : '매도'}"></td>
                             <td class="text-end" th:text="${trade.quantity.stripTrailingZeros().toPlainString()}"></td>
                             <td class="text-end"
-                                th:text="${#numbers.formatDecimal(trade.unitPrice, 1, 'COMMA', 0, 'POINT')
+                                th:text="${#numbers.formatDecimal(trade.unitPrice, 1, 'COMMA', 4, 'POINT')
                                         + ' ' + trade.currency}"></td>
                             <td class="text-end"
                                 th:text="${#numbers.formatInteger(trade.settlementAmountKrw, 0, 'COMMA')} + '원'"></td>
@@ -110,6 +111,7 @@
             <div class="modal-content">
                 <form action="/trades/update" method="post" class="trade-calculation-form">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <input type="hidden" name="calculationBasis" value="AMOUNT">
                     <input type="hidden" name="id" th:value="${trade.id}">
                     <input type="hidden" name="month" th:value="${selectedMonth}">
                     <div class="modal-header">
@@ -163,8 +165,7 @@
                                 <label class="form-label">총 매매금액</label>
                                 <input type="number" name="tradeAmount" class="form-control trade-amount"
                                        min="0.0001" step="0.0001"
-                                       th:value="${trade.quantity.multiply(trade.unitPrice).stripTrailingZeros().toPlainString()}"
-                                       required>
+                                       th:value="${trade.quantity.multiply(trade.unitPrice).stripTrailingZeros().toPlainString()}">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">통화</label>
@@ -177,9 +178,11 @@
                                        min="0.000001" step="0.000001" th:value="${trade.exchangeRate}" required>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">자동 계산 체결단가</label>
-                                <input type="text" class="form-control calculated-unit-price" readonly>
-                                <div class="form-text">총 매매금액 ÷ 수량</div>
+                                <label class="form-label">체결단가</label>
+                                <input type="number" name="unitPrice" class="form-control unit-price"
+                                       min="0.0001" step="0.0001"
+                                       th:value="${trade.unitPrice.stripTrailingZeros().toPlainString()}">
+                                <div class="form-text">금액 또는 단가 중 하나를 입력하면 자동 계산됩니다.</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">수수료(원)</label>
@@ -281,18 +284,29 @@
     document.querySelectorAll('.trade-calculation-form').forEach(form => {
         const quantity = form.querySelector('[name="quantity"]');
         const tradeAmount = form.querySelector('[name="tradeAmount"]');
-        const unitPrice = form.querySelector('.calculated-unit-price');
+        const unitPrice = form.querySelector('[name="unitPrice"]');
+        const calculationBasis = form.querySelector('[name="calculationBasis"]');
+        const rounded = value => String(Math.round((value + Number.EPSILON) * 10000) / 10000);
         const calculate = () => {
             const quantityValue = Number(quantity.value);
-            const amountValue = Number(tradeAmount.value);
-            unitPrice.value = quantityValue > 0 && amountValue > 0
-                ? (amountValue / quantityValue).toLocaleString('ko-KR', {
-                    maximumFractionDigits: 4
-                })
-                : '';
+            if (quantityValue <= 0) return;
+            if (calculationBasis.value === 'UNIT_PRICE') {
+                const priceValue = Number(unitPrice.value);
+                tradeAmount.value = priceValue > 0 ? rounded(quantityValue * priceValue) : '';
+            } else {
+                const amountValue = Number(tradeAmount.value);
+                unitPrice.value = amountValue > 0 ? rounded(amountValue / quantityValue) : '';
+            }
         };
         quantity.addEventListener('input', calculate);
-        tradeAmount.addEventListener('input', calculate);
+        tradeAmount.addEventListener('input', () => {
+            calculationBasis.value = 'AMOUNT';
+            calculate();
+        });
+        unitPrice.addEventListener('input', () => {
+            calculationBasis.value = 'UNIT_PRICE';
+            calculate();
+        });
         calculate();
     });
 </script>
