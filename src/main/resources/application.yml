@@ -13,6 +13,11 @@ app:
   security:
     oidc:
       enabled: false
+    opa:
+      enabled: false
+      base-url: http://localhost:8181
+      decision-path: /v1/data/deveopsj/authz/allow
+      timeout: 500ms
     login:
       max-attempts: 5
       block-duration: 10m

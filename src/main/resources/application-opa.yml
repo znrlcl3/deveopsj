@@ -1,0 +1,7 @@
+app:
+  security:
+    opa:
+      enabled: true
+      base-url: ${OPA_BASE_URL:http://localhost:8181}
+      decision-path: /v1/data/deveopsj/authz/allow
+      timeout: ${OPA_TIMEOUT:500ms}

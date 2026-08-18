@@ -15,9 +15,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import com.deveopsj.common.dto.MasterCodeDto;
 import com.deveopsj.common.service.MasterCodeService;
+import com.deveopsj.common.authorization.PolicyAuthorizationService;
 import com.deveopsj.member.entity.Member;
 import com.deveopsj.spending.dto.SpendingUpdateRequest;
 import com.deveopsj.spending.entity.DailySpending;
@@ -32,13 +34,16 @@ class SpendingServiceTest {
     @Mock
     private MasterCodeService masterCodeService;
 
+    @Mock
+    private PolicyAuthorizationService policyAuthorizationService;
+
     @InjectMocks
     private SpendingService spendingService;
 
     @Test
     void 본인의_지출만_삭제한다() {
         Member member = member(7L);
-        DailySpending spending = DailySpending.builder().build();
+        DailySpending spending = spending(10L, member);
         when(dailySpendingRepository.findByIdAndMemberMemberId(10L, 7L)).thenReturn(Optional.of(spending));
 
         spendingService.deleteById(10L, member);
@@ -73,6 +78,8 @@ class SpendingServiceTest {
     void 본인의_지출만_수정한다() {
         Member member = member(7L);
         DailySpending spending = DailySpending.builder()
+                .id(10L)
+                .member(member)
                 .amount(10_000L)
                 .memo("수정 전")
                 .categoryCode("FOOD")
@@ -103,10 +110,29 @@ class SpendingServiceTest {
         verify(masterCodeService, never()).getActiveCodesByGroup("SPENDING_CAT");
     }
 
+    @Test
+    void OPA가_거부하면_본인의_지출도_삭제하지_않는다() {
+        Member member = member(7L);
+        DailySpending spending = spending(10L, member);
+        when(dailySpendingRepository.findByIdAndMemberMemberId(10L, 7L))
+                .thenReturn(Optional.of(spending));
+        org.mockito.Mockito.doThrow(new AccessDeniedException("denied"))
+                .when(policyAuthorizationService).authorize(org.mockito.ArgumentMatchers.any());
+
+        assertThatThrownBy(() -> spendingService.deleteById(10L, member))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(dailySpendingRepository, never()).delete(org.mockito.ArgumentMatchers.any());
+    }
+
     private Member member(Long id) {
         Member member = new Member();
         member.setMemberId(id);
+        member.setRole("USER");
         return member;
+    }
+
+    private DailySpending spending(Long id, Member member) {
+        return DailySpending.builder().id(id).member(member).build();
     }
 
     private SpendingUpdateRequest updateRequest(Long id) {

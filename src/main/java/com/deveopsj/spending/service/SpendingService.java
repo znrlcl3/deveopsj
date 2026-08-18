@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.deveopsj.common.service.MasterCodeService;
+import com.deveopsj.common.authorization.AuthorizationInput;
+import com.deveopsj.common.authorization.PolicyAuthorizationService;
 import com.deveopsj.member.entity.Member;
 import com.deveopsj.spending.dto.SpendingUpdateRequest;
 import com.deveopsj.spending.entity.DailySpending;
@@ -21,6 +23,7 @@ public class SpendingService {
 
     private final DailySpendingRepository dailySpendingRepository;
     private final MasterCodeService masterCodeService;
+    private final PolicyAuthorizationService policyAuthorizationService;
 
     @Transactional(readOnly = true)
     public List<DailySpending> getSpendings(Member member, LocalDate start, LocalDate end) {
@@ -33,6 +36,7 @@ public class SpendingService {
         DailySpending spending = dailySpendingRepository
                 .findByIdAndMemberMemberId(request.getId(), member.getMemberId())
                 .orElseThrow(() -> new IllegalArgumentException("수정할 수 있는 지출 내역이 없습니다."));
+        authorize(member, spending, "update");
 
         boolean activeCategory = masterCodeService.getActiveCodesByGroup("SPENDING_CAT").stream()
                 .anyMatch(code -> code.getCodeId().equals(request.getCategory()));
@@ -49,6 +53,15 @@ public class SpendingService {
     public void deleteById(Long id, Member member) {
         DailySpending spending = dailySpendingRepository.findByIdAndMemberMemberId(id, member.getMemberId())
                 .orElseThrow(() -> new IllegalArgumentException("삭제할 수 있는 지출 내역이 없습니다."));
+        authorize(member, spending, "delete");
         dailySpendingRepository.delete(spending);
+    }
+
+    private void authorize(Member member, DailySpending spending, String action) {
+        policyAuthorizationService.authorize(new AuthorizationInput(
+                new AuthorizationInput.Subject(member.getMemberId(), member.getRole()),
+                action,
+                new AuthorizationInput.Resource(
+                        "spending", spending.getId(), spending.getMember().getMemberId())));
     }
 }
