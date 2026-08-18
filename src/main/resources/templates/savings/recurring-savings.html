@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>정기 납입 설정 | AI 자산관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Pretendard', sans-serif; }
+        .content-container { max-width: 1100px; margin: 60px auto; }
+        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <div th:replace="~{common/navigation :: sidebar('savings')}"></div>
+    <main class="flex-grow-1" style="margin-left: 280px; min-height: 100vh;">
+        <div class="container content-container">
+            <h3 class="fw-bold mb-4">정기 납입 설정</h3>
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item"><a class="nav-link" href="/savings/form">납입 등록</a></li>
+                <li class="nav-item"><a class="nav-link" href="/savings/list">납입 내역</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/recurring-savings">정기 납입 설정</a></li>
+            </ul>
+
+            <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+            <div class="card p-4 mb-4">
+                <h5 class="fw-bold mb-3">새 정기 납입</h5>
+                <form th:action="@{/recurring-savings}" method="post" class="row g-3 recurring-form">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <div class="col-md-6">
+                        <label class="form-label">이름</label>
+                        <input type="text" name="name" class="form-control" placeholder="예: 청년적금 70" maxlength="100" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">납입 유형</label>
+                        <select name="depositType" class="form-select deposit-type" required>
+                            <option value="PLAN">계획 납입</option>
+                            <option value="EXTRA">기타 추가 납입</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">매월 납입일</label>
+                        <input type="number" name="paymentDay" class="form-control" min="1" max="31" required>
+                    </div>
+                    <div class="col-md-6 plan-target">
+                        <label class="form-label">대상 플랜/계좌</label>
+                        <select name="assetPlanId" class="form-select" required>
+                            <option value="">플랜을 선택하세요</option>
+                            <option th:each="plan : ${plans}" th:value="${plan.id}"
+                                    th:text="${(#strings.isEmpty(plan.planName) ? plan.goal.title : plan.planName)
+                                            + ' · 월 ' + #numbers.formatInteger(plan.monthlyAmount, 0, 'COMMA') + '원'}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 goal-target d-none">
+                        <label class="form-label">대상 목표</label>
+                        <select name="goalId" class="form-select" disabled>
+                            <option value="">목표를 선택하세요</option>
+                            <option th:each="goal : ${goals}" th:value="${goal.id}" th:text="${goal.title}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">금액</label>
+                        <input type="text" name="amount" inputmode="numeric" class="form-control amount-input"
+                               pattern="[0-9,]+" autocomplete="off" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">시작일</label>
+                        <input type="date" name="startDate" class="form-control" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">종료일(선택)</label>
+                        <input type="date" name="endDate" class="form-control">
+                    </div>
+                    <div class="col-md-9">
+                        <label class="form-label">메모</label>
+                        <input type="text" name="memo" class="form-control" maxlength="200">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success w-100">정기 납입 등록</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card p-4">
+                <h5 class="fw-bold mb-3">등록된 정기 납입</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>이름</th><th>대상</th><th>금액</th><th>납입일</th><th>기간</th><th>상태</th><th class="text-end">관리</th></tr></thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(rules)}"><td colspan="7" class="text-center text-muted py-4">등록된 정기 납입이 없습니다.</td></tr>
+                        <tr th:each="rule : ${rules}">
+                            <td th:text="${rule.name}"></td>
+                            <td th:text="${rule.assetPlan != null ? (#strings.isEmpty(rule.assetPlan.planName) ? rule.goal.title : rule.assetPlan.planName) : rule.goal.title}"></td>
+                            <td th:text="${#numbers.formatInteger(rule.amount, 0, 'COMMA')} + '원'"></td>
+                            <td th:text="|매월 ${rule.paymentDay}일|"></td>
+                            <td th:text="${rule.startDate} + ' ~ ' + ${rule.endDate == null ? '계속' : rule.endDate}"></td>
+                            <td><span class="badge" th:classappend="${rule.active ? 'text-bg-success' : 'text-bg-secondary'}" th:text="${rule.active ? '사용' : '중지'}"></span></td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                                        th:attr="data-bs-target='#editModal-' + ${rule.id}">수정</button>
+                                <form th:action="@{/recurring-savings/toggle}" method="post" class="d-inline">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                    <input type="hidden" name="id" th:value="${rule.id}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" th:text="${rule.active ? '중지' : '재개'}"></button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<th:block th:each="rule : ${rules}">
+    <div class="modal fade" th:id="'editModal-' + ${rule.id}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg"><div class="modal-content">
+            <form th:action="@{/recurring-savings/update}" method="post" class="recurring-form">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <input type="hidden" name="id" th:value="${rule.id}">
+                <div class="modal-header"><h5 class="modal-title">정기 납입 수정</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body row g-3">
+                    <div class="col-md-8"><label class="form-label">이름</label><input type="text" name="name" class="form-control" th:value="${rule.name}" maxlength="100" required></div>
+                    <div class="col-md-4"><label class="form-label">납입 유형</label><select name="depositType" class="form-select deposit-type" required><option value="PLAN" th:selected="${rule.depositType.name() == 'PLAN'}">계획 납입</option><option value="EXTRA" th:selected="${rule.depositType.name() == 'EXTRA'}">기타 추가 납입</option></select></div>
+                    <div class="col-md-6 plan-target" th:classappend="${rule.depositType.name() == 'EXTRA'} ? 'd-none'"><label class="form-label">대상 플랜/계좌</label><select name="assetPlanId" class="form-select" th:disabled="${rule.depositType.name() == 'EXTRA'}" th:required="${rule.depositType.name() == 'PLAN'}"><option value="">플랜을 선택하세요</option><option th:each="plan : ${plans}" th:value="${plan.id}" th:text="${#strings.isEmpty(plan.planName) ? plan.goal.title : plan.planName}" th:selected="${rule.assetPlan != null and plan.id == rule.assetPlan.id}"></option></select></div>
+                    <div class="col-md-6 goal-target" th:classappend="${rule.depositType.name() == 'PLAN'} ? 'd-none'"><label class="form-label">대상 목표</label><select name="goalId" class="form-select" th:disabled="${rule.depositType.name() == 'PLAN'}" th:required="${rule.depositType.name() == 'EXTRA'}"><option value="">목표를 선택하세요</option><option th:each="goal : ${goals}" th:value="${goal.id}" th:text="${goal.title}" th:selected="${rule.goal != null and goal.id == rule.goal.id}"></option></select></div>
+                    <div class="col-md-3"><label class="form-label">금액</label><input type="text" name="amount" inputmode="numeric" class="form-control amount-input" pattern="[0-9,]+" th:value="${rule.amount}" required></div>
+                    <div class="col-md-3"><label class="form-label">매월 납입일</label><input type="number" name="paymentDay" class="form-control" min="1" max="31" th:value="${rule.paymentDay}" required></div>
+                    <div class="col-md-3"><label class="form-label">시작일</label><input type="date" name="startDate" class="form-control" th:value="${rule.startDate}" required></div>
+                    <div class="col-md-3"><label class="form-label">종료일</label><input type="date" name="endDate" class="form-control" th:value="${rule.endDate}"></div>
+                    <div class="col-12"><label class="form-label">메모</label><input type="text" name="memo" class="form-control" th:value="${rule.memo}" maxlength="200"></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button><button type="submit" class="btn btn-primary">수정 저장</button></div>
+            </form>
+        </div></div>
+    </div>
+</th:block>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function syncTarget(form) {
+        const extra = form.querySelector('.deposit-type').value === 'EXTRA';
+        const planBox = form.querySelector('.plan-target');
+        const goalBox = form.querySelector('.goal-target');
+        const plan = planBox.querySelector('select');
+        const goal = goalBox.querySelector('select');
+        planBox.classList.toggle('d-none', extra);
+        goalBox.classList.toggle('d-none', !extra);
+        plan.disabled = extra; plan.required = !extra;
+        goal.disabled = !extra; goal.required = extra;
+        if (extra) plan.value = ''; else goal.value = '';
+    }
+    document.querySelectorAll('.recurring-form').forEach(form => {
+        form.querySelector('.deposit-type').addEventListener('change', () => syncTarget(form));
+        form.querySelectorAll('.amount-input').forEach(input => {
+            const format = () => input.value = input.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            input.addEventListener('input', format); format();
+        });
+        form.addEventListener('submit', () => form.querySelector('.amount-input').value = form.querySelector('.amount-input').value.replace(/,/g, ''));
+    });
+</script>
+</body>
+</html>
