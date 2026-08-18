@@ -49,3 +49,4 @@ build/
 /GEMINI.md
 /.agents/roles/*
 /.agents/skills/*/*
+/output/pdf/*
