@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import com.deveopsj.member.security.CustomUserDetails;
+import com.deveopsj.member.security.MemberPrincipal;
 import com.deveopsj.member.service.MemberService;
 import com.deveopsj.member.security.LoginAttemptService;
 
@@ -35,11 +35,11 @@ public class AdminMemberController {
     public String changeStatus(
             @PathVariable Long memberId,
             @RequestParam boolean active,
-            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @AuthenticationPrincipal MemberPrincipal principal,
             RedirectAttributes redirectAttributes) {
         try {
             memberService.changeMemberActiveStatus(
-                    userDetails.getUsername(), memberId, active);
+                    principal.getLoginId(), memberId, active);
             redirectAttributes.addFlashAttribute(
                     "successMessage", active ? "계정을 활성화했습니다." : "계정을 비활성화했습니다.");
         } catch (IllegalArgumentException exception) {

@@ -10,7 +10,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 import com.deveopsj.member.entity.Member;
-import com.deveopsj.member.security.CustomUserDetails;
+import com.deveopsj.member.security.MemberPrincipal;
 
 @Component
 public class MemberArgumentResolver implements HandlerMethodArgumentResolver {
@@ -24,9 +24,9 @@ public class MemberArgumentResolver implements HandlerMethodArgumentResolver {
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof CustomUserDetails)) {
+        if (auth == null || !(auth.getPrincipal() instanceof MemberPrincipal principal)) {
             return null;
         }
-        return ((CustomUserDetails) auth.getPrincipal()).getMember();
+        return principal.getMember();
     }
 }

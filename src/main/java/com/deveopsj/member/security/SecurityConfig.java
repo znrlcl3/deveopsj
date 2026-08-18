@@ -2,6 +2,8 @@ package com.deveopsj.member.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -15,6 +17,9 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.switchuser.SwitchUserFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
+import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -29,12 +34,16 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
             LoginAttemptFilter loginAttemptFilter,
             LoginAttemptService loginAttemptService,
-            SwitchUserFilter switchUserFilter) throws Exception {
+            SwitchUserFilter switchUserFilter,
+            KeycloakOidcUserService keycloakOidcUserService,
+            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
+            @Value("${app.security.oidc.enabled:false}") boolean oidcEnabled) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/error", "/actuator/health", "/actuator/health/**",
                         "/privacy",
                         "/member/login", "/member/join", "/member/join-proc",
+                        "/oauth2/**", "/login/oauth2/**",
                         "/css/**", "/js/**", "/images/**").permitAll()
                 .requestMatchers("/krx/**").hasRole("ADMIN")
                 .requestMatchers("/admin/**").hasRole("ADMIN")
@@ -75,6 +84,33 @@ public class SecurityConfig {
                     session.invalidSessionUrl("/member/login?expired"))
             .addFilterBefore(loginAttemptFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(switchUserFilter, AuthorizationFilter.class);
+
+        if (oidcEnabled) {
+            ClientRegistrationRepository registrations = clientRegistrationRepositoryProvider
+                    .getIfAvailable(() -> {
+                        throw new IllegalStateException(
+                                "OIDC가 활성화됐지만 Keycloak client registration이 없습니다.");
+                    });
+            OidcClientInitiatedLogoutSuccessHandler oidcLogout =
+                    new OidcClientInitiatedLogoutSuccessHandler(registrations);
+            oidcLogout.setPostLogoutRedirectUri("{baseUrl}/member/login?logout");
+            SimpleUrlLogoutSuccessHandler localLogout = new SimpleUrlLogoutSuccessHandler();
+            localLogout.setDefaultTargetUrl("/member/login?logout");
+            http.oauth2Login(oauth2 -> oauth2
+                    .loginPage("/member/login")
+                    .userInfoEndpoint(userInfo ->
+                            userInfo.oidcUserService(keycloakOidcUserService))
+                    .defaultSuccessUrl("/dashboard/view", true)
+                    .failureUrl("/member/login?ssoError"));
+            http.logout(logout -> logout.logoutSuccessHandler((request, response, authentication) -> {
+                if (authentication != null
+                        && authentication.getPrincipal() instanceof KeycloakOidcUser) {
+                    oidcLogout.onLogoutSuccess(request, response, authentication);
+                } else {
+                    localLogout.onLogoutSuccess(request, response, authentication);
+                }
+            }));
+        }
 
         return http.build();
     }

@@ -9,7 +9,7 @@ User=deveopsj
 Group=deveopsj
 WorkingDirectory=/opt/deveopsj
 EnvironmentFile=/etc/deveopsj/deveopsj.env
-ExecStart=/usr/bin/java -Xms128m -Xmx512m -jar /opt/deveopsj/app.jar --spring.profiles.active=prod
+ExecStart=/usr/bin/java -Xms128m -Xmx512m -jar /opt/deveopsj/app.jar --spring.profiles.active=${SPRING_PROFILES_ACTIVE}
 SuccessExitStatus=143
 Restart=on-failure
 RestartSec=5

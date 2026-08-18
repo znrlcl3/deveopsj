@@ -68,6 +68,20 @@
         <span>로그인 세션이 만료되었습니다. 다시 로그인해 주세요.</span>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
+    <div th:if="${param.ssoError}" class="alert alert-danger alert-dismissible fade show small" role="alert">
+        <span>SSO 로그인에 실패했습니다. 계정 연결 상태를 확인해 주세요.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div th:if="${oidcEnabled}" class="mb-3">
+        <a th:href="@{/oauth2/authorization/keycloak}"
+           class="btn btn-outline-primary w-100 py-2 fw-bold">
+            <i class="fas fa-right-to-bracket me-2"></i>Keycloak SSO 로그인
+        </a>
+        <div class="d-flex align-items-center gap-2 my-3">
+            <hr class="flex-grow-1 my-0"><span class="text-muted small">또는</span><hr class="flex-grow-1 my-0">
+        </div>
+    </div>
 
     <form th:action="@{/member/login-proc}" method="post">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

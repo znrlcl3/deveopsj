@@ -8,6 +8,7 @@ import com.deveopsj.member.entity.Member;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByLoginId(String loginId);
+    Optional<Member> findByOidcIssuerAndOidcSubject(String oidcIssuer, String oidcSubject);
     List<Member> findAllByOrderByCreateDateDesc();
 }
 

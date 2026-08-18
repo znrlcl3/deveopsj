@@ -11,6 +11,8 @@ app:
     operator-name: 서비스 운영자
     contact-email: CHANGE_ME
   security:
+    oidc:
+      enabled: false
     login:
       max-attempts: 5
       block-duration: 10m

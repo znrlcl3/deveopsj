@@ -1,0 +1,68 @@
+{
+  "realm": "deveopsj",
+  "displayName": "DeveopsJ",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "clients": [
+    {
+      "clientId": "deveopsj",
+      "name": "DeveopsJ Web Application",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${DEVEOPSJ_KEYCLOAK_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "rootUrl": "http://localhost:8080",
+      "baseUrl": "http://localhost:8080",
+      "redirectUris": [
+        "http://localhost:8080/login/oauth2/code/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8080/member/login*"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "organization",
+        "microprofile-jwt"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "sso-user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "SSO",
+      "lastName": "User",
+      "email": "sso-user@example.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEVEOPSJ_KEYCLOAK_DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

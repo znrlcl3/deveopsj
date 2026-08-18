@@ -16,7 +16,7 @@ class MemberControllerTest {
 
     @Test
     void 가입이_비활성화되면_가입화면을_로그인으로_보낸다() {
-        MemberController controller = new MemberController(mock(MemberService.class), false);
+        MemberController controller = new MemberController(mock(MemberService.class), false, false);
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
         String view = controller.joinForm(redirectAttributes);
@@ -29,7 +29,7 @@ class MemberControllerTest {
     @Test
     void 가입이_비활성화되면_가입요청을_저장하지_않는다() {
         MemberService memberService = mock(MemberService.class);
-        MemberController controller = new MemberController(memberService, false);
+        MemberController controller = new MemberController(memberService, false, false);
         MemberJoinDto joinDto = new MemberJoinDto();
         BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(joinDto, "joinDto");
 
@@ -42,12 +42,13 @@ class MemberControllerTest {
 
     @Test
     void 로그인화면에_회원가입_가능여부를_전달한다() {
-        MemberController controller = new MemberController(mock(MemberService.class), true);
+        MemberController controller = new MemberController(mock(MemberService.class), true, true);
         ConcurrentModel model = new ConcurrentModel();
 
         String view = controller.loginForm(model);
 
         assertThat(view).isEqualTo("member/login");
         assertThat(model.getAttribute("registrationEnabled")).isEqualTo(true);
+        assertThat(model.getAttribute("oidcEnabled")).isEqualTo(true);
     }
 }

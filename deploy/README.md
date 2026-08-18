@@ -6,6 +6,10 @@ OCI 계정 생성 전에도 저장소에서 배포 JAR를 만들 수 있다. 실
 운영 DB는 `ddl-auto: validate`를 사용하므로 고정지출 기능 배포 전에
 `deploy/sql/20260803_add_recurring_expense.sql`을 적용한다.
 
+Keycloak SSO를 활성화하기 전에는
+`deploy/sql/20260818_add_member_oidc_identity.sql`을 적용하고
+[`docs/keycloak-sso.md`](../docs/keycloak-sso.md)의 클라이언트 설정을 완료한다.
+
 ## 1. JAR 빌드
 
 Windows:

@@ -12,7 +12,7 @@ import com.deveopsj.member.entity.Member;
 import lombok.Getter;
 
 @Getter
-public class CustomUserDetails implements UserDetails {
+public class CustomUserDetails implements UserDetails, MemberPrincipal {
 
     private final Member member;
 

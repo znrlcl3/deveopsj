@@ -108,7 +108,8 @@
             <span class="ms-1">님</span>
         </div>
         <div class="d-flex gap-2 px-2 mt-2" sec:authorize="isAuthenticated()">
-            <a th:href="@{/member/password}" class="btn btn-sm btn-outline-light flex-grow-1">
+            <a th:if="${!#authentication.principal.external}"
+               th:href="@{/member/password}" class="btn btn-sm btn-outline-light flex-grow-1">
                 비밀번호 변경
             </a>
             <form th:action="@{/member/logout}" method="post" class="flex-grow-1">

@@ -1,0 +1,19 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.0
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      DEVEOPSJ_KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      DEVEOPSJ_KEYCLOAK_DEMO_PASSWORD: ${KEYCLOAK_DEMO_PASSWORD}
+    ports:
+      - "127.0.0.1:8180:8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./deveopsj-realm.json:/opt/keycloak/data/import/deveopsj-realm.json:ro
+    mem_limit: 1g
+    restart: unless-stopped
+
+volumes:
+  keycloak-data:
