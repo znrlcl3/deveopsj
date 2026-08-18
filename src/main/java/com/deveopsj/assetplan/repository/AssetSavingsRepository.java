@@ -95,4 +95,7 @@ public interface AssetSavingsRepository extends JpaRepository<AssetSavings, Long
             @Param("depositType") DepositType depositType,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    boolean existsByRecurringSavingsIdAndRecurringYearMonth(
+            Long recurringSavingsId, String recurringYearMonth);
 }

@@ -7,7 +7,9 @@ import java.time.LocalDate;
 import com.deveopsj.common.entity.BaseEntity;
 
 @Entity
-@Table(name = "asset_savings")
+@Table(name = "asset_savings", uniqueConstraints = @UniqueConstraint(
+        name = "uk_asset_savings_recurring_month",
+        columnNames = {"recurring_savings_id", "recurring_year_month"}))
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -42,4 +44,11 @@ public class AssetSavings extends BaseEntity {
 
     @Column(length = 200)
     private String memo;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recurring_savings_id")
+    private RecurringSavings recurringSavings;
+
+    @Column(name = "recurring_year_month", length = 7)
+    private String recurringYearMonth;
 }

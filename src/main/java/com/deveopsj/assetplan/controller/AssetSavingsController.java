@@ -15,6 +15,7 @@ import com.deveopsj.assetplan.dto.AssetSavingsSaveRequest;
 import com.deveopsj.assetplan.dto.AssetSavingsUpdateRequest;
 import com.deveopsj.assetplan.service.AssetSavingsService;
 import com.deveopsj.assetplan.service.GoalService;
+import com.deveopsj.assetplan.service.RecurringSavingsService;
 import com.deveopsj.member.entity.Member;
 
 import jakarta.validation.Valid;
@@ -27,6 +28,7 @@ public class AssetSavingsController {
 
     private final AssetSavingsService assetSavingsService;
     private final GoalService goalService;
+    private final RecurringSavingsService recurringSavingsService;
 
     @GetMapping("/form")
     public String savingsForm(Model model, Member member) {
@@ -49,6 +51,13 @@ public class AssetSavingsController {
         model.addAttribute("goals", goalService.getGoalsByMember(member));
         model.addAttribute("savings", savings);
         model.addAttribute("totalAmount", totalAmount);
+        var recurringOccurrences = recurringSavingsService.getOccurrences(member, selectedMonth);
+        model.addAttribute("recurringOccurrences", recurringOccurrences);
+        model.addAttribute("unconfirmedRecurringCount", recurringOccurrences.stream()
+                .filter(occurrence -> !occurrence.confirmed()).count());
+        model.addAttribute("scheduledRecurringAmount", recurringOccurrences.stream()
+                .filter(occurrence -> !occurrence.confirmed())
+                .mapToLong(occurrence -> occurrence.rule().getAmount()).sum());
         return "savings/list";
     }
 

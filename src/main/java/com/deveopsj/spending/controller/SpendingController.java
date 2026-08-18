@@ -53,16 +53,18 @@ public class SpendingController {
 
         var spendings = spendingService.getSpendings(
                 member, selectedMonth.atDay(1), selectedMonth.atEndOfMonth());
+        long totalAmount = spendings.stream().mapToLong(spending -> spending.getAmount()).sum();
         model.addAttribute("spendings", spendings);
         model.addAttribute("selectedMonth", selectedMonth);
-        model.addAttribute("totalAmount",
-                spendings.stream().mapToLong(spending -> spending.getAmount()).sum());
+        model.addAttribute("totalAmount", totalAmount);
         var recurringOccurrences = recurringExpenseService.getOccurrences(member, selectedMonth);
-        model.addAttribute("recurringOccurrences", recurringOccurrences);
-        model.addAttribute("scheduledRecurringAmount", recurringOccurrences.stream()
+        long scheduledRecurringAmount = recurringOccurrences.stream()
                 .filter(occurrence -> !occurrence.confirmed())
                 .mapToLong(occurrence -> occurrence.rule().getAmount())
-                .sum());
+                .sum();
+        model.addAttribute("recurringOccurrences", recurringOccurrences);
+        model.addAttribute("scheduledRecurringAmount", scheduledRecurringAmount);
+        model.addAttribute("expectedTotalAmount", totalAmount + scheduledRecurringAmount);
         model.addAttribute("unconfirmedRecurringCount", recurringOccurrences.stream()
                 .filter(occurrence -> !occurrence.confirmed())
                 .count());

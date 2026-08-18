@@ -121,10 +121,21 @@
                         </div>
                         <button type="submit" class="btn btn-outline-primary">조회</button>
                     </form>
-                    <div class="text-end">
-                        <div class="text-muted small">월 지출 합계</div>
-                        <strong class="fs-4 text-danger"
-                                th:text="${#numbers.formatInteger(totalAmount, 0, 'COMMA')} + '원'"></strong>
+                    <div class="d-flex flex-wrap justify-content-end gap-4 text-end">
+                        <div>
+                            <div class="text-muted small">확정 지출</div>
+                            <strong th:text="${#numbers.formatInteger(totalAmount, 0, 'COMMA')} + '원'"></strong>
+                        </div>
+                        <div>
+                            <div class="text-muted small">미확정 고정지출</div>
+                            <strong class="text-warning"
+                                    th:text="${#numbers.formatInteger(scheduledRecurringAmount, 0, 'COMMA')} + '원'"></strong>
+                        </div>
+                        <div>
+                            <div class="text-muted small">예상 총지출</div>
+                            <strong class="fs-4 text-danger"
+                                    th:text="${#numbers.formatInteger(expectedTotalAmount, 0, 'COMMA')} + '원'"></strong>
+                        </div>
                     </div>
                 </div>
 
