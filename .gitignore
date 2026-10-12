@@ -45,8 +45,6 @@ build/
 .vscode/
 
 ### ai ###
-/AGENTS.md
-/GEMINI.md
-/.agents/roles/*
-/.agents/skills/*/*
 /output/pdf/*
+
+/tmp/

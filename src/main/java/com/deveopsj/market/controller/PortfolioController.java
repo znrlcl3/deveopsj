@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.deveopsj.market.service.PortfolioValuationService;
+import com.deveopsj.market.service.KisExchangeRateService;
 import com.deveopsj.member.entity.Member;
 
 import lombok.RequiredArgsConstructor;
@@ -20,10 +21,16 @@ import lombok.RequiredArgsConstructor;
 public class PortfolioController {
 
     private final PortfolioValuationService portfolioValuationService;
+    private final KisExchangeRateService kisExchangeRateService;
 
     @GetMapping
     public String portfolio(Model model, Member member) {
         model.addAttribute("summary", portfolioValuationService.getPortfolio(member));
+        try {
+            model.addAttribute("usdKrwRate", kisExchangeRateService.getKrwRate("USD"));
+        } catch (IllegalStateException e) {
+            model.addAttribute("exchangeRateError", e.getMessage());
+        }
         return "portfolio/list";
     }
 

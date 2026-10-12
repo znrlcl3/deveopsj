@@ -26,4 +26,7 @@ public interface DailySpendingRepository extends JpaRepository<DailySpending, Lo
     Optional<DailySpending> findByIdAndMemberMemberId(Long id, Long memberId);
 
     boolean existsByRecurringExpenseIdAndRecurringYearMonth(Long recurringExpenseId, String recurringYearMonth);
+
+    boolean existsByMemberMemberIdAndImportSourceAndImportTransactionKey(
+            Long memberId, String importSource, String importTransactionKey);
 }

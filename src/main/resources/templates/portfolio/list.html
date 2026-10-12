@@ -37,14 +37,14 @@
             </ul>
 
             <div class="row g-3 mb-4">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card p-4 h-100">
                         <div class="text-muted mb-2">남은 매입원금</div>
                         <div class="summary-value"
                              th:text="${#numbers.formatInteger(summary.totalCostKrw, 0, 'COMMA')} + '원'"></div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card p-4 h-100">
                         <div class="text-muted mb-2">현재 평가금액</div>
                         <div class="summary-value"
@@ -55,7 +55,7 @@
                         </small>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card p-4 h-100">
                         <div class="text-muted mb-2">평가손익</div>
                         <div class="summary-value"
@@ -64,10 +64,28 @@
                              th:text="${#numbers.formatInteger(summary.totalProfitLossKrw, 0, 'COMMA')} + '원'"></div>
                     </div>
                 </div>
+                <div class="col-md-3">
+                    <div class="card p-4 h-100">
+                        <div class="text-muted mb-2">USD/KRW 현재 환율</div>
+                        <div th:if="${usdKrwRate != null}">
+                            <div class="summary-value"
+                                 th:text="${#numbers.formatDecimal(usdKrwRate.krwRate, 1, 'COMMA', 2, 'POINT')} + '원'"></div>
+                            <small class="text-muted d-block"
+                                   th:text="${#temporals.format(usdKrwRate.fetchedAt, 'MM-dd HH:mm:ss')
+                                        + (usdKrwRate.stale ? ' 이전 조회값' : (usdKrwRate.cached ? ' 캐시' : ' 실시간'))}"></small>
+                            <small class="text-warning d-block" th:if="${usdKrwRate.stale}">
+                                실시간 조회 실패로 최근 환율을 표시합니다.
+                            </small>
+                        </div>
+                        <div class="text-warning" th:if="${usdKrwRate == null}"
+                             th:text="${exchangeRateError != null ? exchangeRateError : '환율을 조회할 수 없습니다.'}"></div>
+                    </div>
+                </div>
             </div>
 
             <div class="alert alert-info">
-                매도 시 이동평균 원가를 차감합니다. 미국 종목의 원화 평가는 해당 종목의 가장 최근 매매 환율을 사용합니다.
+                매도 시 이동평균 원가를 차감합니다. 미국 종목의 매입원가는 거래 당시 환율을 유지하고,
+                현재 평가금액에는 위 USD/KRW 환율을 적용합니다.
             </div>
 
             <div class="card p-4">
@@ -111,6 +129,12 @@
                                        th:text="${#temporals.format(position.quoteFetchedAt, 'MM-dd HH:mm:ss')
                                             + (position.staleQuote ? ' 이전 조회값' : (position.cachedQuote ? ' 캐시' : ' 실시간'))}">
                                 </small>
+                                <small class="d-block text-muted" th:if="${position.currency != 'KRW'}"
+                                       th:text="${'환율 ' + #numbers.formatDecimal(position.appliedExchangeRate, 1, 'COMMA', 2, 'POINT')
+                                            + '원/' + position.currency
+                                            + (position.staleExchangeRate ? ' 이전 조회값' : (position.cachedExchangeRate ? ' 캐시' : ' 실시간'))}"></small>
+                                <small class="d-block text-warning" th:if="${position.exchangeRateWarning != null}"
+                                       th:text="${position.exchangeRateWarning}"></small>
                             </td>
                             <td class="text-end text-warning" th:unless="${position.quoteAvailable}"
                                 th:text="${position.quoteError}"></td>

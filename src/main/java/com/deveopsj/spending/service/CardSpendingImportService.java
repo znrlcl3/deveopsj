@@ -1,0 +1,172 @@
+package com.deveopsj.spending.service;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import org.apache.poi.poifs.crypt.Decryptor;
+import org.apache.poi.poifs.crypt.EncryptionInfo;
+import org.apache.poi.poifs.filesystem.FileMagic;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.deveopsj.common.dto.MasterCodeDto;
+import com.deveopsj.common.service.MasterCodeService;
+import com.deveopsj.member.entity.Member;
+import com.deveopsj.spending.dto.CardCompany;
+import com.deveopsj.spending.dto.CardImportPreview;
+import com.deveopsj.spending.dto.CardSpendingImportRow;
+import com.deveopsj.spending.entity.DailySpending;
+import com.deveopsj.spending.repository.DailySpendingRepository;
+
+@Service
+public class CardSpendingImportService {
+    private static final long MAX_FILE_SIZE = 5L * 1024 * 1024;
+    private static final int MAX_ROWS = 1_000;
+
+    private final DailySpendingRepository repository;
+    private final MasterCodeService masterCodeService;
+    private final SpendingCategoryPredictionService categoryPredictionService;
+    private final Map<CardCompany, CardStatementParser> parsers = new EnumMap<>(CardCompany.class);
+
+    public CardSpendingImportService(DailySpendingRepository repository,
+            MasterCodeService masterCodeService,
+            SpendingCategoryPredictionService categoryPredictionService,
+            List<CardStatementParser> parserList) {
+        this.repository = repository;
+        this.masterCodeService = masterCodeService;
+        this.categoryPredictionService = categoryPredictionService;
+        for (CardStatementParser parser : parserList) parsers.put(parser.cardCompany(), parser);
+    }
+
+    public CardImportPreview preview(CardCompany company, MultipartFile file) {
+        return preview(company, file, null);
+    }
+
+    public CardImportPreview preview(CardCompany company, MultipartFile file, String filePassword) {
+        validateFile(file);
+        CardStatementParser parser = parsers.get(company);
+        if (parser == null) throw new IllegalArgumentException("지원하지 않는 카드사입니다.");
+        try (XSSFWorkbook workbook = openWorkbook(file, filePassword)) {
+            if (workbook.getNumberOfSheets() == 0) throw new IllegalArgumentException("엑셀 시트를 찾을 수 없습니다.");
+            List<CardSpendingImportRow> rows = parser.parse(workbook.getSheetAt(0));
+            if (rows.isEmpty()) throw new IllegalArgumentException("가져올 카드 이용내역이 없습니다.");
+            if (rows.size() > MAX_ROWS) throw new IllegalArgumentException("한 번에 최대 1,000건까지 확인할 수 있습니다.");
+            return new CardImportPreview(UUID.randomUUID().toString(), company,
+                    safeFilename(file.getOriginalFilename()), List.copyOf(rows));
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalArgumentException("올바른 XLSX 파일인지 확인해 주세요.", e);
+        }
+    }
+
+    private XSSFWorkbook openWorkbook(MultipartFile file, String filePassword) throws IOException {
+        try (InputStream raw = file.getInputStream();
+                InputStream checked = FileMagic.prepareToCheckMagic(raw)) {
+            FileMagic magic = FileMagic.valueOf(checked);
+            if (magic == FileMagic.OLE2) return openEncryptedWorkbook(checked, filePassword);
+            if (magic != FileMagic.OOXML)
+                throw new IllegalArgumentException("올바른 XLSX 파일인지 확인해 주세요.");
+            return new XSSFWorkbook(checked);
+        }
+    }
+
+    private XSSFWorkbook openEncryptedWorkbook(InputStream input, String filePassword) throws IOException {
+        try (POIFSFileSystem fileSystem = new POIFSFileSystem(input)) {
+            if (!fileSystem.getRoot().hasEntry(Decryptor.DEFAULT_POIFS_ENTRY))
+                throw new IllegalArgumentException("올바른 XLSX 파일인지 확인해 주세요.");
+            if (filePassword == null || filePassword.isBlank())
+                throw new IllegalArgumentException("암호화된 엑셀 파일의 비밀번호를 입력해 주세요.");
+            EncryptionInfo encryptionInfo = new EncryptionInfo(fileSystem);
+            Decryptor decryptor = Decryptor.getInstance(encryptionInfo);
+            if (!decryptor.verifyPassword(filePassword))
+                throw new IllegalArgumentException("엑셀 파일 비밀번호가 올바르지 않습니다.");
+            try (InputStream decrypted = decryptor.getDataStream(fileSystem)) {
+                return new XSSFWorkbook(decrypted);
+            }
+        } catch (GeneralSecurityException e) {
+            throw new IllegalArgumentException("암호화된 엑셀 파일을 열 수 없습니다.", e);
+        }
+    }
+
+    public ImportResult confirm(CardImportPreview preview, List<Integer> selectedRows,
+            Map<Integer, String> categoryByIndex, Member member) {
+        if (preview == null) throw new IllegalArgumentException("미리보기 정보가 만료되었습니다. 파일을 다시 선택해 주세요.");
+        if (selectedRows == null || selectedRows.isEmpty()) throw new IllegalArgumentException("등록할 내역을 선택해 주세요.");
+        List<MasterCodeDto> activeCategories = masterCodeService.getActiveCodesByGroup("SPENDING_CAT");
+        if (activeCategories.isEmpty()) throw new IllegalStateException("사용 가능한 지출 카테고리가 없습니다.");
+        Set<String> categories = new HashSet<>();
+        for (MasterCodeDto code : activeCategories) categories.add(code.getCodeId());
+
+        Set<Integer> uniqueIndexes = new HashSet<>(selectedRows);
+        Set<String> merchantsForPrediction = new java.util.LinkedHashSet<>();
+        for (Integer index : uniqueIndexes) {
+            if (index == null || index < 0 || index >= preview.rows().size())
+                throw new IllegalArgumentException("선택한 업로드 행이 올바르지 않습니다.");
+            CardSpendingImportRow row = preview.rows().get(index);
+            if (!row.importable()) throw new IllegalArgumentException(row.sourceRow() + "행은 등록할 수 없는 거래입니다.");
+            String category = categoryByIndex.get(index);
+            if (category == null || category.isBlank()) merchantsForPrediction.add(row.merchantName());
+            else if (!categories.contains(category))
+                throw new IllegalArgumentException(row.sourceRow() + "행의 카테고리가 올바르지 않습니다.");
+        }
+        Map<String, String> predictedCategories = categoryPredictionService
+                .predictByMerchant(merchantsForPrediction, activeCategories);
+
+        List<DailySpending> entities = new ArrayList<>();
+        int duplicates = 0;
+        Set<String> transactionKeys = new HashSet<>();
+        for (Integer index : uniqueIndexes) {
+            CardSpendingImportRow row = preview.rows().get(index);
+            String category = categoryByIndex.get(index);
+            if (category == null || category.isBlank()) category = predictedCategories.get(row.merchantName());
+            if (!transactionKeys.add(row.transactionKey())
+                    || repository.existsByMemberMemberIdAndImportSourceAndImportTransactionKey(
+                    member.getMemberId(), preview.cardCompany().name(), row.transactionKey())) {
+                duplicates++;
+                continue;
+            }
+            entities.add(DailySpending.builder()
+                    .member(member)
+                    .spendingDate(row.spendingDate())
+                    .categoryCode(category)
+                    .amount(row.amount())
+                    .memo(row.merchantName())
+                    .importSource(preview.cardCompany().name())
+                    .importTransactionKey(row.transactionKey())
+                    .build());
+        }
+        try {
+            repository.saveAll(entities);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("이미 등록된 카드 이용내역이 포함되어 있습니다.", e);
+        }
+        return new ImportResult(entities.size(), duplicates);
+    }
+
+    private void validateFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) throw new IllegalArgumentException("업로드할 엑셀 파일을 선택해 주세요.");
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.toLowerCase(java.util.Locale.ROOT).endsWith(".xlsx"))
+            throw new IllegalArgumentException("XLSX 파일만 업로드할 수 있습니다.");
+        if (file.getSize() > MAX_FILE_SIZE) throw new IllegalArgumentException("엑셀 파일은 5MB 이하여야 합니다.");
+    }
+
+    private String safeFilename(String filename) {
+        if (filename == null) return "카드 이용내역.xlsx";
+        return java.nio.file.Path.of(filename).getFileName().toString();
+    }
+
+    public record ImportResult(int savedCount, int duplicateCount) {}
+}

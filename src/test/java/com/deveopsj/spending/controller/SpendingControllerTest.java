@@ -10,6 +10,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.ui.ConcurrentModel;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import com.deveopsj.common.service.DataInputService;
 import com.deveopsj.member.entity.Member;
@@ -19,6 +21,10 @@ import com.deveopsj.spending.entity.RecurringExpense;
 import com.deveopsj.spending.service.RecurringExpenseService;
 import com.deveopsj.spending.service.SpendingExcelImportService;
 import com.deveopsj.spending.service.SpendingService;
+import com.deveopsj.spending.service.CardSpendingImportService;
+import com.deveopsj.spending.dto.CardCompany;
+import com.deveopsj.spending.dto.CardImportPreview;
+import com.deveopsj.spending.dto.CardSpendingImportRow;
 
 class SpendingControllerTest {
 
@@ -28,7 +34,7 @@ class SpendingControllerTest {
         RecurringExpenseService recurringExpenseService = mock(RecurringExpenseService.class);
         SpendingController controller = new SpendingController(
                 mock(DataInputService.class), spendingService, recurringExpenseService,
-                mock(SpendingExcelImportService.class));
+                mock(SpendingExcelImportService.class), mock(CardSpendingImportService.class));
         Member member = new Member();
         member.setMemberId(7L);
         YearMonth month = YearMonth.of(2026, 8);
@@ -49,6 +55,33 @@ class SpendingControllerTest {
         assertThat(model.getAttribute("totalAmount")).isEqualTo(150_000L);
         assertThat(model.getAttribute("scheduledRecurringAmount")).isEqualTo(70_000L);
         assertThat(model.getAttribute("expectedTotalAmount")).isEqualTo(220_000L);
+    }
+
+    @Test
+    void 카드등록_검증오류시_미리보기와_선택값을_유지한다() {
+        CardSpendingImportService cardImportService = mock(CardSpendingImportService.class);
+        SpendingController controller = new SpendingController(
+                mock(DataInputService.class), mock(SpendingService.class),
+                mock(RecurringExpenseService.class), mock(SpendingExcelImportService.class),
+                cardImportService);
+        CardImportPreview preview = new CardImportPreview("token", CardCompany.SHINHAN,
+                "sample.xlsx", List.of(new CardSpendingImportRow(2, LocalDate.of(2026, 8, 29),
+                        "가맹점", 10_000L, "key", null)));
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("cardSpendingImportPreview", preview);
+        Member member = new Member(); member.setMemberId(7L);
+        when(cardImportService.confirm(preview, List.of(0), java.util.Map.of(0, "FAKE"), member))
+                .thenThrow(new IllegalArgumentException("카테고리가 올바르지 않습니다."));
+        ConcurrentModel model = new ConcurrentModel();
+
+        String view = controller.confirmCardImport("token", List.of(0),
+                java.util.Map.of("category_0", "FAKE"), member, session, model,
+                new RedirectAttributesModelMap());
+
+        assertThat(view).isEqualTo("spending/import-preview");
+        assertThat(model.getAttribute("preview")).isSameAs(preview);
+        assertThat(model.getAttribute("selectedRows")).isEqualTo(List.of(0));
+        assertThat(model.getAttribute("errorMessage")).isEqualTo("카테고리가 올바르지 않습니다.");
     }
 
     private RecurringExpense recurringExpense(long amount) {

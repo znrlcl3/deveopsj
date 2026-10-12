@@ -22,6 +22,7 @@ import com.deveopsj.assetplan.entity.Goal;
 import com.deveopsj.assetplan.entity.InvestmentAsset;
 import com.deveopsj.assetplan.repository.AssetTradeRepository;
 import com.deveopsj.market.dto.MarketPriceQuote;
+import com.deveopsj.market.dto.ExchangeRateQuote;
 import com.deveopsj.market.dto.MonthlyPortfolioSummary;
 import com.deveopsj.market.dto.PortfolioSummary;
 import com.deveopsj.member.entity.Member;
@@ -34,6 +35,9 @@ class PortfolioValuationServiceTest {
 
     @Mock
     private KisMarketPriceService kisMarketPriceService;
+
+    @Mock
+    private KisExchangeRateService kisExchangeRateService;
 
     @Test
     void 매수와매도를_이동평균법으로_계산해_평가손익을_반환한다() {
@@ -52,8 +56,10 @@ class PortfolioValuationServiceTest {
                 new BigDecimal("200"), new BigDecimal("190"),
                 new BigDecimal("10"), new BigDecimal("5.26"), LocalDateTime.now(),
                 false, false));
+        when(kisExchangeRateService.getKrwRate("KRW")).thenReturn(new ExchangeRateQuote(
+                "KRW", BigDecimal.ONE, LocalDateTime.now(), false, false));
         PortfolioValuationService service = new PortfolioValuationService(
-                assetTradeRepository, kisMarketPriceService);
+                assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
 
         PortfolioSummary summary = service.getPortfolio(member);
 
@@ -79,7 +85,7 @@ class PortfolioValuationServiceTest {
         when(kisMarketPriceService.getQuote(11L))
                 .thenThrow(new IllegalStateException("현재가 없음"));
         PortfolioValuationService service = new PortfolioValuationService(
-                assetTradeRepository, kisMarketPriceService);
+                assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
 
         PortfolioSummary summary = service.getPortfolio(member);
 
@@ -110,7 +116,7 @@ class PortfolioValuationServiceTest {
                         7L, LocalDate.of(2026, 7, 31)))
                 .thenReturn(List.of(juneBuy, julyBuy, julySell));
         PortfolioValuationService service = new PortfolioValuationService(
-                assetTradeRepository, kisMarketPriceService);
+                assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
 
         MonthlyPortfolioSummary summary = service.getMonthlyPortfolio(
                 member, YearMonth.of(2026, 7));
@@ -127,6 +133,65 @@ class PortfolioValuationServiceTest {
         verify(assetTradeRepository)
                 .findByAssetPlanMemberMemberIdAndTradeDateLessThanEqualOrderByTradeDateAscIdAsc(
                         7L, LocalDate.of(2026, 7, 31));
+    }
+
+    @Test
+    void 해외자산의_현재평가액에는_실시간환율을_적용한다() {
+        Member member = member(7L);
+        AssetPlan plan = plan(3L);
+        InvestmentAsset asset = usdAsset(12L);
+        AssetTrade buy = trade(plan, asset, TradeType.BUY, "2", "100", 260_000L, 1);
+        buy.setExchangeRate(new BigDecimal("1300"));
+        when(assetTradeRepository.findByAssetPlanMemberMemberIdOrderByTradeDateAscIdAsc(7L))
+                .thenReturn(List.of(buy));
+        when(kisMarketPriceService.getQuote(12L)).thenReturn(new MarketPriceQuote(
+                12L, "AAPL", "Apple", "NASDAQ", "USD",
+                new BigDecimal("110"), new BigDecimal("108"),
+                new BigDecimal("2"), new BigDecimal("1.85"), LocalDateTime.now(),
+                false, false));
+        when(kisExchangeRateService.getKrwRate("USD")).thenReturn(new ExchangeRateQuote(
+                "USD", new BigDecimal("1400"), LocalDateTime.now(), false, false));
+        PortfolioValuationService service = new PortfolioValuationService(
+                assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
+
+        PortfolioSummary summary = service.getPortfolio(member);
+
+        assertThat(summary.positions()).singleElement().satisfies(position -> {
+            assertThat(position.remainingCostKrw()).isEqualTo(260_000L);
+            assertThat(position.appliedExchangeRate()).isEqualByComparingTo("1400");
+            assertThat(position.valuationAmountKrw()).isEqualTo(308_000L);
+            assertThat(position.profitLossKrw()).isEqualTo(48_000L);
+            assertThat(position.exchangeRateWarning()).isNull();
+        });
+    }
+
+    @Test
+    void 실시간환율조회에_실패하면_최근매매환율로_평가한다() {
+        Member member = member(7L);
+        AssetPlan plan = plan(3L);
+        InvestmentAsset asset = usdAsset(12L);
+        AssetTrade buy = trade(plan, asset, TradeType.BUY, "2", "100", 260_000L, 1);
+        buy.setExchangeRate(new BigDecimal("1300"));
+        when(assetTradeRepository.findByAssetPlanMemberMemberIdOrderByTradeDateAscIdAsc(7L))
+                .thenReturn(List.of(buy));
+        when(kisMarketPriceService.getQuote(12L)).thenReturn(new MarketPriceQuote(
+                12L, "AAPL", "Apple", "NASDAQ", "USD",
+                new BigDecimal("110"), new BigDecimal("108"),
+                new BigDecimal("2"), new BigDecimal("1.85"), LocalDateTime.now(),
+                false, false));
+        when(kisExchangeRateService.getKrwRate("USD"))
+                .thenThrow(new IllegalStateException("환율 조회 실패"));
+        PortfolioValuationService service = new PortfolioValuationService(
+                assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
+
+        PortfolioSummary summary = service.getPortfolio(member);
+
+        assertThat(summary.positions()).singleElement().satisfies(position -> {
+            assertThat(position.quoteAvailable()).isTrue();
+            assertThat(position.appliedExchangeRate()).isEqualByComparingTo("1300");
+            assertThat(position.valuationAmountKrw()).isEqualTo(286_000L);
+            assertThat(position.exchangeRateWarning()).contains("최근 매매 환율");
+        });
     }
 
     private Member member(Long id) {
@@ -152,6 +217,17 @@ class PortfolioValuationServiceTest {
         asset.setAssetName("삼성전자");
         asset.setMarket("KOSPI");
         asset.setCurrency("KRW");
+        asset.setAssetClass("STOCK");
+        return asset;
+    }
+
+    private InvestmentAsset usdAsset(Long id) {
+        InvestmentAsset asset = new InvestmentAsset();
+        asset.setId(id);
+        asset.setSymbol("AAPL");
+        asset.setAssetName("Apple");
+        asset.setMarket("NASDAQ");
+        asset.setCurrency("USD");
         asset.setAssetClass("STOCK");
         return asset;
     }

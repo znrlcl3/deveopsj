@@ -3,6 +3,7 @@ package com.deveopsj.member.security;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
@@ -28,6 +29,7 @@ public class KeycloakOidcUserService implements OAuth2UserService<OidcUserReques
     private final PasswordEncoder passwordEncoder;
     private final OAuth2UserService<OidcUserRequest, OidcUser> delegate;
 
+    @Autowired
     public KeycloakOidcUserService(MemberRepository memberRepository, PasswordEncoder passwordEncoder) {
         this(memberRepository, passwordEncoder, new OidcUserService());
     }

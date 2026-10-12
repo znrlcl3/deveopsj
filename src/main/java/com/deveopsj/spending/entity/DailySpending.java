@@ -18,9 +18,12 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.*;
 
 @Entity
-@Table(name = "daily_spending", uniqueConstraints = @UniqueConstraint(
-        name = "uk_daily_spending_recurring_month",
-        columnNames = {"recurring_expense_id", "recurring_year_month"}))
+@Table(name = "daily_spending", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_daily_spending_recurring_month",
+                columnNames = {"recurring_expense_id", "recurring_year_month"}),
+        @UniqueConstraint(name = "uk_daily_spending_card_import",
+                columnNames = {"member_id", "import_source", "import_transaction_key"})
+})
 @Getter @Setter
 @Builder
 @NoArgsConstructor 
@@ -52,4 +55,10 @@ public class DailySpending extends BaseEntity {
 
     @Column(name = "recurring_year_month", length = 7)
     private String recurringYearMonth;
+
+    @Column(name = "import_source", length = 20)
+    private String importSource;
+
+    @Column(name = "import_transaction_key", length = 64)
+    private String importTransactionKey;
 }

@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
@@ -27,6 +28,19 @@ import com.deveopsj.member.entity.Member;
 import com.deveopsj.member.repository.MemberRepository;
 
 class KeycloakOidcUserServiceTest {
+
+    @Test
+    void Spring이_운영_생성자로_Bean을_생성한다() {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(MemberRepository.class, () -> mock(MemberRepository.class));
+            context.registerBean(PasswordEncoder.class, () -> mock(PasswordEncoder.class));
+            context.register(KeycloakOidcUserService.class);
+
+            context.refresh();
+
+            assertThat(context.getBean(KeycloakOidcUserService.class)).isNotNull();
+        }
+    }
 
     @Test
     void 신규_Keycloak_사용자를_로컬_USER로_생성한다() {

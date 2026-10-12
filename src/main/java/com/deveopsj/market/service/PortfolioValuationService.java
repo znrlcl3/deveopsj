@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import com.deveopsj.assetplan.entity.AssetTrade;
 import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 import com.deveopsj.assetplan.repository.AssetTradeRepository;
+import com.deveopsj.market.dto.ExchangeRateQuote;
 import com.deveopsj.market.dto.MarketPriceQuote;
 import com.deveopsj.market.dto.MonthlyPortfolioPosition;
 import com.deveopsj.market.dto.MonthlyPortfolioSummary;
@@ -30,6 +31,7 @@ public class PortfolioValuationService {
 
     private final AssetTradeRepository assetTradeRepository;
     private final KisMarketPriceService kisMarketPriceService;
+    private final KisExchangeRateService kisExchangeRateService;
 
     public PortfolioSummary getPortfolio(Member member) {
         List<AssetTrade> trades = assetTradeRepository
@@ -110,9 +112,18 @@ public class PortfolioValuationService {
         long remainingCostKrw = accumulator.krwCost.setScale(0, RoundingMode.HALF_UP).longValue();
         try {
             MarketPriceQuote quote = kisMarketPriceService.getQuote(accumulator.investmentAssetId);
+            ExchangeRateQuote exchangeRateQuote;
+            String exchangeRateWarning = null;
+            try {
+                exchangeRateQuote = kisExchangeRateService.getKrwRate(accumulator.currency);
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                exchangeRateQuote = new ExchangeRateQuote(
+                        accumulator.currency, accumulator.exchangeRate, null, false, true);
+                exchangeRateWarning = "실시간 환율 조회 실패로 최근 매매 환율을 적용했습니다.";
+            }
             BigDecimal valuation = quote.currentPrice()
                     .multiply(accumulator.quantity)
-                    .multiply(accumulator.exchangeRate);
+                    .multiply(exchangeRateQuote.krwRate());
             long valuationKrw = valuation.setScale(0, RoundingMode.HALF_UP).longValueExact();
             long profitLossKrw = Math.subtractExact(valuationKrw, remainingCostKrw);
             BigDecimal returnRate = remainingCostKrw == 0 ? BigDecimal.ZERO
@@ -121,6 +132,7 @@ public class PortfolioValuationService {
                             .divide(BigDecimal.valueOf(remainingCostKrw), 2, RoundingMode.HALF_UP);
             return accumulator.position(
                     averageUnitPrice, remainingCostKrw, quote.currentPrice(),
+                    exchangeRateQuote, exchangeRateWarning,
                     valuationKrw, profitLossKrw, returnRate,
                     quote.fetchedAt(), quote.cached(), quote.stale(), null);
         } catch (IllegalArgumentException | IllegalStateException | ArithmeticException e) {
@@ -128,6 +140,7 @@ public class PortfolioValuationService {
                     ? "현재가를 계산하지 못했습니다." : e.getMessage();
             return accumulator.position(
                     averageUnitPrice, remainingCostKrw, null,
+                    null, null,
                     null, null, null, null, false, false, errorMessage);
         }
     }
@@ -184,13 +197,20 @@ public class PortfolioValuationService {
         }
 
         private PortfolioPosition position(BigDecimal averageUnitPrice, long remainingCostKrw,
-                BigDecimal currentPrice, Long valuationAmountKrw, Long profitLossKrw,
+                BigDecimal currentPrice, ExchangeRateQuote exchangeRateQuote,
+                String exchangeRateWarning, Long valuationAmountKrw, Long profitLossKrw,
                 BigDecimal returnRate, java.time.LocalDateTime quoteFetchedAt,
                 boolean cachedQuote, boolean staleQuote, String quoteError) {
+            BigDecimal appliedExchangeRate = exchangeRateQuote == null
+                    ? exchangeRate : exchangeRateQuote.krwRate();
             return new PortfolioPosition(
                     assetPlanId, planName, investmentAssetId, symbol, assetName, market, currency,
                     quantity.stripTrailingZeros(), averageUnitPrice, remainingCostKrw,
-                    currentPrice, exchangeRate, valuationAmountKrw, profitLossKrw,
+                    currentPrice, appliedExchangeRate,
+                    exchangeRateQuote == null ? null : exchangeRateQuote.fetchedAt(),
+                    exchangeRateQuote != null && exchangeRateQuote.cached(),
+                    exchangeRateQuote != null && exchangeRateQuote.stale(), exchangeRateWarning,
+                    valuationAmountKrw, profitLossKrw,
                     returnRate, quoteFetchedAt, cachedQuote, staleQuote, quoteError);
         }
 
