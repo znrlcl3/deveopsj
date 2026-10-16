@@ -1,7 +1,9 @@
 package com.deveopsj.dashboard.service;
 
 import java.time.LocalDate;
-import java.time.temporal.TemporalAdjusters;
+import java.time.YearMonth;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,8 +44,12 @@ public class DashboardService {
     private final MasterCodeService masterCodeService;
 
     public DashboardSummary getMonthlySummary(Long memberId) {
-        LocalDate start = LocalDate.now().with(TemporalAdjusters.firstDayOfMonth());
-        LocalDate end = LocalDate.now().with(TemporalAdjusters.lastDayOfMonth());
+        return getMonthlySummary(memberId, YearMonth.now());
+    }
+
+    public DashboardSummary getMonthlySummary(Long memberId, YearMonth month) {
+        LocalDate start = month.atDay(1);
+        LocalDate end = month.atEndOfMonth();
 
         // 1. 자산 플랜 및 이행률 계산
         List<AssetPlan> plans = assetPlanRepository.findByMemberMemberId(memberId);
@@ -111,6 +117,21 @@ public class DashboardService {
                                 s.getCategoryCode(), s.getCategoryCode()),
                         Collectors.summingLong(s -> s.getAmount())
                 ));
+        Map<String, Long> sortedCategories = categoryMap.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed()
+                        .thenComparing(Map.Entry.comparingByKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                        (a, b) -> a, LinkedHashMap::new));
+        var recentSpendings = spendings.stream()
+                .sorted(Comparator.comparing(com.deveopsj.spending.entity.DailySpending::getSpendingDate,
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(com.deveopsj.spending.entity.DailySpending::getId,
+                                Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(5)
+                .map(s -> new DashboardSummary.RecentSpending(s.getSpendingDate(),
+                        spendingCategoryMap.getOrDefault(s.getCategoryCode(), s.getCategoryCode()),
+                        s.getAmount(), s.getMemo(), s.getCreateDate()))
+                .toList();
 
         // 3. 전체 투자 달성률 계산
         double totalProgress = (totalTarget == 0) ? 0 : (totalActual / (double)totalTarget) * 100;
@@ -131,7 +152,9 @@ public class DashboardService {
                 .totalSpending(totalSpend)
                 .availableCash(availableCash)
                 .savingsRate(savingsRate)
-                .spendingByCategory(categoryMap)
+                .spendingByCategory(sortedCategories)
+                .recentSpendings(recentSpendings)
+                .spendingCount(spendings.size())
                 .investmentProgress(Math.min(totalProgress, 100.0))
                 .planProgressList(planProgressList)
                 .build();

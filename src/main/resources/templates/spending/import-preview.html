@@ -16,7 +16,8 @@
         <a th:href="@{/spending/list}" class="btn btn-outline-secondary">취소</a>
     </div>
 
-    <div class="alert alert-info">등록할 행을 선택하고 각 지출의 카테고리를 지정해 주세요. 중복 내역은 저장 시 자동 제외됩니다.</div>
+    <div class="alert alert-info">날짜·금액·가맹점이 같은 내역과 파일 안의 반복 행은 중복 후보로 표시하고 기본 선택에서 제외했습니다. 별도 거래라면 확인 후 선택해 주세요. 이미 등록된 카드 거래는 다시 등록할 수 없습니다.</div>
+    <div class="alert alert-warning" th:if="${preview.notice != null}" th:text="${preview.notice}"></div>
     <div class="alert alert-danger" role="alert" th:if="${errorMessage != null}" th:text="${errorMessage}"></div>
 
     <form id="cardImportConfirmForm" th:action="@{/spending/card-import/confirm}" method="post"
@@ -35,9 +36,9 @@
                     <tbody>
                     <tr th:each="row, stat : ${preview.rows}" th:classappend="${!row.importable()} ? 'table-warning'">
                         <td><input type="checkbox" name="selectedRows" th:value="${stat.index}"
-                                   th:checked="${selectedRows == null ? row.importable() : #lists.contains(selectedRows, stat.index)}"
+                                   th:checked="${selectedRows == null ? row.selectedByDefault() : #lists.contains(selectedRows, stat.index)}"
                                    th:disabled="${!row.importable()}"></td>
-                        <td th:text="${row.sourceRow}"></td>
+                        <td th:text="${row.sourceLabel()}"></td>
                         <td th:text="${row.spendingDate}"></td>
                         <td th:text="${row.merchantName}"></td>
                         <td class="text-end" th:text="${#numbers.formatInteger(row.amount, 0, 'COMMA')} + '원'"></td>
@@ -52,8 +53,14 @@
                             <span th:unless="${row.importable()}" class="text-muted">-</span>
                         </td>
                         <td>
-                            <span th:if="${row.importable()}" class="badge text-bg-success">등록 가능</span>
-                            <span th:unless="${row.importable()}" class="text-warning" th:text="${row.errorMessage}"></span>
+                            <span th:if="${row.alreadyImported}" class="badge text-bg-secondary">이미 등록된 카드 거래</span>
+                            <span th:if="${row.duplicateInFile}" class="badge text-bg-warning">파일 안의 반복 행</span>
+                            <div th:each="match : ${row.matches}" class="small">
+                                <span th:text="|기존 #${match.id} · ${@masterCodeService.getCodeName('SPENDING_CAT', match.categoryCode)}|"></span>
+                                <span th:text="${match.createDate != null ? ' · 등록 ' + #temporals.format(match.createDate, 'yyyy-MM-dd HH:mm') : ' · 등록 일시 없음'}"></span>
+                            </div>
+                            <span th:if="${row.importable() and !row.duplicateCandidate()}" class="badge text-bg-success">새 내역</span>
+                            <span th:if="${row.errorMessage != null}" class="text-warning" th:text="${row.errorMessage}"></span>
                         </td>
                     </tr>
                     </tbody>

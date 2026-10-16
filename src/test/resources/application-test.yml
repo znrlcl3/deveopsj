@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:deveopsj_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  ai:
+    gemini:
+      api-key: test-not-a-real-key
+      base-url: http://127.0.0.1:1
+      model: test-model
+
+app:
+  privacy:
+    operator-name: Test
+    contact-email: test@example.invalid
+  security:
+    oidc:
+      enabled: false
+    opa:
+      enabled: false
+
+krx:
+  api:
+    auth-key: test-not-a-real-key
+kis:
+  api:
+    app-key: test-not-a-real-key
+    app-secret: test-not-a-real-secret

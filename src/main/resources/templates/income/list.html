@@ -52,10 +52,10 @@
             <div class="card p-4">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
-                        <thead><tr><th>수입일</th><th>유형</th><th class="text-end">금액</th><th>메모</th><th class="text-end">관리</th></tr></thead>
+                        <thead><tr><th>수입일</th><th>유형</th><th class="text-end">금액</th><th>메모</th><th>등록 일시</th><th class="text-end">관리</th></tr></thead>
                         <tbody>
                         <tr th:if="${#lists.isEmpty(incomes)}">
-                            <td colspan="5" class="text-center text-muted py-5">조회한 월의 수입 내역이 없습니다.</td>
+                            <td colspan="6" class="text-center text-muted py-5">조회한 월의 수입 내역이 없습니다.</td>
                         </tr>
                         <tr th:each="income : ${incomes}">
                             <td th:text="${income.incomeDate}"></td>
@@ -63,6 +63,8 @@
                             <td class="text-end fw-bold"
                                 th:text="${#numbers.formatInteger(income.amount, 0, 'COMMA')} + '원'"></td>
                             <td th:text="${income.memo}"></td>
+                            <td class="text-muted small text-nowrap"
+                                th:text="${income.createDate != null ? #temporals.format(income.createDate, 'yyyy-MM-dd HH:mm') : '-'}"></td>
                             <td>
                                 <div class="d-flex justify-content-end gap-2">
                                     <button type="button" class="btn btn-sm btn-outline-primary"

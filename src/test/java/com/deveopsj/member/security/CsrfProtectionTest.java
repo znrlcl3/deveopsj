@@ -204,7 +204,8 @@ class CsrfProtectionTest {
         member.setLoginId("user");
         member.setPassword("password");
         member.setRole("USER");
-        when(dashboardService.getMonthlySummary(7L)).thenReturn(DashboardSummary.builder()
+        when(dashboardService.getMonthlySummary(org.mockito.ArgumentMatchers.eq(7L),
+                org.mockito.ArgumentMatchers.any(java.time.YearMonth.class))).thenReturn(DashboardSummary.builder()
                 .totalInvestment(0L)
                 .totalIncome(0L)
                 .totalSpending(0L)

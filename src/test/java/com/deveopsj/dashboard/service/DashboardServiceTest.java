@@ -34,6 +34,34 @@ import com.deveopsj.spending.repository.DailySpendingRepository;
 @ExtendWith(MockitoExtension.class)
 class DashboardServiceTest {
 
+    @Test
+    void selectedLeapMonthSortsCategoriesAndLimitsRecentRowsWithinMember() {
+        var month = java.time.YearMonth.of(2024, 2);
+        var start = month.atDay(1);
+        var end = month.atEndOfMonth();
+        var rows = java.util.stream.IntStream.rangeClosed(1, 6).mapToObj(i ->
+                DailySpending.builder().id((long) i).spendingDate(start.plusDays(i))
+                        .amount(i * 1000L).categoryCode(i == 6 ? "FOOD" : "TRANS")
+                        .memo("내역 " + i).build()).toList();
+        when(assetPlanRepository.findByMemberMemberId(7L)).thenReturn(List.of());
+        when(masterCodeService.getAllActiveCodesGrouped()).thenReturn(Map.of());
+        when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(7L, start, end))
+                .thenReturn(rows);
+        when(incomeRepository.getTotalIncome(7L, start, end)).thenReturn(30000L);
+        var summary = dashboardService.getMonthlySummary(7L, month);
+        assertThat(end).isEqualTo(LocalDate.of(2024, 2, 29));
+        assertThat(summary.getTotalSpending()).isEqualTo(21000L);
+        assertThat(summary.getAvailableCash()).isEqualTo(9000L);
+        assertThat(summary.getSpendingCount()).isEqualTo(6);
+        assertThat(summary.getSpendingByCategory().keySet()).containsExactly("TRANS", "FOOD");
+        assertThat(summary.getRecentSpendings()).hasSize(5);
+        assertThat(summary.getRecentSpendings().get(0).memo()).isEqualTo("내역 6");
+        assertThat(summary.getRecentSpendings().get(4).memo()).isEqualTo("내역 2");
+        verify(incomeRepository).getTotalIncome(7L, start, end);
+        verify(assetSavingsRepository).getTotalByMemberIdAndTypeAndDepositDateBetween(
+                7L, com.deveopsj.assetplan.entity.AssetSavings.DepositType.EXTRA, start, end);
+    }
+
     @Mock
     private AssetPlanRepository assetPlanRepository;
 

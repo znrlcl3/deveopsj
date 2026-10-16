@@ -1,5 +1,8 @@
 # DeveopsJ 서버 실행 준비
 
+이미 실행 중인 OCI 서버를 회사·집 PC에서 사용하는 절차와 스크립트는
+[회사 PC와 OCI 서버 연결](../docs/oci-workstation.md)을 따른다.
+
 OCI 계정 생성 전에도 저장소에서 배포 JAR를 만들 수 있다. 실제 서버 생성, DB 연결,
 도메인 및 HTTPS 설정은 OCI 계정 준비 후 진행한다.
 
@@ -15,17 +18,20 @@ Keycloak SSO를 활성화하기 전에는
 Windows:
 
 ```text
-mvnw.cmd clean package
+powershell -File deploy/scripts/build-deveopsj.ps1
 ```
 
 Linux:
 
 ```text
-./mvnw clean package
+./mvnw clean test -Dspring.profiles.active=test
+./mvnw -Pcloud clean package -DskipTests
 ```
 
 생성된 `target/ai-dashboard-0.0.1-SNAPSHOT.jar`를 서버의
 `/opt/deveopsj/app.jar`로 배치한다.
+`cloud` Maven 프로필은 로컬 비밀정보가 들어갈 수 있는 `application.properties`를
+JAR에서 제외한다. `clean`을 생략하면 과거에 복사된 설정이 남을 수 있다.
 
 ## 2. 서버 파일 배치
 

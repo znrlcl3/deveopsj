@@ -13,6 +13,8 @@ deploy/systemd/deveopsj.env
 *.jks
 *.p12
 *.keystore
+*.pem
+oci-known-hosts
 *.log
 logs/
 
@@ -48,3 +50,18 @@ build/
 /output/pdf/*
 
 /tmp/
+/.local-data/
+
+# 개인 SSH 키
+*.key
+id_rsa
+id_ed25519
+
+# 운영체제 임시 파일
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Excel 임시 잠금 파일
+~$*.xlsx
+~$*.xls

@@ -7,5 +7,17 @@ public record CardImportPreview(
         String token,
         CardCompany cardCompany,
         String originalFilename,
-        List<CardSpendingImportRow> rows) implements Serializable {
+        List<CardSpendingImportRow> rows,
+        String notice,
+        Long memberId) implements Serializable {
+
+    public CardImportPreview(String token, CardCompany cardCompany, String originalFilename,
+            List<CardSpendingImportRow> rows, String notice) {
+        this(token, cardCompany, originalFilename, rows, notice, null);
+    }
+
+    public CardImportPreview(String token, CardCompany cardCompany, String originalFilename,
+            List<CardSpendingImportRow> rows) {
+        this(token, cardCompany, originalFilename, rows, null);
+    }
 }

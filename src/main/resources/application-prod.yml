@@ -10,6 +10,10 @@ spring:
     show-sql: false
   thymeleaf:
     cache: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   ai:
     gemini:
       api-key: ${GEMINI_API_KEY}
@@ -20,6 +24,7 @@ spring:
       include-stacktrace: never
 
 server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
   forward-headers-strategy: framework
   servlet:
     session:

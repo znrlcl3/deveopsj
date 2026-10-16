@@ -66,7 +66,7 @@ class SpendingControllerTest {
                 cardImportService);
         CardImportPreview preview = new CardImportPreview("token", CardCompany.SHINHAN,
                 "sample.xlsx", List.of(new CardSpendingImportRow(2, LocalDate.of(2026, 8, 29),
-                        "가맹점", 10_000L, "key", null)));
+                        "가맹점", 10_000L, "key", null)), null, 7L);
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("cardSpendingImportPreview", preview);
         Member member = new Member(); member.setMemberId(7L);
@@ -82,6 +82,94 @@ class SpendingControllerTest {
         assertThat(model.getAttribute("preview")).isSameAs(preview);
         assertThat(model.getAttribute("selectedRows")).isEqualTo(List.of(0));
         assertThat(model.getAttribute("errorMessage")).isEqualTo("카테고리가 올바르지 않습니다.");
+    }
+
+    @Test
+    void 삼성_청구월을_서비스에_전달하고_미리보기를_세션에_저장한다() {
+        CardSpendingImportService service = mock(CardSpendingImportService.class);
+        SpendingController controller = new SpendingController(
+                mock(DataInputService.class), mock(SpendingService.class),
+                mock(RecurringExpenseService.class), mock(SpendingExcelImportService.class), service);
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "samsung.xlsx", null, new byte[] {1});
+        Member member = new Member(); member.setMemberId(7L);
+        var preview = new CardImportPreview("token", CardCompany.SAMSUNG, "samsung.xlsx", List.of(), "2026-08", 7L);
+        when(service.preview(CardCompany.SAMSUNG, file, null, YearMonth.of(2026, 8), member)).thenReturn(preview);
+        var session = new MockHttpSession();
+        var model = new ConcurrentModel();
+
+        String view = controller.previewCardImport(CardCompany.SAMSUNG, file, null, "2026-08",
+                member, model, session, new RedirectAttributesModelMap());
+
+        assertThat(view).isEqualTo("spending/import-preview");
+        assertThat(model.getAttribute("preview")).isSameAs(preview);
+        assertThat(session.getAttribute("cardSpendingImportPreview")).isSameAs(preview);
+    }
+
+    @Test
+    void 잘못된_청구월은_파일을_읽기전에_거부한다() {
+        CardSpendingImportService service = mock(CardSpendingImportService.class);
+        SpendingController controller = new SpendingController(
+                mock(DataInputService.class), mock(SpendingService.class),
+                mock(RecurringExpenseService.class), mock(SpendingExcelImportService.class), service);
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "samsung.xlsx", null, new byte[] {1});
+        var redirect = new RedirectAttributesModelMap();
+
+        String view = controller.previewCardImport(CardCompany.SAMSUNG, file, null, "invalid",
+                new Member(), new ConcurrentModel(), new MockHttpSession(), redirect);
+
+        assertThat(view).isEqualTo("redirect:/spending/list");
+        assertThat(redirect.getFlashAttributes().get("errorMessage")).isEqualTo("청구월은 YYYY-MM 형식으로 입력해 주세요.");
+        org.mockito.Mockito.verifyNoInteractions(service);
+    }
+
+@Test
+    void 일반엑셀도_저장전_중복미리보기를_제공한다() {
+        var service = mock(SpendingExcelImportService.class);
+        var controller = new SpendingController(mock(DataInputService.class), mock(SpendingService.class),
+                mock(RecurringExpenseService.class), service, mock(CardSpendingImportService.class));
+        Member member = new Member(); member.setMemberId(7L);
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "spending.xlsx", null, new byte[] {1});
+        var preview = new com.deveopsj.spending.dto.SpendingExcelImportPreview("token", 7L, "spending.xlsx", "2026-08", List.of());
+        when(service.preview(file, member, "2026-08")).thenReturn(preview);
+        var session = new MockHttpSession();
+        var model = new ConcurrentModel();
+        assertThat(controller.importExcel(file, "2026-08", member, session, model, new RedirectAttributesModelMap()))
+                .isEqualTo("spending/excel-import-preview");
+        assertThat(session.getAttribute("spendingExcelImportPreview")).isSameAs(preview);
+        org.mockito.Mockito.verify(service, org.mockito.Mockito.never()).importFile(file, member);
+    }
+
+    @Test
+    void 확정한_엑셀토큰은_다시_사용할수없다() {
+        var service = mock(SpendingExcelImportService.class);
+        var controller = new SpendingController(mock(DataInputService.class), mock(SpendingService.class),
+                mock(RecurringExpenseService.class), service, mock(CardSpendingImportService.class));
+        Member member = new Member(); member.setMemberId(7L);
+        var preview = new com.deveopsj.spending.dto.SpendingExcelImportPreview("token", 7L, "spending.xlsx", "2026-08", List.of());
+        var session = new MockHttpSession();
+        session.setAttribute("spendingExcelImportPreview", preview);
+        when(service.confirm(preview, List.of(0), member)).thenReturn(1);
+        var redirect = new RedirectAttributesModelMap();
+        assertThat(controller.confirmExcelImport("token", List.of(0), member, session, new ConcurrentModel(), redirect))
+                .isEqualTo("redirect:/spending/list");
+        assertThat(session.getAttribute("spendingExcelImportPreview")).isNull();
+        assertThat(redirect.get("month")).isEqualTo("2026-08");
+        controller.confirmExcelImport("token", List.of(0), member, session, new ConcurrentModel(), new RedirectAttributesModelMap());
+        org.mockito.Mockito.verify(service, org.mockito.Mockito.times(1)).confirm(preview, List.of(0), member);
+    }
+
+    @Test
+    void 타인세션의_엑셀미리보기는_확정할수없다() {
+        var service = mock(SpendingExcelImportService.class);
+        var controller = new SpendingController(mock(DataInputService.class), mock(SpendingService.class),
+                mock(RecurringExpenseService.class), service, mock(CardSpendingImportService.class));
+        Member member = new Member(); member.setMemberId(8L);
+        var session = new MockHttpSession();
+        session.setAttribute("spendingExcelImportPreview",
+                new com.deveopsj.spending.dto.SpendingExcelImportPreview("token", 7L, "spending.xlsx", null, List.of()));
+        assertThat(controller.confirmExcelImport("token", List.of(0), member, session,
+                new ConcurrentModel(), new RedirectAttributesModelMap())).isEqualTo("redirect:/spending/list");
+        org.mockito.Mockito.verifyNoInteractions(service);
     }
 
     private RecurringExpense recurringExpense(long amount) {

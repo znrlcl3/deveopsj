@@ -36,6 +36,35 @@ import com.deveopsj.spending.repository.DailySpendingRepository;
 class CardSpendingImportServiceTest {
 
     @Test
+    void 삼성_명세서의_두시트와_청구월을_미리보기에_반영한다() throws Exception {
+        CardSpendingImportService service = new CardSpendingImportService(
+                mock(DailySpendingRepository.class), mock(MasterCodeService.class),
+                mock(SpendingCategoryPredictionService.class), List.of(new SamsungCardStatementParser()));
+        byte[] contents;
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            String[] headers = {"이용일", "이용구분", "가맹점", "이용금액", "개월", "회차", "원금", "이자/수수료"};
+            for (String name : List.of("일시불", "할부")) {
+                var sheet = workbook.createSheet(name);
+                var header = sheet.createRow(2);
+                for (int i = 0; i < headers.length; i++) header.createCell(i).setCellValue(headers[i]);
+                var data = sheet.createRow(3);
+                String[] values = {"20260703", "본인 123", "테스트", "100000", "2", "1", "50000", "1200"};
+                for (int i = 0; i < values.length; i++) data.createCell(i).setCellValue(values[i]);
+            }
+            workbook.write(output);
+            contents = output.toByteArray();
+        }
+        var file = new MockMultipartFile("file", "samsung.xlsx", null, contents);
+        var preview = service.preview(CardCompany.SAMSUNG, file, null, java.time.YearMonth.of(2026, 8));
+        assertThat(preview.rows()).hasSize(2);
+        assertThat(preview.rows().get(1).amount()).isEqualTo(51_200);
+        assertThat(preview.rows().get(1).spendingDate()).hasToString("2026-08-01");
+        assertThat(preview.notice()).contains("2026-08", "원금+이자/수수료");
+        assertThatThrownBy(() -> service.preview(CardCompany.SAMSUNG, file))
+                .hasMessageContaining("청구월");
+    }
+
+    @Test
     void 암호화된_카카오뱅크_엑셀을_입력한_비밀번호로_미리보기한다() throws Exception {
         CardSpendingImportService service = new CardSpendingImportService(
                 mock(DailySpendingRepository.class), mock(MasterCodeService.class),
@@ -117,7 +146,7 @@ class CardSpendingImportServiceTest {
         Member member = new Member(); member.setMemberId(7L);
         CardSpendingImportRow row = preview().rows().get(0);
         CardImportPreview duplicated = new CardImportPreview("token", CardCompany.SHINHAN,
-                "sample.xlsx", List.of(row, row));
+                "sample.xlsx", List.of(row, row), null, 7L);
 
         var result = service.confirm(duplicated, List.of(0, 1), Map.of(0, "FOOD", 1, "FOOD"), member);
 
@@ -172,9 +201,82 @@ class CardSpendingImportServiceTest {
         verify(prediction).predictByMerchant(eq(Set.of("테스트")), anyList());
     }
 
+@Test
+    void 카드_미리보기에서_기존_수동지출을_중복후보로_보여준다() throws Exception {
+        var repository = mock(DailySpendingRepository.class);
+        var old = DailySpending.builder().id(99L).spendingDate(LocalDate.of(2026, 8, 29))
+                .amount(10_000L).memo("테스트").categoryCode("FOOD").build();
+        old.setCreateDate(java.time.LocalDateTime.of(2026, 8, 30, 10, 0));
+        when(repository.findByMemberMemberIdAndSpendingDateBetween(eq(7L), any(), any())).thenReturn(List.of(old));
+        var service = previewService(repository, List.of(preview().rows().get(0)));
+        Member member = new Member(); member.setMemberId(7L);
+
+        var result = service.preview(CardCompany.SHINHAN, plainCardFile(), null, null, member);
+
+        assertThat(result.memberId()).isEqualTo(7L);
+        assertThat(result.rows().get(0).matches()).singleElement().satisfies(match -> assertThat(match.id()).isEqualTo(99L));
+        assertThat(result.rows().get(0).importable()).isTrue();
+        assertThat(result.rows().get(0).selectedByDefault()).isFalse();
+        verify(repository, org.mockito.Mockito.never()).saveAll(any());
+    }
+
+    @Test
+    void 카드의_확정중복은_선택을_막는다() throws Exception {
+        var repository = mock(DailySpendingRepository.class);
+        var old = DailySpending.builder().spendingDate(LocalDate.of(2026, 8, 29)).amount(10_000L)
+                .memo("테스트").categoryCode("FOOD").importSource("SHINHAN").importTransactionKey("key").build();
+        when(repository.findByMemberMemberIdAndSpendingDateBetween(eq(7L), any(), any())).thenReturn(List.of(old));
+        var service = previewService(repository, List.of(preview().rows().get(0)));
+        Member member = new Member(); member.setMemberId(7L);
+        var result = service.preview(CardCompany.SHINHAN, plainCardFile(), null, null, member);
+        assertThat(result.rows().get(0).alreadyImported()).isTrue();
+        assertThat(result.rows().get(0).importable()).isFalse();
+    }
+
+    @Test
+    void 서로다른_카드거래의_내용이같으면_두번째만_중복후보로_표시한다() throws Exception {
+        var repository = mock(DailySpendingRepository.class);
+        var first = preview().rows().get(0);
+        var second = new CardSpendingImportRow(3, first.spendingDate(), first.merchantName(), first.amount(), "other-key", null);
+        var service = previewService(repository, List.of(first, second));
+        Member member = new Member(); member.setMemberId(7L);
+        var result = service.preview(CardCompany.SHINHAN, plainCardFile(), null, null, member);
+        assertThat(result.rows().get(0).selectedByDefault()).isTrue();
+        assertThat(result.rows().get(1).duplicateInFile()).isTrue();
+        assertThat(result.rows().get(1).selectedByDefault()).isFalse();
+        assertThat(result.rows().get(1).importable()).isTrue();
+    }
+
+    @Test
+    void 카드_미리보기_소유자가_다르면_등록하지않는다() {
+        var repository = mock(DailySpendingRepository.class);
+        var service = service(repository, mock(MasterCodeService.class));
+        Member other = new Member(); other.setMemberId(8L);
+        assertThatThrownBy(() -> service.confirm(preview(), List.of(0), Map.of(0, "FOOD"), other))
+                .hasMessageContaining("본인의");
+        verify(repository, org.mockito.Mockito.never()).saveAll(any());
+    }
+
+    private CardSpendingImportService previewService(DailySpendingRepository repository, List<CardSpendingImportRow> rows) {
+        CardStatementParser parser = new CardStatementParser() {
+            public CardCompany cardCompany() { return CardCompany.SHINHAN; }
+            public List<CardSpendingImportRow> parse(org.apache.poi.ss.usermodel.Sheet sheet) { return rows; }
+        };
+        return new CardSpendingImportService(repository, mock(MasterCodeService.class),
+                mock(SpendingCategoryPredictionService.class), List.of(parser));
+    }
+
+    private MockMultipartFile plainCardFile() throws Exception {
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            workbook.createSheet();
+            workbook.write(output);
+            return new MockMultipartFile("file", "sample.xlsx", null, output.toByteArray());
+        }
+    }
+
     private CardImportPreview preview() {
         return new CardImportPreview("token", CardCompany.SHINHAN, "sample.xlsx", List.of(
-                new CardSpendingImportRow(2, LocalDate.of(2026, 8, 29), "테스트", 10_000L, "key", null)));
+                new CardSpendingImportRow(2, LocalDate.of(2026, 8, 29), "테스트", 10_000L, "key", null)), null, 7L);
     }
 
     private CardSpendingImportService service(DailySpendingRepository repository, MasterCodeService codes) {

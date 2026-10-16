@@ -44,6 +44,7 @@ public class SpendingController {
     private final CardSpendingImportService cardSpendingImportService;
 
     private static final String CARD_IMPORT_PREVIEW = "cardSpendingImportPreview";
+    private static final String EXCEL_IMPORT_PREVIEW = "spendingExcelImportPreview";
 
     @ModelAttribute("cardCompanies")
     public CardCompany[] cardCompanies() {
@@ -127,28 +128,67 @@ public class SpendingController {
     @PostMapping("/import")
     public String importExcel(@RequestParam("file") MultipartFile file,
             @RequestParam(required = false) String month, Member member,
+            HttpSession session, Model model,
             org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
         preserveMonth(month, redirectAttributes);
         try {
-            int count = spendingExcelImportService.importFile(file, member);
-            redirectAttributes.addFlashAttribute("message", "지출 내역 " + count + "건을 등록했습니다.");
+            session.removeAttribute(EXCEL_IMPORT_PREVIEW);
+            var preview = spendingExcelImportService.preview(file, member, month);
+            session.setAttribute(EXCEL_IMPORT_PREVIEW, preview);
+            model.addAttribute("preview", preview);
+            return "spending/excel-import-preview";
         } catch (IllegalArgumentException | IllegalStateException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/spending/list";
     }
 
+    @PostMapping("/import/confirm")
+    public String confirmExcelImport(@RequestParam String token,
+            @RequestParam(required = false) java.util.List<Integer> selectedRows,
+            Member member, HttpSession session, Model model,
+            org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        synchronized (session) {
+            Object stored = session.getAttribute(EXCEL_IMPORT_PREVIEW);
+            if (!(stored instanceof com.deveopsj.spending.dto.SpendingExcelImportPreview preview)
+                    || !preview.token().equals(token) || !java.util.Objects.equals(preview.memberId(), member.getMemberId())) {
+                redirectAttributes.addFlashAttribute("errorMessage", "미리보기 정보가 만료되었습니다. 파일을 다시 선택해 주세요.");
+                return "redirect:/spending/list";
+            }
+            preserveMonth(preview.month(), redirectAttributes);
+            try {
+                int count = spendingExcelImportService.confirm(preview, selectedRows, member);
+                session.removeAttribute(EXCEL_IMPORT_PREVIEW);
+                redirectAttributes.addFlashAttribute("message", "선택한 지출 내역 " + count + "건을 등록했습니다.");
+                return "redirect:/spending/list";
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                model.addAttribute("preview", preview);
+                model.addAttribute("selectedRows", selectedRows == null ? java.util.List.of() : selectedRows);
+                model.addAttribute("errorMessage", e.getMessage());
+                return "spending/excel-import-preview";
+            }
+        }
+    }
+
     @PostMapping("/card-import/preview")
     public String previewCardImport(@RequestParam CardCompany cardCompany,
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) String filePassword,
-            Model model, HttpSession session,
+            @RequestParam(required = false) String billingMonth,
+            Member member, Model model, HttpSession session,
             org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
         try {
-            CardImportPreview preview = cardSpendingImportService.preview(cardCompany, file, filePassword);
+            session.removeAttribute(CARD_IMPORT_PREVIEW);
+            YearMonth selectedBillingMonth = billingMonth == null || billingMonth.isBlank()
+                    ? null : YearMonth.parse(billingMonth);
+            CardImportPreview preview = cardSpendingImportService.preview(
+                    cardCompany, file, filePassword, selectedBillingMonth, member);
             session.setAttribute(CARD_IMPORT_PREVIEW, preview);
             model.addAttribute("preview", preview);
             return "spending/import-preview";
+        } catch (java.time.format.DateTimeParseException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "청구월은 YYYY-MM 형식으로 입력해 주세요.");
+            return "redirect:/spending/list";
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             return "redirect:/spending/list";
@@ -162,7 +202,8 @@ public class SpendingController {
             Member member, HttpSession session, Model model,
             org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
         Object stored = session.getAttribute(CARD_IMPORT_PREVIEW);
-        if (!(stored instanceof CardImportPreview preview) || !preview.token().equals(token)) {
+        if (!(stored instanceof CardImportPreview preview) || !preview.token().equals(token)
+                || !java.util.Objects.equals(preview.memberId(), member.getMemberId())) {
             redirectAttributes.addFlashAttribute("errorMessage", "미리보기 정보가 만료되었습니다. 파일을 다시 선택해 주세요.");
             return "redirect:/spending/list";
         }

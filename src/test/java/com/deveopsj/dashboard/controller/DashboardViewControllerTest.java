@@ -33,15 +33,33 @@ class DashboardViewControllerTest {
         member.setMemberId(7L);
         DashboardSummary summary = DashboardSummary.builder().build();
         ExtendedModelMap model = new ExtendedModelMap();
-        when(dashboardService.getMonthlySummary(7L)).thenReturn(summary);
+        when(dashboardService.getMonthlySummary(7L, java.time.YearMonth.now())).thenReturn(summary);
         when(geminiProperties.getModel()).thenReturn("gemini-3.1-flash-lite");
 
-        String viewName = controller.dashboard(model, member);
+        String viewName = controller.dashboard(null, model, member);
 
         assertThat(viewName).isEqualTo("dashboard");
         assertThat(model.get("summary")).isSameAs(summary);
         assertThat(model.get("aiModel")).isEqualTo("gemini-3.1-flash-lite");
         assertThat(model.get("analysisMonth")).isEqualTo(java.time.YearMonth.now());
         assertThat((Object[]) model.get("analysisTypes")).hasSize(4);
+    }
+
+    @Test
+    void selectedMonthAndInvalidMonthUseAuthenticatedMember() {
+        Member member = new Member();
+        member.setMemberId(7L);
+        var month = java.time.YearMonth.of(2024, 2);
+        when(dashboardService.getMonthlySummary(7L, month)).thenReturn(DashboardSummary.builder().build());
+        var model = new ExtendedModelMap();
+        controller.dashboard("2024-02", model, member);
+        assertThat(model.get("selectedMonth")).isEqualTo(month);
+        assertThat(model.get("analysisMonth")).isEqualTo(month);
+        org.mockito.Mockito.verify(dashboardService).getMonthlySummary(7L, month);
+        when(dashboardService.getMonthlySummary(7L, java.time.YearMonth.now()))
+                .thenReturn(DashboardSummary.builder().build());
+        controller.dashboard("bad-month", model, member);
+        assertThat(model.get("selectedMonth")).isEqualTo(java.time.YearMonth.now());
+        assertThat(model.get("errorMessage")).isNotNull();
     }
 }

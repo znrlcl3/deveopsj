@@ -39,6 +39,7 @@ class ProductionConfigurationTest {
 
     @Test
     void productionProfileUsesSecureProxyAndSessionSettings() {
+        assertThat(property("server.address")).isEqualTo("${SERVER_ADDRESS:127.0.0.1}");
         assertThat(property("server.forward-headers-strategy")).isEqualTo("framework");
         assertThat(property("server.servlet.session.cookie.http-only")).isEqualTo(true);
         assertThat(property("server.servlet.session.cookie.secure")).isEqualTo(true);
@@ -64,6 +65,12 @@ class ProductionConfigurationTest {
                 .isEqualTo("${LOGIN_MAX_ATTEMPTS:5}");
         assertThat(property("app.security.login.block-duration"))
                 .isEqualTo("${LOGIN_BLOCK_DURATION:10m}");
+    }
+
+    @Test
+    void productionProfileAllowsCardFilesWithinTheServerRequestLimit() {
+        assertThat(property("spring.servlet.multipart.max-file-size")).isEqualTo("5MB");
+        assertThat(property("spring.servlet.multipart.max-request-size")).isEqualTo("6MB");
     }
 
     private Object property(String name) {

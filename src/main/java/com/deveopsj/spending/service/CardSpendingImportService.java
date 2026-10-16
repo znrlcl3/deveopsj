@@ -10,6 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.time.YearMonth;
+import java.time.LocalDate;
+import java.util.Objects;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.apache.poi.poifs.crypt.Decryptor;
 import org.apache.poi.poifs.crypt.EncryptionInfo;
@@ -54,16 +58,29 @@ public class CardSpendingImportService {
     }
 
     public CardImportPreview preview(CardCompany company, MultipartFile file, String filePassword) {
+        return preview(company, file, filePassword, null);
+    }
+
+    public CardImportPreview preview(CardCompany company, MultipartFile file, String filePassword,
+            YearMonth billingMonth) {
+        return preview(company, file, filePassword, billingMonth, null);
+    }
+
+    @Transactional(readOnly = true)
+    public CardImportPreview preview(CardCompany company, MultipartFile file, String filePassword,
+            YearMonth billingMonth, Member member) {
         validateFile(file);
         CardStatementParser parser = parsers.get(company);
         if (parser == null) throw new IllegalArgumentException("지원하지 않는 카드사입니다.");
         try (XSSFWorkbook workbook = openWorkbook(file, filePassword)) {
             if (workbook.getNumberOfSheets() == 0) throw new IllegalArgumentException("엑셀 시트를 찾을 수 없습니다.");
-            List<CardSpendingImportRow> rows = parser.parse(workbook.getSheetAt(0));
+            List<CardSpendingImportRow> rows = parser.parse(workbook, billingMonth);
             if (rows.isEmpty()) throw new IllegalArgumentException("가져올 카드 이용내역이 없습니다.");
             if (rows.size() > MAX_ROWS) throw new IllegalArgumentException("한 번에 최대 1,000건까지 확인할 수 있습니다.");
+            if (member != null) rows = markDuplicates(company, rows, member);
             return new CardImportPreview(UUID.randomUUID().toString(), company,
-                    safeFilename(file.getOriginalFilename()), List.copyOf(rows));
+                    safeFilename(file.getOriginalFilename()), List.copyOf(rows),
+                    parser.previewNotice(workbook, billingMonth), member == null ? null : member.getMemberId());
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (IOException | RuntimeException e) {
@@ -100,9 +117,12 @@ public class CardSpendingImportService {
         }
     }
 
+    @Transactional
     public ImportResult confirm(CardImportPreview preview, List<Integer> selectedRows,
             Map<Integer, String> categoryByIndex, Member member) {
         if (preview == null) throw new IllegalArgumentException("미리보기 정보가 만료되었습니다. 파일을 다시 선택해 주세요.");
+        if (!Objects.equals(preview.memberId(), member.getMemberId()))
+            throw new IllegalArgumentException("본인의 미리보기만 등록할 수 있습니다. 파일을 다시 선택해 주세요.");
         if (selectedRows == null || selectedRows.isEmpty()) throw new IllegalArgumentException("등록할 내역을 선택해 주세요.");
         List<MasterCodeDto> activeCategories = masterCodeService.getActiveCodesByGroup("SPENDING_CAT");
         if (activeCategories.isEmpty()) throw new IllegalStateException("사용 가능한 지출 카테고리가 없습니다.");
@@ -110,12 +130,16 @@ public class CardSpendingImportService {
         for (MasterCodeDto code : activeCategories) categories.add(code.getCodeId());
 
         Set<Integer> uniqueIndexes = new HashSet<>(selectedRows);
+        var currentMatches = SpendingDuplicateSupport.index(existing(preview.rows(), member));
         Set<String> merchantsForPrediction = new java.util.LinkedHashSet<>();
         for (Integer index : uniqueIndexes) {
             if (index == null || index < 0 || index >= preview.rows().size())
                 throw new IllegalArgumentException("선택한 업로드 행이 올바르지 않습니다.");
             CardSpendingImportRow row = preview.rows().get(index);
             if (!row.importable()) throw new IllegalArgumentException(row.sourceRow() + "행은 등록할 수 없는 거래입니다.");
+            if (!row.duplicateCandidate() && currentMatches.containsKey(
+                    SpendingDuplicateSupport.key(row.spendingDate(), row.amount(), row.merchantName())))
+                throw new IllegalArgumentException("미리보기 이후 같은 내역이 등록됐습니다. 파일을 다시 올려 중복 후보를 확인해 주세요.");
             String category = categoryByIndex.get(index);
             if (category == null || category.isBlank()) merchantsForPrediction.add(row.merchantName());
             else if (!categories.contains(category))
@@ -149,10 +173,40 @@ public class CardSpendingImportService {
         }
         try {
             repository.saveAll(entities);
+            repository.flush();
         } catch (DataIntegrityViolationException e) {
             throw new IllegalArgumentException("이미 등록된 카드 이용내역이 포함되어 있습니다.", e);
         }
         return new ImportResult(entities.size(), duplicates);
+    }
+
+    private List<DailySpending> existing(List<CardSpendingImportRow> rows, Member member) {
+        LocalDate start = rows.stream().map(CardSpendingImportRow::spendingDate).min(LocalDate::compareTo).orElseThrow();
+        LocalDate end = rows.stream().map(CardSpendingImportRow::spendingDate).max(LocalDate::compareTo).orElseThrow();
+        return repository.findByMemberMemberIdAndSpendingDateBetween(member.getMemberId(), start, end);
+    }
+
+    private List<CardSpendingImportRow> markDuplicates(CardCompany company, List<CardSpendingImportRow> rows, Member member) {
+        var existing = existing(rows, member);
+        var index = SpendingDuplicateSupport.index(existing);
+        Set<String> importedKeys = new HashSet<>();
+        for (DailySpending row : existing) {
+            if (company.name().equals(row.getImportSource())) importedKeys.add(row.getImportTransactionKey());
+        }
+        Set<SpendingDuplicateSupport.Key> seen = new HashSet<>();
+        for (DailySpending imported : repository.findByMemberMemberIdAndImportSourceAndImportTransactionKeyIn(
+                member.getMemberId(), company.name(), rows.stream().map(row -> row.transactionKey()).toList()))
+            importedKeys.add(imported.getImportTransactionKey());
+        List<CardSpendingImportRow> result = new ArrayList<>();
+        for (CardSpendingImportRow row : rows) {
+            var key = SpendingDuplicateSupport.key(row.spendingDate(), row.amount(), row.merchantName());
+            boolean repeated = row.importable() && !seen.add(key);
+            result.add(new CardSpendingImportRow(row.sourceRow(), row.spendingDate(), row.merchantName(), row.amount(),
+                    row.transactionKey(), row.errorMessage(), row.sourceSheet(),
+                    SpendingDuplicateSupport.matches(index.getOrDefault(key, List.of())), repeated,
+                    importedKeys.contains(row.transactionKey())));
+        }
+        return List.copyOf(result);
     }
 
     private void validateFile(MultipartFile file) {

@@ -8,6 +8,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.UUID;
+import java.util.Objects;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import org.springframework.dao.DataIntegrityViolationException;
+import com.deveopsj.spending.dto.SpendingExcelImportPreview;
+import com.deveopsj.spending.dto.SpendingExcelImportRow;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -40,9 +49,110 @@ public class SpendingExcelImportService {
 
     @Transactional
     public int importFile(MultipartFile file, Member member) {
+        var preview = preview(file, member, null);
+        if (preview.rows().stream().anyMatch(row -> row.duplicateCandidate() || row.alreadyImported())) {
+            throw new IllegalArgumentException("중복 후보가 있습니다. 엑셀 미리보기에서 등록할 행을 확인해 주세요.");
+        }
+        return confirm(preview, java.util.stream.IntStream.range(0, preview.rows().size()).boxed().toList(), member);
+    }
+
+    @Transactional(readOnly = true)
+    public SpendingExcelImportPreview preview(MultipartFile file, Member member, String month) {
+        List<ParsedRow> parsed = parseFile(file, member);
+        List<DailySpending> existing = existing(member, parsed.stream().map(row -> row.entity().getSpendingDate()).toList());
+        var index = SpendingDuplicateSupport.index(existing);
+        Set<String> importedKeys = new HashSet<>();
+        for (DailySpending row : existing) {
+            if ("EXCEL".equals(row.getImportSource())) importedKeys.add(row.getImportTransactionKey());
+        }
+        String fileHash = fileHash(file);
+        List<String> fileKeys = parsed.stream().map(row -> importKey(row, fileHash)).toList();
+        for (DailySpending imported : dailySpendingRepository.findByMemberMemberIdAndImportSourceAndImportTransactionKeyIn(
+                member.getMemberId(), "EXCEL", fileKeys)) importedKeys.add(imported.getImportTransactionKey());
+        Set<SpendingDuplicateSupport.Key> seen = new HashSet<>();
+        List<SpendingExcelImportRow> rows = new ArrayList<>();
+        for (ParsedRow parsedRow : parsed) {
+            DailySpending row = parsedRow.entity();
+            var key = SpendingDuplicateSupport.key(row.getSpendingDate(), row.getAmount(), row.getMemo());
+            String importKey = importKey(parsedRow, fileHash);
+            rows.add(new SpendingExcelImportRow(parsedRow.sourceRow(), row.getSpendingDate(), row.getCategoryCode(),
+                    row.getAmount(), row.getMemo(), importKey,
+                    SpendingDuplicateSupport.matches(index.getOrDefault(key, List.of())), !seen.add(key),
+                    importedKeys.contains(importKey)));
+        }
+        return new SpendingExcelImportPreview(UUID.randomUUID().toString(), member.getMemberId(),
+                file.getOriginalFilename(), month, List.copyOf(rows));
+    }
+
+    @Transactional
+    public int confirm(SpendingExcelImportPreview preview, List<Integer> selectedRows, Member member) {
+        if (preview == null || !Objects.equals(preview.memberId(), member.getMemberId())) {
+            throw new IllegalArgumentException("미리보기 정보가 만료되었습니다. 파일을 다시 선택해 주세요.");
+        }
+        if (selectedRows == null || selectedRows.isEmpty()) throw new IllegalArgumentException("등록할 행을 선택해 주세요.");
+        Set<Integer> indexes = new java.util.LinkedHashSet<>(selectedRows);
+        for (Integer index : indexes) {
+            if (index == null || index < 0 || index >= preview.rows().size())
+                throw new IllegalArgumentException("선택한 행이 올바르지 않습니다.");
+        }
+        var categories = categoryLookup();
+        var selected = indexes.stream().map(index -> preview.rows().get(index)).toList();
+        var existing = existing(member, selected.stream().map(row -> row.spendingDate()).toList());
+        var duplicates = SpendingDuplicateSupport.index(existing);
+        Set<String> importedKeys = new HashSet<>();
+        for (DailySpending row : existing) {
+            if ("EXCEL".equals(row.getImportSource())) importedKeys.add(row.getImportTransactionKey());
+        }
+        for (DailySpending imported : dailySpendingRepository.findByMemberMemberIdAndImportSourceAndImportTransactionKeyIn(
+                member.getMemberId(), "EXCEL", selected.stream().map(row -> row.transactionKey()).toList()))
+            importedKeys.add(imported.getImportTransactionKey());
+        List<DailySpending> entities = new ArrayList<>();
+        for (var row : selected) {
+            if (row.alreadyImported() || importedKeys.contains(row.transactionKey()))
+                throw new IllegalArgumentException(row.sourceRow() + "행은 이미 등록한 엑셀 내역입니다. 미리보기를 다시 확인해 주세요.");
+            var key = SpendingDuplicateSupport.key(row.spendingDate(), row.amount(), row.memo());
+            if (!row.duplicateCandidate() && duplicates.containsKey(key))
+                throw new IllegalArgumentException("미리보기 이후 같은 내역이 등록됐습니다. 파일을 다시 올려 중복 후보를 확인해 주세요.");
+            if (!categories.containsKey(row.categoryCode()))
+                throw new IllegalArgumentException(row.sourceRow() + "행의 카테고리는 더 이상 사용할 수 없습니다.");
+            entities.add(DailySpending.builder().member(member).spendingDate(row.spendingDate())
+                    .categoryCode(row.categoryCode()).amount(row.amount()).memo(row.memo())
+                    .importSource("EXCEL").importTransactionKey(row.transactionKey()).build());
+        }
+        try {
+            dailySpendingRepository.saveAll(entities);
+            dailySpendingRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("이미 등록한 엑셀 내역이 있습니다. 파일을 다시 올려 확인해 주세요.", e);
+        }
+        return entities.size();
+    }
+
+    private List<DailySpending> existing(Member member, List<LocalDate> dates) {
+        LocalDate start = dates.stream().min(LocalDate::compareTo).orElseThrow();
+        LocalDate end = dates.stream().max(LocalDate::compareTo).orElseThrow();
+        return dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(member.getMemberId(), start, end);
+    }
+
+    private String fileHash(MultipartFile file) {
+        try {
+            return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(file.getBytes()));
+        } catch (IOException | NoSuchAlgorithmException e) {
+            throw new IllegalArgumentException("파일 식별값을 생성하지 못했습니다.", e);
+        }
+    }
+
+    private String importKey(ParsedRow row, String fileHash) {
+        return CardStatementParserSupport.transactionKey("EXCEL", fileHash + ":" + row.sourceRow(),
+                row.entity().getSpendingDate().toString(), row.entity().getAmount(), row.entity().getMemo());
+    }
+
+    private record ParsedRow(int sourceRow, DailySpending entity) {}
+
+    private List<ParsedRow> parseFile(MultipartFile file, Member member) {
         validateFile(file);
         Map<String, String> categories = categoryLookup();
-        List<DailySpending> spendings = new ArrayList<>();
+        List<ParsedRow> spendings = new ArrayList<>();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(file.getInputStream())) {
             if (workbook.getNumberOfSheets() == 0) {
@@ -56,7 +166,7 @@ public class SpendingExcelImportService {
             for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
                 if (isEmpty(row)) continue;
-                spendings.add(parseRow(row, rowIndex + 1, categories, member));
+                spendings.add(new ParsedRow(rowIndex + 1, parseRow(row, rowIndex + 1, categories, member)));
             }
         } catch (IllegalArgumentException e) {
             throw e;
@@ -67,8 +177,7 @@ public class SpendingExcelImportService {
         if (spendings.isEmpty()) {
             throw new IllegalArgumentException("등록할 지출 내역이 없습니다.");
         }
-        dailySpendingRepository.saveAll(spendings);
-        return spendings.size();
+        return spendings;
     }
 
     private DailySpending parseRow(Row row, int displayRow, Map<String, String> categories, Member member) {

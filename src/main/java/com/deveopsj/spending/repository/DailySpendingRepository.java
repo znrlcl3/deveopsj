@@ -3,6 +3,7 @@ package com.deveopsj.spending.repository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -29,4 +30,7 @@ public interface DailySpendingRepository extends JpaRepository<DailySpending, Lo
 
     boolean existsByMemberMemberIdAndImportSourceAndImportTransactionKey(
             Long memberId, String importSource, String importTransactionKey);
+
+    List<DailySpending> findByMemberMemberIdAndImportSourceAndImportTransactionKeyIn(
+            Long memberId, String importSource, Collection<String> transactionKeys);
 }

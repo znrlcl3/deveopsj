@@ -69,11 +69,12 @@
                                 </div>
                                 <div class="alert alert-warning small mt-3 mb-0">
                                     한 행이라도 잘못되면 전체 등록이 취소됩니다. 고정지출 열은 참고용이며 업로드 내역은 일반 지출로 등록됩니다.
+                                    날짜·금액·메모가 같은 내역은 중복 후보로 표시하며, 미리보기에서 등록할 행을 선택합니다.
                                 </div>
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                                <button type="submit" class="btn btn-primary">일괄 등록</button>
+                                <button type="submit" class="btn btn-primary">중복 확인 및 미리보기</button>
                             </div>
                         </form>
                     </div>
@@ -103,6 +104,10 @@
                                 <input id="cardExcelPassword" type="password" name="filePassword" class="form-control"
                                        maxlength="100" autocomplete="new-password">
                                 <div class="form-text">입력한 비밀번호는 파일을 여는 데만 사용하며 저장하지 않습니다.</div>
+                                <label class="form-label mt-3" for="cardBillingMonth">삼성카드 청구월</label>
+                                <input id="cardBillingMonth" type="month" name="billingMonth" class="form-control"
+                                       th:value="${selectedMonth}">
+                                <div class="form-text">삼성 청구명세서의 할부는 원금과 이자/수수료를 합쳐 청구월 1일의 지출로 등록합니다. 실제 청구월을 확인해 주세요. 일시불은 이용일로 등록합니다.</div>
                                 <div class="form-text mt-3">현재 신한카드, 삼성카드, 카카오뱅크 XLSX 양식을 지원합니다.</div>
                                 <div class="alert alert-warning small mt-3 mb-0">
                                     양식이 일치하지 않으면 저장하지 않고 오류를 표시합니다. 저장 전 미리보기에서 카테고리를 지정할 수 있습니다.
@@ -188,12 +193,13 @@
                             <th>카테고리</th>
                             <th class="text-end">금액</th>
                             <th>메모</th>
+                            <th>등록 일시</th>
                             <th class="text-end">관리</th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr th:if="${#lists.isEmpty(spendings)}">
-                            <td colspan="5" class="text-center text-muted py-5">해당 월의 지출 내역이 없습니다.</td>
+                            <td colspan="6" class="text-center text-muted py-5">해당 월의 지출 내역이 없습니다.</td>
                         </tr>
                         <tr th:each="spending : ${spendings}">
                             <td th:text="${spending.spendingDate}"></td>
@@ -201,6 +207,8 @@
                             <td class="text-end"
                                 th:text="${#numbers.formatInteger(spending.amount, 0, 'COMMA')} + '원'"></td>
                             <td th:text="${spending.memo}"></td>
+                            <td class="text-muted small text-nowrap"
+                                th:text="${spending.createDate != null ? #temporals.format(spending.createDate, 'yyyy-MM-dd HH:mm') : '-'}"></td>
                             <td>
                                 <div class="d-flex justify-content-end gap-2">
                                     <button type="button" class="btn btn-sm btn-outline-primary"

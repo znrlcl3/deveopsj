@@ -23,6 +23,11 @@ public class DashboardSummary {
     private Map<String, Long> spendingByCategory; 
     private Double investmentProgress; 
     private List<PlanProgressDto> planProgressList;
+    private List<RecentSpending> recentSpendings;
+    private int spendingCount;
+
+    public record RecentSpending(java.time.LocalDate spendingDate, String categoryName,
+            Long amount, String memo, java.time.LocalDateTime createDate) {}
 
     @Builder @Getter
     public static class PlanProgressDto {
