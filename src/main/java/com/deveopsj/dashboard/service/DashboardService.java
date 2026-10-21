@@ -108,6 +108,8 @@ public class DashboardService {
         // 2. 이번 달 지출 내역 계산
         var spendings = dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(memberId, start, end);
         Long totalSpend = spendings.stream().mapToLong(s -> s.getAmount()).sum();
+        long fixedExpenseAmount = spendings.stream().filter(s -> s.isFixedExpense())
+                .mapToLong(s -> s.getAmount()).sum();
         Long totalIncomeValue = incomeRepository.getTotalIncome(memberId, start, end);
         long totalIncome = totalIncomeValue != null ? totalIncomeValue : 0;
         
@@ -150,6 +152,8 @@ public class DashboardService {
                 .valuedPlanCount(valuedPlanCount)
                 .totalIncome(totalIncome)
                 .totalSpending(totalSpend)
+                .consumptionAmount(totalSpend - fixedExpenseAmount)
+                .fixedExpenseAmount(fixedExpenseAmount)
                 .availableCash(availableCash)
                 .savingsRate(savingsRate)
                 .spendingByCategory(sortedCategories)

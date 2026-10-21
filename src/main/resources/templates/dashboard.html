@@ -67,6 +67,11 @@
             </div></div></div>
             <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body">
                 <div class="section-label mb-2">지출</div><div class="metric-value" th:text="${#numbers.formatInteger(summary.totalSpending, 0, 'COMMA')} + '원'"></div>
+                <dl class="small border-top pt-2 mt-2 mb-2">
+                    <div class="d-flex flex-wrap justify-content-between gap-1"><dt class="fw-normal">소비지출</dt><dd class="mb-1 fw-bold text-primary" th:text="${#numbers.formatInteger(summary.consumptionAmount, 0, 'COMMA')} + '원'"></dd></div>
+                    <div class="d-flex flex-wrap justify-content-between gap-1"><dt class="fw-normal">고정지출</dt><dd class="mb-0 fw-bold" th:text="${#numbers.formatInteger(summary.fixedExpenseAmount, 0, 'COMMA')} + '원'"></dd></div>
+                </dl>
+                <div class="small text-muted mb-2">확정된 금액 기준 · 카드 할부는 소비지출</div>
                 <a th:href="@{/spending/list(month=${selectedMonth})}" class="small">지출 내역 보기</a>
             </div></div></div>
             <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body">

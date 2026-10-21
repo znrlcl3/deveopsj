@@ -42,6 +42,7 @@ class DashboardViewRenderingTest {
         assertThat(html).contains("이번 달 소비 분석하기", "확인할 지출", "다음 달 실천 하나")
                 .doesNotContain("analysis-radio", "선택한 분석 시작");
         assertThat(html.split("id=\"btnAnalyze\"", -1)).hasSize(2);
+        assertThat(html).contains("소비지출</dt>", "고정지출</dt>", ">8,000원</dd>", ">4,000원</dd>");
         verify(service).getMonthlySummary(7L, YearMonth.of(2024, 2));
         String previewPath = System.getProperty("dashboard.preview.path");
         if (previewPath != null) {
@@ -55,6 +56,7 @@ class DashboardViewRenderingTest {
         var html = mvc.perform(get("/dashboard/view").with(user(principal())))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(html).contains("첫 지출 기록하기", "아직 이 달의 지출 기록이 없어요");
+        assertThat(html).contains("소비지출</dt>", "고정지출</dt>", ">0원</dd>");
     }
 
     @Test
@@ -65,6 +67,7 @@ class DashboardViewRenderingTest {
 
     private DashboardSummary summary(List<DashboardSummary.RecentSpending> rows) {
         return DashboardSummary.builder().totalIncome(30000L).totalSpending(rows.isEmpty() ? 0L : 12000L)
+                .consumptionAmount(rows.isEmpty() ? 0L : 8000L).fixedExpenseAmount(rows.isEmpty() ? 0L : 4000L)
                 .totalInvestment(0L).totalInvestmentTarget(0L).extraInvestment(0L).availableCash(18000L)
                 .savingsRate(0.0).investmentProgress(0.0).planProgressList(List.of())
                 .spendingCount(rows.size()).recentSpendings(rows)

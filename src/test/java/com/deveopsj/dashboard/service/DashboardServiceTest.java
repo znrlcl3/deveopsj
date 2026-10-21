@@ -35,6 +35,27 @@ import com.deveopsj.spending.repository.DailySpendingRepository;
 class DashboardServiceTest {
 
     @Test
+    void 선택월의_실제지출을_소비와_고정으로_나누고_할부는_소비에_포함한다() {
+        var month = java.time.YearMonth.of(2024, 2);
+        var rule = new com.deveopsj.spending.entity.RecurringExpense();
+        rule.setAmount(999_999L);
+        when(assetPlanRepository.findByMemberMemberId(7L)).thenReturn(List.of());
+        when(masterCodeService.getAllActiveCodesGrouped()).thenReturn(Map.of());
+        when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(
+                7L, month.atDay(1), month.atEndOfMonth())).thenReturn(List.of(
+                        DailySpending.builder().categoryCode("FOOD").amount(10_000L).build(),
+                        DailySpending.builder().categoryCode("FOOD").amount(20_000L).recurringExpense(rule).build(),
+                        DailySpending.builder().categoryCode("FOOD").amount(30_000L).recurringExpense(rule)
+                                .importSource("CARD_INSTALLMENT").build()));
+
+        var summary = dashboardService.getMonthlySummary(7L, month);
+        assertThat(summary.getTotalSpending()).isEqualTo(60_000L);
+        assertThat(summary.getConsumptionAmount()).isEqualTo(40_000L);
+        assertThat(summary.getFixedExpenseAmount()).isEqualTo(20_000L);
+        assertThat(summary.getAvailableCash()).isEqualTo(-60_000L);
+    }
+
+    @Test
     void selectedLeapMonthSortsCategoriesAndLimitsRecentRowsWithinMember() {
         var month = java.time.YearMonth.of(2024, 2);
         var start = month.atDay(1);

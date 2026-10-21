@@ -41,12 +41,14 @@ class MonthlyCashFlowServiceTest {
 
     @Mock
     private AssetTradeRepository assetTradeRepository;
+    @Mock
+    private com.deveopsj.spending.service.RecurringExpenseService recurringExpenseService;
 
     @Test
     void 수입부터_납입과_증권계좌매매까지_월간흐름을_계산한다() {
         MonthlyCashFlowService service = new MonthlyCashFlowService(
                 incomeRepository, dailySpendingRepository,
-                assetSavingsRepository, assetTradeRepository);
+                assetSavingsRepository, assetTradeRepository, recurringExpenseService);
         Member member = member(7L);
         YearMonth month = YearMonth.of(2026, 7);
         LocalDate start = LocalDate.of(2026, 7, 1);
@@ -55,8 +57,19 @@ class MonthlyCashFlowServiceTest {
         AssetPlan pension = plan(12L, "연금저축", "SAVINGS");
 
         when(incomeRepository.getTotalIncome(7L, start, end)).thenReturn(3_000_000L);
-        when(dailySpendingRepository.getTotalSpending(7L, start, end))
-                .thenReturn(1_000_000L);
+        var fixedRule = com.deveopsj.spending.entity.RecurringExpense.builder().amount(200_000L).build();
+        var installmentRule = com.deveopsj.spending.entity.RecurringExpense.builder()
+                .amount(50_000L).cardInstallmentKey("installment").build();
+        when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(7L, start, end))
+                .thenReturn(List.of(
+                        com.deveopsj.spending.entity.DailySpending.builder().amount(600_000L).build(),
+                        com.deveopsj.spending.entity.DailySpending.builder().amount(300_000L).recurringExpense(fixedRule).build(),
+                        com.deveopsj.spending.entity.DailySpending.builder().amount(100_000L).recurringExpense(installmentRule)
+                                .importSource("CARD_INSTALLMENT").build()));
+        when(recurringExpenseService.getOccurrences(member, month)).thenReturn(List.of(
+                new com.deveopsj.spending.dto.RecurringExpenseOccurrence(fixedRule, start, false),
+                new com.deveopsj.spending.dto.RecurringExpenseOccurrence(installmentRule, start, false),
+                new com.deveopsj.spending.dto.RecurringExpenseOccurrence(fixedRule, start, true)));
         AssetSavings juneIsaSaving = saving(isa, DepositType.PLAN, 500_000L);
         juneIsaSaving.setDepositDate(LocalDate.of(2026, 6, 10));
         when(assetSavingsRepository.findAllByMemberIdAndDepositDateLessThanEqual(7L, end))
@@ -81,6 +94,11 @@ class MonthlyCashFlowServiceTest {
         assertThat(summary.totalSpendingKrw()).isEqualTo(1_000_000L);
         assertThat(summary.totalDepositKrw()).isEqualTo(1_500_000L);
         assertThat(summary.remainingCashKrw()).isEqualTo(500_000L);
+        assertThat(summary.consumptionKrw()).isEqualTo(700_000L);
+        assertThat(summary.fixedExpenseKrw()).isEqualTo(300_000L);
+        assertThat(summary.otherDepositKrw()).isEqualTo(400_000L);
+        assertThat(summary.scheduledTotalKrw()).isEqualTo(250_000L);
+        assertThat(summary.afterScheduledCashKrw()).isEqualTo(250_000L);
         assertThat(summary.securitiesDepositKrw()).isEqualTo(1_100_000L);
         assertThat(summary.totalBuyKrw()).isEqualTo(1_000_000L);
         assertThat(summary.totalSellKrw()).isEqualTo(100_000L);

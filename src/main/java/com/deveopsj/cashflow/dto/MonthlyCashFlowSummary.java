@@ -15,5 +15,21 @@ public record MonthlyCashFlowSummary(
         long netPurchaseKrw,
         long uninvestedSecuritiesCashKrw,
         long estimatedSecuritiesAccountCashKrw,
-        List<PlanCashFlow> planFlows) {
+        List<PlanCashFlow> planFlows,
+        long consumptionKrw,
+        long fixedExpenseKrw,
+        long scheduledFixedKrw,
+        long scheduledInstallmentKrw) {
+
+    public long otherDepositKrw() {
+        return Math.subtractExact(totalDepositKrw, securitiesDepositKrw);
+    }
+
+    public long scheduledTotalKrw() {
+        return Math.addExact(scheduledFixedKrw, scheduledInstallmentKrw);
+    }
+
+    public long afterScheduledCashKrw() {
+        return Math.subtractExact(remainingCashKrw, scheduledTotalKrw());
+    }
 }

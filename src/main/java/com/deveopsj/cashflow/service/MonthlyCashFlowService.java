@@ -35,6 +35,7 @@ public class MonthlyCashFlowService {
     private final DailySpendingRepository dailySpendingRepository;
     private final AssetSavingsRepository assetSavingsRepository;
     private final AssetTradeRepository assetTradeRepository;
+    private final com.deveopsj.spending.service.RecurringExpenseService recurringExpenseService;
 
     public MonthlyCashFlowSummary getMonthlyCashFlow(Member member, YearMonth month) {
         var startDate = month.atDay(1);
@@ -43,8 +44,16 @@ public class MonthlyCashFlowService {
 
         long income = valueOrZero(
                 incomeRepository.getTotalIncome(memberId, startDate, endDate));
-        long spending = valueOrZero(
-                dailySpendingRepository.getTotalSpending(memberId, startDate, endDate));
+        var spendings = dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(memberId, startDate, endDate);
+        long spending = spendings.stream().mapToLong(s -> s.getAmount()).reduce(0L, Math::addExact);
+        long fixed = spendings.stream().filter(s -> s.isFixedExpense())
+                .mapToLong(s -> s.getAmount()).reduce(0L, Math::addExact);
+        var pending = recurringExpenseService.getOccurrences(member, month).stream()
+                .filter(o -> !o.confirmed()).toList();
+        long scheduledFixed = pending.stream().filter(o -> o.rule().getCardInstallmentKey() == null)
+                .mapToLong(o -> o.rule().getAmount()).reduce(0L, Math::addExact);
+        long scheduledInstallment = pending.stream().filter(o -> o.rule().getCardInstallmentKey() != null)
+                .mapToLong(o -> o.rule().getAmount()).reduce(0L, Math::addExact);
         List<AssetSavings> savings = assetSavingsRepository
                 .findAllByMemberIdAndDepositDateLessThanEqual(memberId, endDate);
         List<AssetTrade> trades = assetTradeRepository
@@ -122,7 +131,8 @@ public class MonthlyCashFlowService {
                 month, income, spending, totalDeposit, remainingCash,
                 securitiesDeposit, totalBuy, totalSell, netPurchase,
                 uninvestedSecuritiesCash, estimatedSecuritiesAccountCash,
-                List.copyOf(planFlows));
+                List.copyOf(planFlows), Math.subtractExact(spending, fixed), fixed,
+                scheduledFixed, scheduledInstallment);
     }
 
     private boolean isSecuritiesPlan(String assetType) {

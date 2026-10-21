@@ -18,6 +18,8 @@ public class DashboardSummary {
     private int valuedPlanCount;
     private Long totalIncome;
     private Long totalSpending;
+    private long consumptionAmount;
+    private long fixedExpenseAmount;
     private Long availableCash;
     private Double savingsRate;
     private Map<String, Long> spendingByCategory; 

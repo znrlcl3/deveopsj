@@ -253,7 +253,7 @@ class CsrfProtectionTest {
                 .thenReturn(new MonthlyCashFlowSummary(
                         month, 3_000_000L, 1_000_000L, 1_400_000L, 600_000L,
                         1_100_000L, 1_000_000L, 100_000L, 900_000L, 200_000L, 300_000L,
-                        java.util.List.of()));
+                        java.util.List.of(), 700_000L, 300_000L, 0L, 0L));
 
         mockMvc.perform(get("/cashflow")
                         .with(user(new CustomUserDetails(member)))
@@ -262,7 +262,7 @@ class CsrfProtectionTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "월간 자금 흐름")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "미배분 현금")))
+                        "이번 달 기록상 잔액")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "누적 계좌 현금 추정액")));
 
