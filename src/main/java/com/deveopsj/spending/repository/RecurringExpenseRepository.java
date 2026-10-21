@@ -12,4 +12,6 @@ public interface RecurringExpenseRepository extends JpaRepository<RecurringExpen
     List<RecurringExpense> findByMemberMemberIdOrderByActiveDescPaymentDayAscNameAsc(Long memberId);
 
     Optional<RecurringExpense> findByIdAndMemberMemberId(Long id, Long memberId);
+
+    boolean existsByMemberMemberIdAndCardInstallmentKey(Long memberId, String cardInstallmentKey);
 }

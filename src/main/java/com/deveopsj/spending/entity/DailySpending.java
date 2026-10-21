@@ -61,4 +61,8 @@ public class DailySpending extends BaseEntity {
 
     @Column(name = "import_transaction_key", length = 64)
     private String importTransactionKey;
+
+    public boolean isFixedExpense() {
+        return recurringExpense != null && !"CARD_INSTALLMENT".equals(importSource);
+    }
 }

@@ -56,11 +56,16 @@ class SpendingImportViewTest {
                 .categoryCode("FOOD").amount(10000L).memo("점심").build();
         first.setCreateDate(created);
         var legacy = DailySpending.builder().id(2L).spendingDate(LocalDate.of(2026, 8, 29))
-                .categoryCode("FOOD").amount(10000L).memo("기존 내역").build();
+                .categoryCode("FOOD").amount(30000L).memo("기존 내역")
+                .recurringExpense(new com.deveopsj.spending.entity.RecurringExpense()).build();
         when(spendingService.getSpendings(any(), any(), any())).thenReturn(List.of(first, legacy));
         when(recurringExpenseService.getOccurrences(any(), any())).thenReturn(List.of());
         mvc.perform(get("/spending/list").param("month", "2026-08").with(user(principal())))
                 .andExpect(status().isOk()).andExpect(content().string(containsString("등록 일시")))
+                .andExpect(model().attribute("consumptionAmount", 10000L))
+                .andExpect(model().attribute("fixedExpenseAmount", 30000L))
+                .andExpect(content().string(containsString(">소비지출</span>")))
+                .andExpect(content().string(containsString(">고정지출</span>")))
                 .andExpect(content().string(containsString("2026-08-30 10:20")));
     }
 
@@ -119,6 +124,24 @@ class SpendingImportViewTest {
         member.setName("테스트");
         member.setRole("USER");
         return new CustomUserDetails(member);
+    }
+
+    @Test
+    void installmentPreviewShowsTotalEveryRoundAndExplicitReviewWithoutDefaultSelection() throws Exception {
+        var plan = new CardInstallmentPlan(100000, 3, LocalDate.of(2024, 1, 31));
+        var row = new CardSpendingImportRow(2, LocalDate.of(2024, 1, 5), "<b>할부</b>", 100000,
+                "key", null, "국내", List.of(), false, false, plan);
+        var preview = new CardImportPreview("token", CardCompany.SAMSUNG, "synthetic.xlsx", List.of(row), "예상 원금", 7L);
+        when(cardService.preview(eq(CardCompany.SAMSUNG), any(), any(), any(), any())).thenReturn(preview);
+        var html = mvc.perform(multipart("/spending/card-import/preview")
+                .file(new MockMultipartFile("file", "synthetic.xlsx", null, new byte[] {1}))
+                .param("cardCompany", "SAMSUNG").with(user(principal())).with(csrf()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(html).contains("예상 원금", "수수료", "100,000원", "33,334원",
+                "2024-02-29", "reviewed_0", "firstPayment_0", "&lt;b&gt;할부&lt;/b&gt;");
+        var selected = java.util.regex.Pattern.compile("<input[^>]*name=\"selectedRows\"[^>]*>").matcher(html);
+        org.assertj.core.api.Assertions.assertThat(selected.find()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(selected.group()).doesNotContain("checked", "disabled");
     }
 }
 

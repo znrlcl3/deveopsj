@@ -32,6 +32,9 @@ import com.deveopsj.spending.dto.CardImportPreview;
 import com.deveopsj.spending.dto.CardSpendingImportRow;
 import com.deveopsj.spending.entity.DailySpending;
 import com.deveopsj.spending.repository.DailySpendingRepository;
+import com.deveopsj.spending.repository.RecurringExpenseRepository;
+import com.deveopsj.spending.entity.RecurringExpense;
+import com.deveopsj.spending.dto.CardInstallmentConfirmation;
 
 @Service
 public class CardSpendingImportService {
@@ -41,15 +44,24 @@ public class CardSpendingImportService {
     private final DailySpendingRepository repository;
     private final MasterCodeService masterCodeService;
     private final SpendingCategoryPredictionService categoryPredictionService;
+    private final RecurringExpenseRepository recurringRepository;
     private final Map<CardCompany, CardStatementParser> parsers = new EnumMap<>(CardCompany.class);
 
     public CardSpendingImportService(DailySpendingRepository repository,
             MasterCodeService masterCodeService,
             SpendingCategoryPredictionService categoryPredictionService,
             List<CardStatementParser> parserList) {
+        this(repository, masterCodeService, categoryPredictionService, parserList, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public CardSpendingImportService(DailySpendingRepository repository,
+            MasterCodeService masterCodeService, SpendingCategoryPredictionService categoryPredictionService,
+            List<CardStatementParser> parserList, RecurringExpenseRepository recurringRepository) {
         this.repository = repository;
         this.masterCodeService = masterCodeService;
         this.categoryPredictionService = categoryPredictionService;
+        this.recurringRepository = recurringRepository;
         for (CardStatementParser parser : parserList) parsers.put(parser.cardCompany(), parser);
     }
 
@@ -120,6 +132,12 @@ public class CardSpendingImportService {
     @Transactional
     public ImportResult confirm(CardImportPreview preview, List<Integer> selectedRows,
             Map<Integer, String> categoryByIndex, Member member) {
+        return confirm(preview, selectedRows, categoryByIndex, Map.of(), member);
+    }
+
+    @Transactional
+    public ImportResult confirm(CardImportPreview preview, List<Integer> selectedRows,
+            Map<Integer, String> categoryByIndex, Map<Integer, CardInstallmentConfirmation> installments, Member member) {
         if (preview == null) throw new IllegalArgumentException("미리보기 정보가 만료되었습니다. 파일을 다시 선택해 주세요.");
         if (!Objects.equals(preview.memberId(), member.getMemberId()))
             throw new IllegalArgumentException("본인의 미리보기만 등록할 수 있습니다. 파일을 다시 선택해 주세요.");
@@ -132,11 +150,23 @@ public class CardSpendingImportService {
         Set<Integer> uniqueIndexes = new HashSet<>(selectedRows);
         var currentMatches = SpendingDuplicateSupport.index(existing(preview.rows(), member));
         Set<String> merchantsForPrediction = new java.util.LinkedHashSet<>();
+        int scheduledCount = 0;
         for (Integer index : uniqueIndexes) {
             if (index == null || index < 0 || index >= preview.rows().size())
                 throw new IllegalArgumentException("선택한 업로드 행이 올바르지 않습니다.");
             CardSpendingImportRow row = preview.rows().get(index);
             if (!row.importable()) throw new IllegalArgumentException(row.sourceRow() + "행은 등록할 수 없는 거래입니다.");
+            if (row.installment() != null) {
+                var choice = installments.get(index);
+                if (choice == null || !choice.reviewed() || choice.firstPaymentDate() == null)
+                    throw new IllegalArgumentException(row.sourceRow() + "행: 첫 청구일과 예상액 확인 체크가 필요합니다.");
+                if (choice.firstPaymentDate().isBefore(row.spendingDate()))
+                    throw new IllegalArgumentException("첫 청구일은 승인일보다 빠를 수 없습니다.");
+                row.installment().payments(choice.firstPaymentDate());
+                scheduledCount = Math.addExact(scheduledCount, row.installment().months());
+                if (scheduledCount > MAX_ROWS) throw new IllegalArgumentException("예정 회차는 한 번에 최대 1,000건까지 생성할 수 있습니다.");
+                if (recurringRepository == null) throw new IllegalStateException("할부 예정 저장소가 설정되지 않았습니다.");
+            }
             if (!row.duplicateCandidate() && currentMatches.containsKey(
                     SpendingDuplicateSupport.key(row.spendingDate(), row.amount(), row.merchantName())))
                 throw new IllegalArgumentException("미리보기 이후 같은 내역이 등록됐습니다. 파일을 다시 올려 중복 후보를 확인해 주세요.");
@@ -149,16 +179,35 @@ public class CardSpendingImportService {
                 .predictByMerchant(merchantsForPrediction, activeCategories);
 
         List<DailySpending> entities = new ArrayList<>();
+        List<RecurringExpense> schedules = new ArrayList<>();
         int duplicates = 0;
         Set<String> transactionKeys = new HashSet<>();
         for (Integer index : uniqueIndexes) {
             CardSpendingImportRow row = preview.rows().get(index);
             String category = categoryByIndex.get(index);
             if (category == null || category.isBlank()) category = predictedCategories.get(row.merchantName());
+            if (!categories.contains(category)) throw new IllegalArgumentException("사용 가능한 지출 카테고리를 선택해 주세요.");
             if (!transactionKeys.add(row.transactionKey())
+                    || (row.installment() != null && recurringRepository.existsByMemberMemberIdAndCardInstallmentKey(
+                            member.getMemberId(), installmentKey(row.transactionKey(), 1)))
                     || repository.existsByMemberMemberIdAndImportSourceAndImportTransactionKey(
                     member.getMemberId(), preview.cardCompany().name(), row.transactionKey())) {
                 duplicates++;
+                continue;
+            }
+            if (row.installment() != null) {
+                LocalDate firstDate = installments.get(index).firstPaymentDate();
+                for (var payment : row.installment().payments(firstDate)) {
+                    String name = "[할부 예상 " + payment.round() + "/" + row.installment().months() + "] " + row.merchantName();
+                    schedules.add(RecurringExpense.builder().member(member)
+                            .name(name.substring(0, Math.min(name.length(), 100)))
+                            .categoryCode(category).amount(payment.amount()).paymentDay(firstDate.getDayOfMonth())
+                            .startDate(YearMonth.from(payment.date()).atDay(1))
+                            .endDate(YearMonth.from(payment.date()).atEndOfMonth()).active(true)
+                            .memo("승인일 " + row.spendingDate() + " · 총액 " + row.amount()
+                                    + "원 균등분할 예상 원금. 수수료·할인 미포함; 실제 청구액 확인 후 확정")
+                            .cardInstallmentKey(installmentKey(row.transactionKey(), payment.round())).build());
+                }
                 continue;
             }
             entities.add(DailySpending.builder()
@@ -174,10 +223,14 @@ public class CardSpendingImportService {
         try {
             repository.saveAll(entities);
             repository.flush();
+            if (!schedules.isEmpty()) {
+                recurringRepository.saveAll(schedules);
+                recurringRepository.flush();
+            }
         } catch (DataIntegrityViolationException e) {
             throw new IllegalArgumentException("이미 등록된 카드 이용내역이 포함되어 있습니다.", e);
         }
-        return new ImportResult(entities.size(), duplicates);
+        return new ImportResult(entities.size(), duplicates, schedules.size());
     }
 
     private List<DailySpending> existing(List<CardSpendingImportRow> rows, Member member) {
@@ -204,7 +257,9 @@ public class CardSpendingImportService {
             result.add(new CardSpendingImportRow(row.sourceRow(), row.spendingDate(), row.merchantName(), row.amount(),
                     row.transactionKey(), row.errorMessage(), row.sourceSheet(),
                     SpendingDuplicateSupport.matches(index.getOrDefault(key, List.of())), repeated,
-                    importedKeys.contains(row.transactionKey())));
+                    importedKeys.contains(row.transactionKey()) || (row.installment() != null && recurringRepository != null
+                            && recurringRepository.existsByMemberMemberIdAndCardInstallmentKey(member.getMemberId(),
+                                    installmentKey(row.transactionKey(), 1))), row.installment()));
         }
         return List.copyOf(result);
     }
@@ -222,5 +277,12 @@ public class CardSpendingImportService {
         return java.nio.file.Path.of(filename).getFileName().toString();
     }
 
-    public record ImportResult(int savedCount, int duplicateCount) {}
+    static String installmentKey(String transactionKey, int round) {
+        return CardStatementParserSupport.transactionKey("CARD_INSTALLMENT", transactionKey,
+                Integer.toString(round), 0, "");
+    }
+
+    public record ImportResult(int savedCount, int duplicateCount, int scheduledCount) {
+        public ImportResult(int savedCount, int duplicateCount) { this(savedCount, duplicateCount, 0); }
+    }
 }

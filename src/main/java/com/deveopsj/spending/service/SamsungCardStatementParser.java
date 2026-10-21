@@ -27,6 +27,16 @@ public class SamsungCardStatementParser implements CardStatementParser {
 
     @Override
     public List<CardSpendingImportRow> parse(Workbook workbook, YearMonth billingMonth) {
+        List<CardSpendingImportRow> usageRows = new ArrayList<>();
+        boolean usageFormat = false;
+        for (Sheet sheet : workbook) {
+            Row header = findUsageHeader(sheet);
+            if (header != null) {
+                usageFormat = true;
+                usageRows.addAll(parseUsage(sheet, header));
+            }
+        }
+        if (usageFormat) return usageRows;
         List<Sheet> statements = new ArrayList<>();
         for (Sheet sheet : workbook) {
             if (findStatementHeader(sheet) != null) statements.add(sheet);
@@ -47,6 +57,16 @@ public class SamsungCardStatementParser implements CardStatementParser {
     @Override
     public String previewNotice(Workbook workbook, YearMonth billingMonth) {
         for (Sheet sheet : workbook) {
+            if (findUsageHeader(sheet) != null) {
+                return "삼성카드 일시불+할부 카드이용내역조회: 상세 시트의 승인일자·승인금액으로 일시불을 등록합니다. "
+                        + "결제일과 선택한 청구월은 일시불 지출일에 사용하지 않습니다. "
+                        + "취소 거래는 등록하지 않으며 이미 저장된 지출을 자동으로 취소하지 않습니다. "
+                        + "할부는 승인총액을 개월 수로 나눈 예상 원금이며 수수료·할인은 포함하지 않습니다. "
+                        + "첫 청구일과 회차별 예상액을 확인하고 선택해야 예정 지출이 생성됩니다. 실제 지출은 월별 확정 시 반영됩니다. "
+                        + "이미 청구명세서로 등록한 할부는 다시 선택하지 마세요.";
+            }
+        }
+        for (Sheet sheet : workbook) {
             if (findStatementHeader(sheet) != null) {
                 return "삼성 청구명세서: 일시불은 이용일·이용금액으로 등록합니다. "
                         + (billingMonth == null ? "할부가 있으면 청구월을 선택해야 합니다. "
@@ -56,6 +76,92 @@ public class SamsungCardStatementParser implements CardStatementParser {
             }
         }
         return null;
+    }
+
+    private Row findUsageHeader(Sheet sheet) {
+        for (int i = 0; i <= Math.min(sheet.getLastRowNum(), 29); i++) {
+            Row row = sheet.getRow(i);
+            if (row == null) continue;
+            var headers = CardStatementParserSupport.headers(row);
+            if (headers.containsKey("승인일자") && headers.containsKey("승인금액(원)")) return row;
+        }
+        return null;
+    }
+
+    private List<CardSpendingImportRow> parseUsage(Sheet sheet, Row header) {
+        var h = CardStatementParserSupport.headers(header);
+        CardStatementParserSupport.requireHeaders(h, "삼성카드 카드이용내역조회", "카드번호", "승인일자",
+                "가맹점명", "승인금액(원)", "일시불할부구분", "할부개월", "승인번호", "취소여부");
+        List<CardSpendingImportRow> rows = new ArrayList<>();
+        java.util.Set<String> cancelled = new java.util.HashSet<>();
+        for (int i = header.getRowNum() + 1; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (!CardStatementParserSupport.text(row, h.get("승인일자")).isBlank()
+                    && isCancelled(CardStatementParserSupport.text(row, h.get("취소여부")))) {
+                cancelled.add(usageApprovalIdentity(row, h));
+            }
+        }
+        for (int i = header.getRowNum() + 1; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            String dateText = CardStatementParserSupport.text(row, h.get("승인일자"));
+            if (dateText.isBlank()) continue;
+            try {
+                LocalDate date = LocalDate.parse(dateText, DateTimeFormatter.ofPattern("uuuu.MM.dd")
+                        .withResolverStyle(java.time.format.ResolverStyle.STRICT));
+                String merchant = CardStatementParserSupport.text(row, h.get("가맹점명"));
+                String approval = CardStatementParserSupport.text(row, h.get("승인번호"));
+                String card = CardStatementParserSupport.text(row, h.get("카드번호"));
+                long amount = new BigDecimal(CardStatementParserSupport.text(row, h.get("승인금액(원)"))
+                        .replace(",", "")).longValueExact();
+                String product = CardStatementParserSupport.text(row, h.get("일시불할부구분"));
+                String months = CardStatementParserSupport.text(row, h.get("할부개월"));
+                com.deveopsj.spending.dto.CardInstallmentPlan installment = null;
+                String error = null;
+                if (isCancelled(CardStatementParserSupport.text(row, h.get("취소여부")))
+                        || cancelled.contains(usageApprovalIdentity(row, h)))
+                    error = "취소 또는 취소 이력이 있는 거래입니다. 기존 지출은 자동으로 삭제되지 않습니다.";
+                else if ("할부".equals(product)) {
+                    int count = new BigDecimal(months).intValueExact();
+                    LocalDate firstDate = null;
+                    String paymentDate = h.containsKey("결제일")
+                            ? CardStatementParserSupport.text(row, h.get("결제일")) : "";
+                    if (!paymentDate.isBlank()) {
+                        try { firstDate = LocalDate.parse(paymentDate, DATE); }
+                        catch (DateTimeParseException ignored) { /* User must supply a valid first billing date. */ }
+                    }
+                    installment = new com.deveopsj.spending.dto.CardInstallmentPlan(amount, count, firstDate);
+                }
+                else if (!"일시불".equals(product) || !(months.isBlank() || "0".equals(months)))
+                    error = "지원하지 않는 이용구분 또는 할부개월입니다.";
+                if (error == null) {
+                    if (merchant.isBlank() || approval.isBlank() || card.isBlank())
+                        error = "가맹점명, 승인번호 또는 카드 식별정보가 없습니다.";
+                    else if (merchant.length() > 200) error = "가맹점명이 200자를 초과합니다.";
+                    else if (amount <= 0) error = "승인금액은 0보다 커야 합니다.";
+                    else if (date.isAfter(LocalDate.now())) error = "미래 거래는 등록할 수 없습니다.";
+                }
+                // Keep the legacy approval-based key so overlapping business exports remain idempotent.
+                String key = CardStatementParserSupport.transactionKey(installment == null ? "SAMSUNG" : "SAMSUNG_INSTALLMENT",
+                        installment == null ? approval : card + ":" + approval,
+                        date.toString(), amount, merchant);
+                rows.add(new CardSpendingImportRow(i + 1, date, merchant, amount, key, error, sheet.getSheetName(),
+                        List.of(), false, false, installment));
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException(sheet.getSheetName() + " " + (i + 1) + "행: 승인일자는 yyyy.MM.dd 형식이어야 합니다.");
+            } catch (NumberFormatException | ArithmeticException e) {
+                throw new IllegalArgumentException(sheet.getSheetName() + " " + (i + 1) + "행: 승인금액은 정수여야 합니다.");
+            }
+        }
+        return rows;
+    }
+
+    private boolean isCancelled(String value) {
+        return !(value.isBlank() || "-".equals(value) || "정상".equals(value));
+    }
+
+    private String usageApprovalIdentity(Row row, Map<String, Integer> h) {
+        return String.join("|", CardStatementParserSupport.text(row, h.get("카드번호")),
+                CardStatementParserSupport.text(row, h.get("승인번호")));
     }
 
     private Row findStatementHeader(Sheet sheet) {
@@ -145,6 +251,8 @@ public class SamsungCardStatementParser implements CardStatementParser {
 
     @Override
     public List<CardSpendingImportRow> parse(Sheet sheet) {
+        Row usageHeader = findUsageHeader(sheet);
+        if (usageHeader != null) return parseUsage(sheet, usageHeader);
         Map<String, Integer> h = CardStatementParserSupport.headers(sheet.getRow(0));
         CardStatementParserSupport.requireHeaders(h, "삼성카드", "매출상품명", "할부개월수", "매출일자",
                 "매출금액(원)", "가맹점명", "가맹점번호", "승인번호");

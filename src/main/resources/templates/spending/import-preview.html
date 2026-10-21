@@ -18,6 +18,12 @@
 
     <div class="alert alert-info">날짜·금액·가맹점이 같은 내역과 파일 안의 반복 행은 중복 후보로 표시하고 기본 선택에서 제외했습니다. 별도 거래라면 확인 후 선택해 주세요. 이미 등록된 카드 거래는 다시 등록할 수 없습니다.</div>
     <div class="alert alert-warning" th:if="${preview.notice != null}" th:text="${preview.notice}"></div>
+    <div class="alert alert-info" th:if="${#lists.size(preview.rows.?[installment != null]) > 0}">
+        <strong>할부는 실제 청구액이 아닌 예상 원금입니다.</strong>
+        승인총액 ÷ 개월 수로 계산하며 나머지 원 단위는 마지막 회차에 더합니다. 수수료·할인은 포함하지 않습니다.
+        파일의 결제일이 첫 청구일인지 반드시 확인해 주세요. 이미 낸 회차나 청구명세서로 등록한 거래는 중복 등록하지 마세요.
+        할부는 기본 선택하지 않으며, 선택하고 예상액 확인에 체크한 내역만 월별 예정 지출로 생성합니다.
+    </div>
     <div class="alert alert-danger" role="alert" th:if="${errorMessage != null}" th:text="${errorMessage}"></div>
 
     <form id="cardImportConfirmForm" th:action="@{/spending/card-import/confirm}" method="post"
@@ -40,8 +46,31 @@
                                    th:disabled="${!row.importable()}"></td>
                         <td th:text="${row.sourceLabel()}"></td>
                         <td th:text="${row.spendingDate}"></td>
-                        <td th:text="${row.merchantName}"></td>
-                        <td class="text-end" th:text="${#numbers.formatInteger(row.amount, 0, 'COMMA')} + '원'"></td>
+                        <td>
+                            <span th:text="${row.merchantName}"></span>
+                            <details th:if="${row.installment != null and row.importable()}" class="installment-preview mt-2"
+                                     th:attr="data-total=${row.amount},data-months=${row.installment.months},data-index=${stat.index}">
+                                <summary class="text-primary">할부 예상액 확인 · <span th:text="${row.installment.months}"></span>개월</summary>
+                                <div class="small text-muted my-2">승인 총액을 나눈 예상 원금입니다. 등록 후 지출 내역의 고정지출·할부 예정에서 확인하고, 실제 청구액이 다르면 확정 전에 수정해 주세요.</div>
+                                <label class="small" th:for="|firstPayment_${stat.index}|">첫 청구일 (파일 결제일을 제안한 값이며 수정 가능)</label>
+                                <input type="date" class="form-control form-control-sm first-payment" min="1900-01-01" max="9999-12-31"
+                                       th:id="|firstPayment_${stat.index}|" th:name="|firstPayment_${stat.index}|"
+                                       th:value="${installmentParameters != null and installmentParameters['firstPayment_' + stat.index] != null ? installmentParameters['firstPayment_' + stat.index] : row.installment.firstPaymentDate}">
+                                <div class="small text-muted">결제일이 없으면 직접 입력해 주세요. 아래 회차별 날짜와 금액이 함께 바뀝니다.</div>
+                                <table class="table table-sm small mt-2"><thead><tr><th>회차</th><th>예정일</th><th>예상 원금</th></tr></thead>
+                                    <tbody class="installment-payments"><tr th:each="payment : ${row.installment.proposedPayments()}">
+                                        <td th:text="|${payment.round}/${row.installment.months}|"></td><td th:text="${payment.date}"></td>
+                                        <td th:text="${#numbers.formatInteger(payment.amount, 0, 'COMMA')} + '원'"></td>
+                                    </tr></tbody>
+                                </table>
+                                <label class="small"><input type="checkbox" class="installment-reviewed" th:name="|reviewed_${stat.index}|" value="true"
+                                        th:checked="${installmentParameters != null and installmentParameters['reviewed_' + stat.index] == 'true'}">
+                                    첫 청구일·전체 회차·금액을 확인했고, 실제 청구액과 다를 수 있음을 이해했습니다.</label>
+                            </details>
+                        </td>
+                        <td class="text-end"><span th:text="${#numbers.formatInteger(row.amount, 0, 'COMMA')} + '원'"></span>
+                            <div th:if="${row.installment != null}" class="small text-warning">승인 총액 · 할부 예정</div>
+                        </td>
                         <td>
                             <select th:if="${row.importable()}" class="form-select form-select-sm"
                                     th:name="|category_${stat.index}|">
@@ -53,7 +82,7 @@
                             <span th:unless="${row.importable()}" class="text-muted">-</span>
                         </td>
                         <td>
-                            <span th:if="${row.alreadyImported}" class="badge text-bg-secondary">이미 등록된 카드 거래</span>
+                            <span th:if="${row.alreadyImported}" class="badge text-bg-secondary">이미 등록된 카드 거래 또는 할부 예정</span>
                             <span th:if="${row.duplicateInFile}" class="badge text-bg-warning">파일 안의 반복 행</span>
                             <div th:each="match : ${row.matches}" class="small">
                                 <span th:text="|기존 #${match.id} · ${@masterCodeService.getCodeName('SPENDING_CAT', match.categoryCode)}|"></span>
@@ -80,6 +109,15 @@ function confirmCardImportSubmission(form) {
         window.alert('등록할 내역을 한 건 이상 선택해 주세요.');
         return false;
     }
+    for (const item of form.querySelectorAll('.installment-preview')) {
+        const selected = item.closest('tr').querySelector('input[name="selectedRows"]');
+        if (!selected.checked || selected.disabled) continue;
+        if (!item.querySelector('.first-payment').value || !item.querySelector('.installment-reviewed').checked) {
+            item.open = true;
+            window.alert('선택한 할부의 첫 청구일과 회차별 예상액을 확인하고 확인 체크를 해 주세요.');
+            return false;
+        }
+    }
     if (!window.confirm(`선택한 ${selectedCount}건을 등록하시겠습니까?`)) {
         return false;
     }
@@ -88,6 +126,30 @@ function confirmCardImportSubmission(form) {
     submitButton.textContent = '등록 중...';
     return true;
 }
+document.querySelectorAll('.installment-preview').forEach(item => {
+    const input = item.querySelector('.first-payment');
+    function refresh() {
+        const body = item.querySelector('.installment-payments');
+        body.replaceChildren();
+        if (!input.value || !input.validity.valid) return;
+        const [year, month, day] = input.value.split('-').map(Number);
+        const months = Number(item.dataset.months);
+        const total = BigInt(item.dataset.total);
+        const base = total / BigInt(months), remainder = total % BigInt(months);
+        for (let i = 0; i < months; i++) {
+            const m = month - 1 + i, y = year + Math.floor(m / 12), mm = m % 12 + 1;
+            const lastDay = new Date(Date.UTC(y, mm, 0)).getUTCDate();
+            const date = `${y}-${String(mm).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+            const row = document.createElement('tr');
+            for (const text of [`${i + 1}/${months}`, date, (base + (i === months - 1 ? remainder : 0n)).toLocaleString('ko-KR') + '원']) {
+                const cell = document.createElement('td'); cell.textContent = text; row.appendChild(cell);
+            }
+            body.appendChild(row);
+        }
+    }
+    input.addEventListener('change', () => { item.querySelector('.installment-reviewed').checked = false; refresh(); });
+    refresh();
+});
 </script>
 </body>
 </html>

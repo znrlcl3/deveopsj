@@ -14,7 +14,15 @@ public record CardSpendingImportRow(
         String sourceSheet,
         List<SpendingDuplicateMatch> matches,
         boolean duplicateInFile,
-        boolean alreadyImported) implements Serializable {
+        boolean alreadyImported,
+        CardInstallmentPlan installment) implements Serializable {
+
+    public CardSpendingImportRow(int sourceRow, LocalDate spendingDate, String merchantName,
+            long amount, String transactionKey, String errorMessage, String sourceSheet,
+            List<SpendingDuplicateMatch> matches, boolean duplicateInFile, boolean alreadyImported) {
+        this(sourceRow, spendingDate, merchantName, amount, transactionKey, errorMessage, sourceSheet,
+                matches, duplicateInFile, alreadyImported, null);
+    }
 
     public CardSpendingImportRow(int sourceRow, LocalDate spendingDate, String merchantName,
             long amount, String transactionKey, String errorMessage, String sourceSheet) {
@@ -36,5 +44,5 @@ public record CardSpendingImportRow(
     }
 
     public boolean duplicateCandidate() { return duplicateInFile || !matches.isEmpty(); }
-    public boolean selectedByDefault() { return importable() && !duplicateCandidate(); }
+    public boolean selectedByDefault() { return installment == null && importable() && !duplicateCandidate(); }
 }

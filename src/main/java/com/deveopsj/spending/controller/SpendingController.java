@@ -72,6 +72,11 @@ public class SpendingController {
         model.addAttribute("spendings", spendings);
         model.addAttribute("selectedMonth", selectedMonth);
         model.addAttribute("totalAmount", totalAmount);
+        long fixedExpenseAmount = spendings.stream()
+                .filter(spending -> spending.isFixedExpense())
+                .mapToLong(spending -> spending.getAmount()).sum();
+        model.addAttribute("fixedExpenseAmount", fixedExpenseAmount);
+        model.addAttribute("consumptionAmount", totalAmount - fixedExpenseAmount);
         var recurringOccurrences = recurringExpenseService.getOccurrences(member, selectedMonth);
         long scheduledRecurringAmount = recurringOccurrences.stream()
                 .filter(occurrence -> !occurrence.confirmed())
@@ -83,6 +88,11 @@ public class SpendingController {
         model.addAttribute("unconfirmedRecurringCount", recurringOccurrences.stream()
                 .filter(occurrence -> !occurrence.confirmed())
                 .count());
+        boolean futureMonth = selectedMonth.isAfter(YearMonth.now());
+        model.addAttribute("futureMonth", futureMonth);
+        model.addAttribute("confirmableRecurringCount", recurringOccurrences.stream()
+                .filter(occurrence -> !occurrence.confirmed())
+                .filter(occurrence -> !futureMonth || occurrence.rule().getCardInstallmentKey() == null).count());
         return "spending/list";
     }
 
@@ -218,16 +228,35 @@ public class SpendingController {
             }
         }
         try {
-            var result = cardSpendingImportService.confirm(preview, selectedRows, categories, member);
+            java.util.Map<Integer, com.deveopsj.spending.dto.CardInstallmentConfirmation> installments = new java.util.HashMap<>();
+            if (selectedRows != null) for (Integer index : selectedRows) {
+                if (index == null || index < 0 || index >= preview.rows().size())
+                    throw new IllegalArgumentException("선택한 업로드 행이 올바르지 않습니다.");
+                if (preview.rows().get(index).installment() == null) continue;
+                String date = parameters.get("firstPayment_" + index);
+                java.time.LocalDate firstDate;
+                try { firstDate = java.time.LocalDate.parse(date == null ? "" : date); }
+                catch (java.time.format.DateTimeParseException e) {
+                    throw new IllegalArgumentException("선택한 할부의 첫 청구일을 입력해 주세요.");
+                }
+                installments.put(index, new com.deveopsj.spending.dto.CardInstallmentConfirmation(firstDate,
+                        "true".equals(parameters.get("reviewed_" + index))));
+            }
+            var result = installments.isEmpty()
+                    ? cardSpendingImportService.confirm(preview, selectedRows, categories, member)
+                    : cardSpendingImportService.confirm(preview, selectedRows, categories, installments, member);
             session.removeAttribute(CARD_IMPORT_PREVIEW);
             redirectAttributes.addFlashAttribute("message", "카드 지출 " + result.savedCount()
-                    + "건을 등록했습니다." + (result.duplicateCount() > 0
+                    + "건을 등록했습니다." + (result.scheduledCount() > 0
+                            ? " 할부 예정 " + result.scheduledCount() + "회차를 만들었습니다. 월별 청구액 확인 후 확정해 주세요." : "")
+                    + (result.duplicateCount() > 0
                             ? " 중복 " + result.duplicateCount() + "건은 제외했습니다." : ""));
         } catch (IllegalArgumentException | IllegalStateException e) {
             model.addAttribute("preview", preview);
             model.addAttribute("errorMessage", e.getMessage());
             model.addAttribute("selectedRows", selectedRows == null ? java.util.List.of() : selectedRows);
             model.addAttribute("selectedCategories", categories);
+            model.addAttribute("installmentParameters", parameters);
             return "spending/import-preview";
         }
         return "redirect:/spending/list";

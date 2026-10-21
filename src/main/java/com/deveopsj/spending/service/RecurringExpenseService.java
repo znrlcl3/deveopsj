@@ -50,6 +50,13 @@ public class RecurringExpenseService {
 
     public void update(RecurringExpenseRequest request, Member member) {
         RecurringExpense rule = ownedRule(request.getId(), member);
+        if (rule.getCardInstallmentKey() != null) {
+            if (!rule.getStartDate().equals(request.getStartDate()) || !rule.getEndDate().equals(request.getEndDate()))
+                throw new IllegalArgumentException("할부 예정은 해당 회차의 시작·종료 월을 변경할 수 없습니다.");
+            if (dailySpendingRepository.existsByRecurringExpenseIdAndRecurringYearMonth(rule.getId(),
+                    YearMonth.from(rule.getStartDate()).toString()))
+                throw new IllegalArgumentException("확정된 할부는 실제 지출 내역에서 수정해 주세요.");
+        }
         validateCategory(request.getCategory());
         rule.setName(request.getName().trim());
         rule.setCategoryCode(request.getCategory());
@@ -80,6 +87,8 @@ public class RecurringExpenseService {
 
     public void confirm(Long id, YearMonth month, Member member) {
         RecurringExpense rule = ownedRule(id, member);
+        if (rule.getCardInstallmentKey() != null && month.isAfter(YearMonth.now()))
+            throw new IllegalArgumentException("미래 할부는 예정 내역입니다. 해당 월에 청구액을 확인하고 확정해 주세요.");
         if (!appliesTo(rule, month)) {
             throw new IllegalArgumentException("해당 월에 적용되는 고정지출이 아닙니다.");
         }
@@ -94,6 +103,7 @@ public class RecurringExpenseService {
         String yearMonth = month.toString();
         List<DailySpending> spendings = getRules(member).stream()
                 .filter(rule -> appliesTo(rule, month))
+                .filter(rule -> rule.getCardInstallmentKey() == null || !month.isAfter(YearMonth.now()))
                 .filter(rule -> !dailySpendingRepository
                         .existsByRecurringExpenseIdAndRecurringYearMonth(rule.getId(), yearMonth))
                 .map(rule -> toSpending(rule, month, member))
@@ -104,14 +114,18 @@ public class RecurringExpenseService {
 
     private DailySpending toSpending(RecurringExpense rule, YearMonth month, Member member) {
         LocalDate spendingDate = month.atDay(Math.min(rule.getPaymentDay(), month.lengthOfMonth()));
+        String memo = rule.getMemo() == null ? rule.getName() : rule.getName() + " - " + rule.getMemo();
+        if (rule.getCardInstallmentKey() != null && memo.length() > 200) memo = memo.substring(0, 200);
         return DailySpending.builder()
                 .member(member)
                 .spendingDate(spendingDate)
                 .categoryCode(rule.getCategoryCode())
                 .amount(rule.getAmount())
-                .memo(rule.getMemo() == null ? rule.getName() : rule.getName() + " - " + rule.getMemo())
+                .memo(memo)
                 .recurringExpense(rule)
                 .recurringYearMonth(month.toString())
+                .importSource(rule.getCardInstallmentKey() == null ? null : "CARD_INSTALLMENT")
+                .importTransactionKey(rule.getCardInstallmentKey())
                 .build();
     }
 

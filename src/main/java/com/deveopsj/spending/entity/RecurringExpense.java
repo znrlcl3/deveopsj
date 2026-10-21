@@ -14,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,7 +22,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "recurring_expense")
+@Table(name = "recurring_expense", uniqueConstraints = @UniqueConstraint(
+        name = "uk_recurring_card_installment", columnNames = {"member_id", "card_installment_key"}))
 @Getter
 @Setter
 @Builder
@@ -59,4 +61,7 @@ public class RecurringExpense extends BaseEntity {
 
     @Column(length = 200)
     private String memo;
+
+    @Column(name = "card_installment_key", length = 64, updatable = false)
+    private String cardInstallmentKey;
 }

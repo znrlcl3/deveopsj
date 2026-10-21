@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.ui.ConcurrentModel;
@@ -38,11 +39,13 @@ class SpendingControllerTest {
         Member member = new Member();
         member.setMemberId(7L);
         YearMonth month = YearMonth.of(2026, 8);
-        List<DailySpending> spendings = List.of(
-                DailySpending.builder().amount(120_000L).build(),
-                DailySpending.builder().amount(30_000L).build());
         RecurringExpense confirmedRule = recurringExpense(500_000L);
         RecurringExpense scheduledRule = recurringExpense(70_000L);
+        List<DailySpending> spendings = List.of(
+                DailySpending.builder().amount(100_000L).build(),
+                DailySpending.builder().amount(30_000L).recurringExpense(confirmedRule).build(),
+                DailySpending.builder().amount(20_000L).recurringExpense(recurringExpense(20_000L))
+                        .importSource("CARD_INSTALLMENT").build());
 
         when(spendingService.getSpendings(member, month.atDay(1), month.atEndOfMonth()))
                 .thenReturn(spendings);
@@ -53,6 +56,8 @@ class SpendingControllerTest {
 
         assertThat(controller.spendingList("2026-08", model, member)).isEqualTo("spending/list");
         assertThat(model.getAttribute("totalAmount")).isEqualTo(150_000L);
+        assertThat(model.getAttribute("consumptionAmount")).isEqualTo(120_000L);
+        assertThat(model.getAttribute("fixedExpenseAmount")).isEqualTo(30_000L);
         assertThat(model.getAttribute("scheduledRecurringAmount")).isEqualTo(70_000L);
         assertThat(model.getAttribute("expectedTotalAmount")).isEqualTo(220_000L);
     }
@@ -170,6 +175,31 @@ class SpendingControllerTest {
         assertThat(controller.confirmExcelImport("token", List.of(0), member, session,
                 new ConcurrentModel(), new RedirectAttributesModelMap())).isEqualTo("redirect:/spending/list");
         org.mockito.Mockito.verifyNoInteractions(service);
+    }
+
+    @Test
+    void 할부_첫청구일과_확인여부를_전달하고_성공후_세션을_소비한다() {
+        var service = mock(CardSpendingImportService.class);
+        var controller = new SpendingController(mock(DataInputService.class), mock(SpendingService.class),
+                mock(RecurringExpenseService.class), mock(SpendingExcelImportService.class), service);
+        Member member = new Member(); member.setMemberId(7L);
+        var start = java.time.LocalDate.of(2024, 1, 31);
+        var row = new com.deveopsj.spending.dto.CardSpendingImportRow(2, start.minusDays(5), "할부", 100000, "key", null,
+                "국내", List.of(), false, false, new com.deveopsj.spending.dto.CardInstallmentPlan(100000, 3, start));
+        var preview = new CardImportPreview("token", CardCompany.SAMSUNG, "sample.xlsx", List.of(row), null, 7L);
+        var session = new MockHttpSession(); session.setAttribute("cardSpendingImportPreview", preview);
+        var choices = Map.of(0, new com.deveopsj.spending.dto.CardInstallmentConfirmation(start, true));
+        when(service.confirm(preview, List.of(0), Map.of(0, "FOOD"), choices, member))
+                .thenReturn(new CardSpendingImportService.ImportResult(0, 0, 3));
+        var redirect = new RedirectAttributesModelMap();
+        assertThat(controller.confirmCardImport("token", List.of(0), Map.of("category_0", "FOOD",
+                "firstPayment_0", "2024-01-31", "reviewed_0", "true"), member, session, new ConcurrentModel(), redirect))
+                .isEqualTo("redirect:/spending/list");
+        org.mockito.Mockito.verify(service).confirm(preview, List.of(0), Map.of(0, "FOOD"), choices, member);
+        assertThat(session.getAttribute("cardSpendingImportPreview")).isNull();
+        assertThat(redirect.getFlashAttributes().get("message").toString()).contains("할부 예정 3회차");
+        controller.confirmCardImport("token", List.of(0), Map.of(), member, session, new ConcurrentModel(), redirect);
+        org.mockito.Mockito.verifyNoMoreInteractions(service);
     }
 
     private RecurringExpense recurringExpense(long amount) {
