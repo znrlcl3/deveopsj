@@ -129,6 +129,39 @@ class CsrfProtectionTest {
                         .param("password", "password")
                         .param("name", "사용자"))
                 .andExpect(status().isForbidden());
+        verifyNoInteractions(memberService);
+    }
+
+    @Test
+    void 유효한_세션에서_토큰이_없으면_만료안내없이_거부한다() throws Exception {
+        mockMvc.perform(post("/member/join-proc")
+                        .session(new org.springframework.mock.web.MockHttpSession())
+                        .with(request -> {
+                            request.setRequestedSessionId("active-session");
+                            request.setRequestedSessionIdValid(true);
+                            return request;
+                        }))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(memberService);
+    }
+
+    @Test
+    void 실제로_만료된_세션의_POST는_로그인으로_안내하고_저장하지_않는다() throws Exception {
+        mockMvc.perform(post("/member/join-proc").with(request -> {
+                    request.setRequestedSessionId("expired-session");
+                    request.setRequestedSessionIdValid(false);
+                    return request;
+                }))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/member/login?expired"));
+        verifyNoInteractions(memberService);
+    }
+
+    @Test
+    void 잘못된_CSRF토큰은_거부하고_저장하지_않는다() throws Exception {
+        mockMvc.perform(post("/member/join-proc").with(csrf().useInvalidToken()))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(memberService);
     }
 
     @Test

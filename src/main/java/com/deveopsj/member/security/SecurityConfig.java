@@ -81,7 +81,7 @@ public class SecurityConfig {
             .exceptionHandling(exceptions ->
                     exceptions.accessDeniedPage("/access-denied"))
             .sessionManagement(session ->
-                    session.invalidSessionUrl("/member/login?expired"))
+                    session.invalidSessionStrategy(new SessionExpiryStrategy()))
             .addFilterBefore(loginAttemptFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(switchUserFilter, AuthorizationFilter.class);
 
