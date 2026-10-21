@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.deveopsj.ai.config.GeminiProperties;
-import com.deveopsj.ai.dto.SpendingAnalysisType;
 import com.deveopsj.dashboard.service.DashboardService;
 
 import lombok.RequiredArgsConstructor;
@@ -42,7 +41,6 @@ public class DashboardViewController {
         model.addAttribute("selectedMonth", selectedMonth);
         model.addAttribute("currentMonth", YearMonth.now());
         model.addAttribute("analysisMonth", selectedMonth.isAfter(YearMonth.now()) ? YearMonth.now() : selectedMonth);
-        model.addAttribute("analysisTypes", SpendingAnalysisType.values());
         return "dashboard";
     }
     

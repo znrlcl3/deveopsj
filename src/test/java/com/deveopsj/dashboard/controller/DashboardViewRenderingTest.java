@@ -38,7 +38,10 @@ class DashboardViewRenderingTest {
                 .andReturn().getResponse().getContentAsString();
         assertThat(html).contains("기록상 잔액", "2024-02", "2024-03-01 10:20", "&lt;script&gt;bad&lt;/script&gt;")
                 .doesNotContain("<script>bad</script>", "spendingChart");
-        assertThat(html.indexOf("최근 지출")).isLessThan(html.indexOf("AI로 소비 패턴"));
+        assertThat(html.indexOf("최근 지출")).isLessThan(html.indexOf("이번 달 어디에 많이 썼을까?"));
+        assertThat(html).contains("이번 달 소비 분석하기", "확인할 지출", "다음 달 실천 하나")
+                .doesNotContain("analysis-radio", "선택한 분석 시작");
+        assertThat(html.split("id=\"btnAnalyze\"", -1)).hasSize(2);
         verify(service).getMonthlySummary(7L, YearMonth.of(2024, 2));
         String previewPath = System.getProperty("dashboard.preview.path");
         if (previewPath != null) {

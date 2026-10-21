@@ -7,6 +7,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum SpendingAnalysisType {
 
+    OVERVIEW(
+            "이번 달 소비 분석",
+            "소비지출과 고정지출을 구분해 이전 달 대비 변화를 설명해라. "
+            + "답변은 정확히 [이번 달 특징], [확인할 지출], [다음 달 실천 하나] 제목으로 나누고 각 2문장 이내로 작성해라. "
+            + "실천은 기록에 근거한 한 가지만 제안해라."),
+
     SAVING_OPPORTUNITIES(
             "절약 가능 지출 찾기",
             "반복되거나 상대적으로 과도한 지출을 근거와 함께 찾고 절감 후보 금액을 제안해라."),

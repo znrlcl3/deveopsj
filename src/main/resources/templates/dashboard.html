@@ -19,8 +19,6 @@
         .category-fill { height: 100%; background: #6687dc; border-radius: 8px; }
         .empty-state { padding: 2.5rem 1rem; text-align: center; color: #637087; }
         .progress { height: 24px; border-radius: 12px; }
-        .analysis-option { cursor: pointer; border: 2px solid #e7ebf2; }
-        .analysis-radio:checked + .analysis-option { border-color: #4e73df; background: #eef2ff; }
         .section-label { color: #68768d; font-size: .85rem; }
         .table { --bs-table-bg: transparent; }
         .table td { padding-top: 1rem; padding-bottom: 1rem; vertical-align: middle; }
@@ -172,49 +170,27 @@
         </div>
         
         </div></details>
-        <details class="card mb-4 p-4"><summary>AI로 소비 패턴 살펴보기</summary>
-        <div class="mt-3">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-robot"></i>
-                        <span>내 지출 분석하기</span>
-                    </h5>
-                </div>
-                <hr class="border-light">
-                <div class="mb-3">
-                    <label for="analysisMonth" class="form-label fw-bold">분석 기간</label>
+        <section class="card mb-4 p-4" aria-labelledby="analysisTitle">
+            <h5 id="analysisTitle" class="fw-bold">이번 달 어디에 많이 썼을까?</h5>
+            <p class="text-muted small">지난달과 비교해 늘어난 지출과 줄여볼 만한 항목을 확인해요. 소비지출과 고정지출을 구분하며, 미확정 예정액은 제외합니다.</p>
+            <div class="d-flex flex-wrap align-items-end gap-3">
+                <div>
+                    <label for="analysisMonth" class="form-label">분석할 월</label>
                     <input id="analysisMonth" type="month" class="form-control"
                            th:value="${analysisMonth}" th:max="${currentMonth}">
                 </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6" th:each="type, status : ${analysisTypes}">
-                        <input class="btn-check analysis-radio" type="radio" name="analysisType"
-                               th:id="'analysis-' + ${type.name()}" th:value="${type.name()}"
-                               th:checked="${status.first}">
-                        <label class="card analysis-option h-100 p-3"
-                               th:for="'analysis-' + ${type.name()}">
-                            <strong th:text="${type.title}"></strong>
-                            <span class="small text-muted mt-1" th:switch="${type.name()}">
-                                <span th:case="'SAVING_OPPORTUNITIES'">반복되거나 과도한 소비 후보를 찾아요.</span>
-                                <span th:case="'CATEGORY_REVIEW'">카테고리별 비중과 개선점을 평가해요.</span>
-                                <span th:case="'MONTHLY_COMPARISON'">선택한 달을 이전 달과 비교해요.</span>
-                                <span th:case="'NEXT_MONTH_PLAN'">실행 가능한 다음 달 절약 목표를 만들어요.</span>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-                <button id="btnAnalyze" class="btn btn-light fw-bold text-primary">
-                    <i class="fas fa-magic"></i> 선택한 분석 시작
-                </button>
-                <div id="aiLoader" class="spinner-border spinner-border-sm text-primary d-none ms-2"
-                     role="status"></div>
-                <div id="aiText" class="alert alert-light mt-3 mb-0">
-                    분석 기간과 유형을 선택해 주세요.
-                </div>
+                <button id="btnAnalyze" type="button" class="btn btn-primary">이번 달 소비 분석하기</button>
+                <div id="aiLoader" class="spinner-border spinner-border-sm text-primary d-none" role="status"><span class="visually-hidden">분석 중</span></div>
             </div>
-        </div>
-        </details>
+            <p class="small text-muted mt-2">이번 달은 오늘까지와 지난달 같은 기간을 비교합니다. 다른 월도 선택할 수 있어요.</p>
+            <div id="aiText" class="small mt-3" role="status" aria-live="polite">버튼을 누르면 선택한 월의 소비를 분석합니다.</div>
+            <div id="aiHighlights" class="row g-3 mt-1 d-none">
+                <div class="col-md-4"><div class="border rounded p-3 h-100"><h6>이번 달 특징</h6><p id="aiFeature" class="small mb-0" style="white-space: pre-wrap"></p></div></div>
+                <div class="col-md-4"><div class="border rounded p-3 h-100"><h6>확인할 지출</h6><p id="aiReview" class="small mb-0" style="white-space: pre-wrap"></p></div></div>
+                <div class="col-md-4"><div class="border rounded p-3 h-100"><h6>다음 달 실천 하나</h6><p id="aiAction" class="small mb-0" style="white-space: pre-wrap"></p></div></div>
+            </div>
+            <details id="aiDetails" class="mt-3 d-none"><summary>분석 전체 보기</summary><p id="aiFullText" class="small mt-2" style="white-space: pre-wrap"></p></details>
+        </section>
       </div>
     </main>
 </div>
@@ -225,13 +201,16 @@
         const btn = this;
 
         const month = document.getElementById('analysisMonth').value;
-        const analysisType = document.querySelector('input[name="analysisType"]:checked')?.value;
-        if (!month || !analysisType) {
-            aiTextField.innerText = "분석 기간과 유형을 선택해 주세요.";
+        const analysisType = 'OVERVIEW';
+        if (!month) {
+            aiTextField.innerText = "분석할 월을 선택해 주세요.";
             return;
         }
 
         aiTextField.innerText = "지출 데이터를 정리해 분석 중입니다. 잠시만 기다려주세요...";
+        document.getElementById('aiHighlights').classList.add('d-none');
+        document.getElementById('aiDetails').classList.add('d-none');
+        document.getElementById('analysisMonth').disabled = true;
         loader.classList.remove('d-none');
         btn.disabled = true;
 
@@ -252,14 +231,30 @@
                 return response.json();
             })
             .then(data => {
-                aiTextField.innerText = data.feedback;
+                const feedback = typeof data.feedback === 'string' ? data.feedback.trim() : '';
+                if (!feedback) throw new Error('empty analysis');
+                const match = feedback.match(/\[이번 달 특징\]([\s\S]*?)\[확인할 지출\]([\s\S]*?)\[다음 달 실천 하나\]([\s\S]*)/);
+                if (match && match.slice(1).every(part => part.trim())) {
+                    ['aiFeature', 'aiReview', 'aiAction'].forEach((id, index) => {
+                        document.getElementById(id).textContent = match[index + 1].trim();
+                    });
+                    document.getElementById('aiHighlights').classList.remove('d-none');
+                    document.getElementById('aiFullText').textContent = feedback;
+                    document.getElementById('aiDetails').classList.remove('d-none');
+                    document.getElementById('aiDetails').open = false;
+                    aiTextField.innerText = month + ' 소비 분석입니다. AI 해석은 실제 내역과 함께 확인해 주세요.';
+                } else {
+                    aiTextField.innerText = feedback;
+                }
                 loader.classList.add('d-none');
                 btn.disabled = false;
+                document.getElementById('analysisMonth').disabled = false;
             })
             .catch(error => {
-                aiTextField.innerText = "분석 중 오류가 발생했습니다.";
+                aiTextField.innerText = "분석을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.";
                 loader.classList.add('d-none');
                 btn.disabled = false;
+                document.getElementById('analysisMonth').disabled = false;
                 console.error('Error:', error);
             });
     });

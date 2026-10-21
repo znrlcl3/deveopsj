@@ -114,6 +114,31 @@ class SpendingAnalysisServiceTest {
         return request;
     }
 
+    @Test
+    void 통합분석은_당월_같은기간을_비교하고_할부와_고정지출을_구분한다() {
+        var today = LocalDate.now();
+        var month = YearMonth.from(today);
+        var previous = month.minusMonths(1);
+        var previousEnd = previous.atDay(Math.min(today.getDayOfMonth(), previous.lengthOfMonth()));
+        var member = member();
+        var request = request(SpendingAnalysisType.OVERVIEW);
+        request.setMonth(month);
+        var rule = new com.deveopsj.spending.entity.RecurringExpense();
+        when(spendingService.getSpendings(member, month.atDay(1), today)).thenReturn(List.of(
+                DailySpending.builder().categoryCode("FOOD").amount(10000L).build(),
+                DailySpending.builder().categoryCode("FOOD").amount(20000L).recurringExpense(rule).build(),
+                DailySpending.builder().categoryCode("FOOD").amount(30000L).recurringExpense(rule)
+                        .importSource("CARD_INSTALLMENT").build()));
+        when(spendingService.getSpendings(member, previous.atDay(1), previousEnd)).thenReturn(List.of());
+        when(masterCodeService.getActiveCodesByGroup("SPENDING_CAT")).thenReturn(List.of());
+        when(aiService.getSpendingAnalysis(org.mockito.ArgumentMatchers.anyString())).thenReturn("분석");
+        spendingAnalysisService.analyze(request, member);
+        verify(aiService).getSpendingAnalysis(argThat(prompt ->
+                prompt.contains("소비지출: 40000원 / 고정지출: 20000원")
+                && prompt.contains("[이번 달 특징]") && prompt.contains("기록 수: 0건")
+                && prompt.contains("조회 기간: " + previous.atDay(1) + " ~ " + previousEnd)));
+    }
+
     private Member member() {
         Member member = new Member();
         member.setMemberId(7L);

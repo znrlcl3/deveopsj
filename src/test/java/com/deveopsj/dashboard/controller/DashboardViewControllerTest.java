@@ -42,7 +42,7 @@ class DashboardViewControllerTest {
         assertThat(model.get("summary")).isSameAs(summary);
         assertThat(model.get("aiModel")).isEqualTo("gemini-3.1-flash-lite");
         assertThat(model.get("analysisMonth")).isEqualTo(java.time.YearMonth.now());
-        assertThat((Object[]) model.get("analysisTypes")).hasSize(4);
+        assertThat(model).doesNotContainKey("analysisTypes");
     }
 
     @Test

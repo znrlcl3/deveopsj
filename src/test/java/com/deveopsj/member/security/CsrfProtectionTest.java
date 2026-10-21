@@ -198,7 +198,7 @@ class CsrfProtectionTest {
     }
 
     @Test
-    void 대시보드에_네가지_AI지출분석카드를_표시한다() throws Exception {
+    void 대시보드에_통합_AI소비분석을_표시한다() throws Exception {
         Member member = new Member();
         member.setMemberId(7L);
         member.setLoginId("user");
@@ -219,10 +219,9 @@ class CsrfProtectionTest {
         mockMvc.perform(get("/dashboard/view")
                         .with(user(new CustomUserDetails(member))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("절약 가능 지출 찾기")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("카테고리별 소비 평가")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("지난달과 비교")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("다음 달 절약 계획")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("이번 달 소비 분석하기")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("확인할 지출")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("analysis-radio"))));
     }
 
     @Test
