@@ -1,0 +1,16 @@
+.income-main { margin-left: 280px; min-height: 100vh; width: calc(100% - 280px); min-width: 0; }
+.income-value { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.income-table { min-width: 720px; }
+.income-table td { vertical-align: middle; }
+.income-memo { max-width: 260px; overflow-wrap: anywhere; }
+.income-exports > div { flex-wrap: wrap; }
+@media (max-width: 991px) {
+    .income-page > .d-flex { flex-direction: column; }
+    .income-page > .d-flex > div:first-child { position: static !important; width: 100% !important; height: auto !important; }
+    .income-page > .d-flex > div:first-child ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .income-main { margin-left: 0; width: 100%; }
+}
+@media (max-width: 575px) {
+    .income-page .card-body { padding: 0; }
+    .income-exports .btn { width: 100%; }
+}

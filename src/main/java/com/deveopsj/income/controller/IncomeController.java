@@ -1,7 +1,6 @@
 package com.deveopsj.income.controller;
 
 import java.time.YearMonth;
-import java.time.format.DateTimeParseException;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -28,6 +27,11 @@ public class IncomeController {
 
     private final IncomeService incomeService;
 
+    @GetMapping
+    public String index() {
+        return "redirect:/income/list";
+    }
+
     @GetMapping("/form")
     public String form(Model model) {
         model.addAttribute("incomeTypes", IncomeType.values());
@@ -42,8 +46,17 @@ public class IncomeController {
         model.addAttribute("selectedMonth", selectedMonth);
         model.addAttribute("incomeTypes", IncomeType.values());
         model.addAttribute("incomes", incomes);
+        var totals = new java.util.EnumMap<IncomeType, Long>(IncomeType.class);
+        for (IncomeType type : IncomeType.values()) totals.put(type, 0L);
+        for (var income : incomes) totals.merge(income.getIncomeType(), income.getAmount(), Math::addExact);
+        model.addAttribute("totalsByType", totals);
+        model.addAttribute("incomeCount", incomes.size());
+        model.addAttribute("previousMonth", selectedMonth.getYear() > 1900 || selectedMonth.getMonthValue() > 1
+                ? selectedMonth.minusMonths(1) : null);
+        model.addAttribute("nextMonth", selectedMonth.getYear() < 9999 || selectedMonth.getMonthValue() < 12
+                ? selectedMonth.plusMonths(1) : null);
         model.addAttribute("totalAmount",
-                incomes.stream().mapToLong(income -> income.getAmount()).sum());
+                incomes.stream().mapToLong(income -> income.getAmount()).reduce(0L, Math::addExact));
         return "income/list";
     }
 
@@ -96,8 +109,11 @@ public class IncomeController {
             return YearMonth.now();
         }
         try {
-            return YearMonth.parse(month);
-        } catch (DateTimeParseException e) {
+            YearMonth parsed = YearMonth.parse(month);
+            if (parsed.getYear() < 1900 || parsed.getYear() > 9999)
+                throw new java.time.DateTimeException("지원하지 않는 연도");
+            return parsed;
+        } catch (java.time.DateTimeException e) {
             model.addAttribute(
                     "errorMessage", "조회 월 형식이 올바르지 않아 이번 달을 표시합니다.");
             return YearMonth.now();

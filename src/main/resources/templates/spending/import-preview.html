@@ -90,6 +90,9 @@
                             </div>
                             <span th:if="${row.importable() and !row.duplicateCandidate()}" class="badge text-bg-success">새 내역</span>
                             <span th:if="${row.errorMessage != null}" class="text-warning" th:text="${row.errorMessage}"></span>
+                            <a th:if="${preview.cardCompany.name() == 'SHINHAN' and row.amount < 0}"
+                               th:href="@{/spending/card-cancellation(token=${preview.token},rowIndex=${stat.index})}"
+                               target="_blank" rel="noopener" class="btn btn-sm btn-outline-warning mt-2">기존 지출 찾아 취소 반영 (새 창)</a>
                         </td>
                     </tr>
                     </tbody>

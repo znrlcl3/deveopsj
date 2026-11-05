@@ -9,6 +9,37 @@ import org.junit.jupiter.api.Test;
 class CardStatementParserTest {
 
     @Test
+    void 신한_음수취소와_원승인을_제외하고_정상행은_유지한다() throws Exception {
+        try (var workbook = new XSSFWorkbook()) {
+            var sheet = workbook.createSheet();
+            row(sheet, 0, "거래일", "가맹점명", "승인번호", "금액", "매입구분", "이용구분", "취소상태");
+            row(sheet, 1, "2026.08.01 12:00", "가맹점", "A1", "10000", "승인", "일시불", "");
+            row(sheet, 2, "2026.08.02 12:00", "가맹점", "A1", "-3,000", "취소", "일시불", "");
+            row(sheet, 3, "2026.08.03 12:00", "다른 가맹점", "A1", "5000", "결제확정", "일시불", "");
+            row(sheet, 4, "2026.08.04 12:00", "취소점", "A2", "1000", "승인", "일시불", "취소");
+            var rows = new ShinhanCardStatementParser().parse(sheet);
+            assertThat(rows).hasSize(4);
+            assertThat(rows.get(0).importable()).isFalse();
+            assertThat(rows.get(1).amount()).isEqualTo(-3000L);
+            assertThat(rows.get(1).errorMessage()).contains("결제취소", "자동 차감되지");
+            assertThat(rows.get(1).selectedByDefault()).isFalse();
+            assertThat(rows.get(2).importable()).isTrue();
+            assertThat(rows.get(3).importable()).isFalse();
+        }
+    }
+
+    @Test
+    void 신한_소수금액은_여전히_거부한다() throws Exception {
+        try (var workbook = new XSSFWorkbook()) {
+            var sheet = workbook.createSheet();
+            row(sheet, 0, "거래일", "가맹점명", "승인번호", "금액", "매입구분", "이용구분", "취소상태");
+            row(sheet, 1, "2026.08.01 12:00", "가맹점", "A1", "-1.5", "취소", "일시불", "취소");
+            assertThatThrownBy(() -> new ShinhanCardStatementParser().parse(sheet))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("2행: 금액은 정수");
+        }
+    }
+
+    @Test
     void 신한카드_양식을_공통_지출행으로_변환한다() throws Exception {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             var sheet = workbook.createSheet("카드이용내역");
