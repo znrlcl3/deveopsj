@@ -20,10 +20,16 @@ import lombok.RequiredArgsConstructor;
 public class GoalController {
 
     private final GoalService goalService;
+    private final com.deveopsj.assetplan.service.GoalProgressService goalProgressService;
 
     @GetMapping("/form")
     public String goalForm(Model model, Member member) {
-        model.addAttribute("goals", goalService.getGoalsByMember(member));
+        var goals = goalService.getGoalsByMember(member);
+        var progress = goalProgressService.summarize(member, goals);
+        model.addAttribute("goals", goals);
+        model.addAttribute("goalProgress", progress);
+        model.addAttribute("reachedCount", progress.stream().filter(g -> g.remainingAmount() == 0).count());
+        if (!model.containsAttribute("goalRequest")) model.addAttribute("goalRequest", new GoalSaveRequest());
         return "goal/form";
     }
 
@@ -33,6 +39,7 @@ public class GoalController {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("errorMessage",
                     bindingResult.getAllErrors().get(0).getDefaultMessage());
+            redirectAttributes.addFlashAttribute("goalRequest", request);
             return "redirect:/goal/form";
         }
         goalService.save(request, member);

@@ -80,12 +80,23 @@
                             <td><span class="badge text-bg-info" th:text="${income.incomeType.label}"></span></td>
                             <td class="text-end fw-bold"
                                 th:text="${#numbers.formatInteger(income.amount, 0, 'COMMA')} + '원'"></td>
-                            <td class="income-memo" th:text="${#strings.isEmpty(income.memo) ? '-' : income.memo}"></td>
+                            <td class="income-memo"><span th:text="${#strings.isEmpty(income.memo) ? '-' : income.memo}"></span>
+                                <details th:if="${income.importKey != null}" class="small mt-2"><summary class="text-primary">나무 원본 상세내역</summary>
+                                    <dl class="mt-2 mb-0">
+                                        <dt>등록 시 연결 플랜</dt><dd th:text="${income.sourcePlanName}"></dd>
+                                        <dt>원본 상세내용</dt><dd th:text="${income.sourceDescription}"></dd>
+                                        <dt>종목명</dt><dd th:text="${#strings.isEmpty(income.sourceSecurityName) ? '해당 없음' : income.sourceSecurityName}"></dd>
+                                        <dt>실거래일 / 거래일자</dt><dd th:text="|${income.incomeDate} / ${income.sourceBookingDate}|"></dd>
+                                        <dt>세전 거래금액</dt><dd th:text="|${#numbers.formatInteger(income.sourceGrossAmount, 0, 'COMMA')}원|"></dd>
+                                        <dt>수수료 / 세금</dt><dd th:text="|${#numbers.formatInteger(income.sourceFee, 0, 'COMMA')}원 / ${#numbers.formatInteger(income.sourceTax, 0, 'COMMA')}원|"></dd>
+                                        <dt>실제 입금액 (수입 반영)</dt><dd th:text="|${#numbers.formatInteger(income.amount, 0, 'COMMA')}원|"></dd>
+                                    </dl><p class="text-muted mb-0">원본을 보존합니다. 수정하려면 삭제 후 올바른 파일로 다시 등록하세요.</p>
+                                </details></td>
                             <td class="text-muted small text-nowrap"
                                 th:text="${income.createDate != null ? #temporals.format(income.createDate, 'yyyy-MM-dd HH:mm') : '-'}"></td>
                             <td>
                                 <div class="d-flex justify-content-end gap-2">
-                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                    <button th:if="${income.importKey == null}" type="button" class="btn btn-sm btn-outline-primary"
                                             data-bs-toggle="modal"
                                             th:attr="data-bs-target='#editModal-' + ${income.id}">수정</button>
                                     <form action="/income/delete" method="post"
@@ -107,7 +118,7 @@
 </div>
 
 <th:block th:each="income : ${incomes}">
-    <div class="modal fade" th:id="'editModal-' + ${income.id}" tabindex="-1" aria-hidden="true">
+    <div th:if="${income.importKey == null}" class="modal fade" th:id="'editModal-' + ${income.id}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form action="/income/update" method="post" class="income-amount-form">

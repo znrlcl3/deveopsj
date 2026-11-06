@@ -1,0 +1,36 @@
+/* Keep centered content in place when a tab changes the page height. */
+html:has(body.asset-page) { overflow-y:scroll; }
+@supports (scrollbar-gutter:stable) {
+    html:has(body.asset-page) { overflow-y:auto; scrollbar-gutter:stable; }
+}
+body.asset-page { background:#f5f7fb; color:#24334b; }
+.asset-page .assets-main { margin-left:280px; width:calc(100% - 280px); min-width:0; padding:24px; }
+.asset-page .assets-content { max-width:1240px; margin:auto; }
+.asset-page .card { border:1px solid #e4e9f1; border-radius:18px; box-shadow:none; }
+.asset-page .btn { border-radius:9px; }
+.asset-page .form-control, .asset-page .form-select { border-radius:9px; min-height:42px; }
+.asset-page .amount { font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.asset-page .summary-value { font-size:1.5rem; font-weight:700; overflow-wrap:anywhere; }
+.asset-page summary { cursor:pointer; }
+.asset-section-header { margin-bottom:24px; }
+.asset-section-header h1 { font-size:1.75rem; font-weight:700; line-height:1.2; margin:0 0 8px; }
+.asset-section-header p { color:#6c757d; margin:0; }
+.asset-tabs { display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; border-bottom:1px solid #dce3ee; margin-bottom:24px; }
+.asset-tabs a { color:#52627a; text-decoration:none; padding:12px 16px; border-bottom:3px solid transparent; white-space:nowrap; font-weight:600; }
+.asset-tabs a:hover { background:#e9eff9; }
+.asset-tabs a[aria-current="page"] { color:#0d6efd; border-bottom-color:#0d6efd; background:#edf3ff; }
+.asset-page .workflow { display:flex; flex-wrap:wrap; gap:10px; padding:16px 20px; margin-bottom:24px; background:#edf3ff; border-radius:12px; color:#38577e; }
+.asset-page .table { vertical-align:middle; }
+.asset-page .table th { color:#52627a; background:#f8fafc; font-size:.875rem; white-space:nowrap; }
+.asset-page .namuh-table { min-width:780px; }
+.asset-page .guide-list li { margin-bottom:12px; }
+@media(max-width:991px) {
+    .asset-page > .d-flex { flex-direction:column; }
+    .asset-page > .d-flex > div:first-child { position:static !important; width:100% !important; height:auto !important; }
+    .asset-page > .d-flex > div:first-child ul { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .asset-page > .d-flex > div:first-child .nav-link { padding:8px !important; font-size:.875rem; }
+    .asset-page > .d-flex > div:first-child .nav-link i { margin-right:8px !important; }
+    .asset-page .assets-main { margin-left:0; width:100%; padding:20px 12px; }
+    .asset-tabs { gap:4px; }
+    .asset-tabs a { padding:8px 10px; font-size:.875rem; }
+}

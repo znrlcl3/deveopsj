@@ -9,6 +9,10 @@ import com.deveopsj.assetplan.entity.InvestmentAsset;
 
 public interface InvestmentAssetRepository extends JpaRepository<InvestmentAsset, Long> {
 
+    List<InvestmentAsset> findByActiveTrueAndAssetNameAndCurrency(String assetName, String currency);
+
+    List<InvestmentAsset> findByActiveTrueAndSymbolAndCurrency(String symbol, String currency);
+
     Optional<InvestmentAsset> findByMarketAndSymbol(String market, String symbol);
 
     Optional<InvestmentAsset> findByIdAndActiveTrue(Long id);

@@ -42,7 +42,9 @@ public class AssetTradeController {
             Model model, Member member) {
         YearMonth selectedMonth = month == null ? YearMonth.now() : month;
         model.addAttribute("plans", assetPlanService.getPlansByMember(member));
-        model.addAttribute("trades", assetTradeService.getTradesByMemberAndMonth(member, selectedMonth));
+        var records = assetTradeService.getTradesByMemberAndMonth(member, selectedMonth);
+        model.addAttribute("trades", records.stream().filter(t -> t.getTradeType() != com.deveopsj.assetplan.entity.AssetTrade.TradeType.SNAPSHOT).toList());
+        model.addAttribute("holdingSnapshots", records.stream().filter(t -> t.getTradeType() == com.deveopsj.assetplan.entity.AssetTrade.TradeType.SNAPSHOT).toList());
         model.addAttribute("selectedMonth", selectedMonth);
         return "trades/list";
     }

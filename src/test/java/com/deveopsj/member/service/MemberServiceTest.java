@@ -28,6 +28,8 @@ class MemberServiceTest {
     private MemberRepository memberRepository;
     @Mock
     private PasswordEncoder passwordEncoder;
+    @Mock
+    private com.deveopsj.market.namuh.NamuhConnectionRepository namuhConnections;
 
     private MemberService memberService;
     private Member member;
@@ -35,8 +37,9 @@ class MemberServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        memberService = new MemberService(memberRepository, passwordEncoder);
+        memberService = new MemberService(memberRepository, passwordEncoder, namuhConnections);
         member = new Member();
+        member.setMemberId(9L);
         member.setLoginId("user");
         member.setPassword("encoded-current");
         when(memberRepository.findByLoginId("user")).thenReturn(Optional.of(member));
@@ -88,6 +91,7 @@ class MemberServiceTest {
         memberService.deactivateAccount("user", dto);
 
         assertThat(member.getDisableDate()).isNotNull();
+        verify(namuhConnections).deleteById(9L);
         verify(memberRepository).save(member);
     }
 

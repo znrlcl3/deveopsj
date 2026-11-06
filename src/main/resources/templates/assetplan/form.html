@@ -39,6 +39,15 @@
             <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
+            <div class="alert alert-light border small">
+                <strong>목표 등록 → 자산 플랜 설정 → 실제 납입 기록</strong>
+                <p class="mt-2 mb-2">등록한 목표를 선택하고 매월 얼마를 모을지 정하세요. 월 투자 금액은 계획이며, 목표 달성액에는 실제 납입 기록이 반영됩니다.</p>
+                <a href="/goal/form">목표 관리로 이동</a>
+            </div>
+            <div th:if="${#lists.isEmpty(goals)}" class="alert alert-info">
+                아직 등록한 목표가 없습니다. <a href="/goal/form">목표를 먼저 등록해 주세요.</a>
+            </div>
+
             <div class="card p-4">
                 <div class="card-body">
                     <form action="/assetplan/save" method="post">

@@ -23,6 +23,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.deveopsj.market.namuh.NamuhConnectionRepository namuhConnections;
 
     @Transactional
     public void join(MemberJoinDto joinDto) {
@@ -72,6 +73,7 @@ public class MemberService {
         }
 
         member.setDisableDate(LocalDateTime.now());
+        namuhConnections.deleteById(member.getMemberId());
         memberRepository.save(member);
     }
 
@@ -91,6 +93,7 @@ public class MemberService {
         }
 
         member.setDisableDate(active ? null : LocalDateTime.now());
+        if (!active) namuhConnections.deleteById(member.getMemberId());
         memberRepository.save(member);
     }
 

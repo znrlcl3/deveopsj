@@ -31,7 +31,7 @@ public class Income extends BaseEntity {
     public enum IncomeType {
         SALARY("급여"),
         SIDE_INCOME("부수입"),
-        DIVIDEND("배당"),
+        DIVIDEND("배당·분배금"),
         INTEREST("이자"),
         OTHER("기타");
 
@@ -66,4 +66,15 @@ public class Income extends BaseEntity {
 
     @Column(length = 200)
     private String memo;
+
+    @Column(length = 64, unique = true)
+    private String importKey;
+    private Long sourcePlanId;
+    @Column(length = 100) private String sourcePlanName;
+    @Column(length = 100) private String sourceSecurityName;
+    @Column(length = 100) private String sourceDescription;
+    private LocalDate sourceBookingDate;
+    private Long sourceGrossAmount;
+    private Long sourceFee;
+    private Long sourceTax;
 }

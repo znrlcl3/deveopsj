@@ -14,6 +14,11 @@ import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 
 public interface AssetTradeRepository extends JpaRepository<AssetTrade, Long> {
 
+    boolean existsByImportKey(String importKey);
+
+    @EntityGraph(attributePaths = {"investmentAsset"})
+    List<AssetTrade> findByAssetPlanIdOrderByTradeDateAscIdAsc(Long planId);
+
     List<AssetTrade> findByAssetPlanMemberMemberIdOrderByTradeDateDescIdDesc(Long memberId);
 
     @EntityGraph(attributePaths = {"assetPlan", "assetPlan.goal", "investmentAsset"})

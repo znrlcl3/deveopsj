@@ -86,6 +86,7 @@ public class MonthlyCashFlowService {
             }
         }
         for (AssetTrade trade : trades) {
+            if (trade.getTradeType() == TradeType.SNAPSHOT) continue;
             PlanAccumulator accumulator = planAccumulators.computeIfAbsent(
                     trade.getAssetPlan().getId(),
                     ignored -> new PlanAccumulator(

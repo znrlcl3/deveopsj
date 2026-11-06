@@ -52,6 +52,12 @@ public class AssetTradeService {
     }
 
     private void applyTrade(AssetTrade trade, AssetTradeSaveRequest request, Member member) {
+        if (trade.getImportKey() != null) {
+            throw new IllegalArgumentException("가져온 거래는 삭제 후 올바른 파일로 다시 등록해 주세요.");
+        }
+        if (request.getTradeType() == TradeType.SNAPSHOT || trade.getTradeType() == TradeType.SNAPSHOT) {
+            throw new IllegalArgumentException("현재 보유분 입력 화면에서 새 잔고를 등록해 주세요.");
+        }
         AssetPlan assetPlan = assetPlanRepository
                 .findByIdAndMemberMemberId(request.getAssetPlanId(), member.getMemberId())
                 .orElseThrow(() -> new IllegalArgumentException("선택한 자산 플랜을 사용할 수 없습니다."));

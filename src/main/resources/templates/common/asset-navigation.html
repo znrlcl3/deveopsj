@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko"><body>
+<nav th:fragment="tabs(active)" class="asset-tabs" aria-label="내 자산 메뉴">
+    <a href="/assets" th:attr="aria-current=${active == 'overview' ? 'page' : null}">자산 현황</a>
+    <a href="/holdings/form" th:attr="aria-current=${active == 'manual' ? 'page' : null}">보유분 직접 입력</a>
+    <a href="/portfolio" th:attr="aria-current=${active == 'returns' ? 'page' : null}">수익률 상세</a>
+</nav>
+<nav th:fragment="tradeTabs(active)" class="asset-tabs" aria-label="투자 거래내역 메뉴">
+    <a href="/trades/list" th:attr="aria-current=${active == 'trades' ? 'page' : null}">거래내역</a>
+    <a href="/trades/import" th:attr="aria-current=${active == 'import' ? 'page' : null}">엑셀 가져오기</a>
+    <a href="/trades/form" th:attr="aria-current=${active == 'trade-form' ? 'page' : null}">매매 직접 입력</a>
+</nav>
+<header th:fragment="assetHeader" class="asset-section-header">
+    <h1>내 자산</h1>
+    <p>보유한 자산과 잔액, 수익률을 확인하고 관리하세요.</p>
+</header>
+<header th:fragment="tradeHeader" class="asset-section-header">
+    <h1>투자 거래내역</h1>
+    <p>매수·매도 내역을 확인하고, 엑셀 또는 직접 입력으로 등록하세요.</p>
+</header>
+</body></html>

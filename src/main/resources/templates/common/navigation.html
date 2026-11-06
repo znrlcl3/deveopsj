@@ -51,13 +51,6 @@
                 </a>
             </li>
             <li class="nav-item mb-2">
-                <a href="/assetplan/form" class="nav-link text-white d-flex align-items-center py-2 px-3" 
-                   th:classappend="${activeMenu == 'assetplan'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
-                    <i class="fas fa-piggy-bank me-3" style="width: 20px;"></i>
-                    자산 플랜 설정
-                </a>
-            </li>
-            <li class="nav-item mb-2">
                 <a href="/goal/form" class="nav-link text-white d-flex align-items-center py-2 px-3" 
                    th:classappend="${activeMenu == 'goal'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
                     <i class="fas fa-bullseye me-3" style="width: 20px;"></i>
@@ -65,24 +58,24 @@
                 </a>
             </li>
             <li class="nav-item mb-2">
-                <a href="/savings/form" class="nav-link text-white d-flex align-items-center py-2 px-3" 
-                   th:classappend="${activeMenu == 'savings'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
-                    <i class="fas fa-hand-holding-usd me-3" style="width: 20px;"></i>
-                    납입 관리
+                <a href="/assetplan/form" class="nav-link text-white d-flex align-items-center py-2 px-3"
+                   th:classappend="${activeMenu == 'assetplan'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
+                    <i class="fas fa-piggy-bank me-3" style="width: 20px;"></i>
+                    자산 플랜 설정
                 </a>
             </li>
             <li class="nav-item mb-2">
-                <a href="/trades/form" class="nav-link text-white d-flex align-items-center py-2 px-3"
+                <a href="/assets" class="nav-link text-white d-flex align-items-center py-2 px-3"
+                   th:classappend="${activeMenu == 'assets' or activeMenu == 'portfolio' or activeMenu == 'savings'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
+                    <i class="fas fa-wallet me-3" style="width: 20px;"></i>
+                    내 자산
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/trades/list" class="nav-link text-white d-flex align-items-center py-2 px-3"
                    th:classappend="${activeMenu == 'trades'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
                     <i class="fas fa-arrow-right-arrow-left me-3" style="width: 20px;"></i>
-                    주식·ETF 매매
-                </a>
-            </li>
-            <li class="nav-item mb-2">
-                <a href="/portfolio" class="nav-link text-white d-flex align-items-center py-2 px-3"
-                   th:classappend="${activeMenu == 'portfolio'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
-                    <i class="fas fa-chart-pie me-3" style="width: 20px;"></i>
-                    보유자산 수익률
+                    투자 거래내역
                 </a>
             </li>
             <li class="nav-item mb-2" sec:authorize="hasRole('ADMIN')">

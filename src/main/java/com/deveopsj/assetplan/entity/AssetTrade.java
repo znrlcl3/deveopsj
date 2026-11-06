@@ -29,8 +29,14 @@ import lombok.Setter;
 @Setter
 public class AssetTrade extends BaseEntity {
 
+    @Column(length = 64, unique = true)
+    private String importKey;
+
+    @Column(nullable = false)
+    private boolean historyOnly;
+
     public enum TradeType {
-        BUY, SELL
+        BUY, SELL, SNAPSHOT
     }
 
     @Id

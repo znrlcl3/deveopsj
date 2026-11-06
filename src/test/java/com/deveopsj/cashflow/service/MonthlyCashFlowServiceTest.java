@@ -85,6 +85,7 @@ class MonthlyCashFlowServiceTest {
                         7L, end))
                 .thenReturn(List.of(
                         juneBuy,
+                        trade(isa, TradeType.SNAPSHOT, 9_000_000L),
                         trade(isa, TradeType.BUY, 1_000_000L),
                         trade(isa, TradeType.SELL, 100_000L)));
 

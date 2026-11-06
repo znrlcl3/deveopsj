@@ -83,7 +83,7 @@ public class PortfolioValuationService {
                 if (trade.getTradeType() == TradeType.BUY) {
                     monthlyBuyAmount = Math.addExact(
                             monthlyBuyAmount, trade.getSettlementAmountKrw());
-                } else {
+                } else if (trade.getTradeType() == TradeType.SELL) {
                     monthlySellAmount = Math.addExact(
                             monthlySellAmount, trade.getSettlementAmountKrw());
                 }
@@ -176,7 +176,14 @@ public class PortfolioValuationService {
         }
 
         private void apply(AssetTrade trade) {
+            if (trade.isHistoryOnly()) return;
             exchangeRate = trade.getExchangeRate();
+            if (trade.getTradeType() == TradeType.SNAPSHOT) {
+                quantity = trade.getQuantity();
+                nativeCost = trade.getUnitPrice().multiply(quantity);
+                krwCost = BigDecimal.valueOf(trade.getSettlementAmountKrw());
+                return;
+            }
             if (trade.getTradeType() == TradeType.BUY) {
                 quantity = quantity.add(trade.getQuantity());
                 nativeCost = nativeCost.add(trade.getUnitPrice().multiply(trade.getQuantity()));

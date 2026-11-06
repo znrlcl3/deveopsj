@@ -194,6 +194,31 @@ class PortfolioValuationServiceTest {
         });
     }
 
+    @Test
+    void snapshotReplacesPriorHoldingsAndOnlyLaterTradesChangeCost() {
+        var plan = plan(3L);
+        var asset = asset(11L);
+        var rows = List.of(trade(plan, asset, TradeType.BUY, "100", "100", 10000, 1),
+                trade(plan, asset, TradeType.SNAPSHOT, "10", "200", 2000, 2),
+                trade(plan, asset, TradeType.SNAPSHOT, "10", "200", 2000, 3),
+                trade(plan, asset, TradeType.SELL, "2", "300", 600, 4),
+                trade(plan, asset, TradeType.BUY, "2", "100", 200, 5));
+        when(assetTradeRepository.findByAssetPlanMemberMemberIdOrderByTradeDateAscIdAsc(7L)).thenReturn(rows);
+        when(kisMarketPriceService.getQuote(11L)).thenThrow(new IllegalStateException("no quote"));
+        var service = new PortfolioValuationService(assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
+        assertThat(service.getPortfolio(member(7L)).positions()).singleElement().satisfies(p -> {
+            assertThat(p.quantity()).isEqualByComparingTo("10");
+            assertThat(p.averageUnitPrice()).isEqualByComparingTo("180");
+            assertThat(p.remainingCostKrw()).isEqualTo(1800);
+        });
+        var month = YearMonth.of(2026, 7);
+        when(assetTradeRepository.findByAssetPlanMemberMemberIdAndTradeDateLessThanEqualOrderByTradeDateAscIdAsc(7L, month.atEndOfMonth())).thenReturn(rows);
+        var monthly = service.getMonthlyPortfolio(member(7L), month);
+        assertThat(monthly.monthEndCostKrw()).isEqualTo(1800);
+        assertThat(monthly.monthlyBuyAmountKrw()).isEqualTo(10200);
+        assertThat(monthly.monthlySellAmountKrw()).isEqualTo(600);
+    }
+
     private Member member(Long id) {
         Member member = new Member();
         member.setMemberId(id);

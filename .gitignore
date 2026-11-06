@@ -65,3 +65,11 @@ Desktop.ini
 # Excel 임시 잠금 파일
 ~$*.xlsx
 ~$*.xls
+
+# Local test spreadsheets (project root only)
+/test*.xls
+/test*.xlsx
+/test-data/
+
+# Test source code is kept locally only
+/src/test/java/

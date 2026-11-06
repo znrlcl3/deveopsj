@@ -84,7 +84,11 @@ public class FinancialExcelExportService {
                 text(row, 1, trade.getInvestmentAsset().getAssetName());
                 text(row, 2, trade.getInvestmentAsset().getSymbol());
                 text(row, 3, trade.getInvestmentAsset().getMarket());
-                text(row, 4, trade.getTradeType().name().equals("BUY") ? "매수" : "매도");
+                text(row, 4, switch (trade.getTradeType()) {
+                    case BUY -> "매수";
+                    case SELL -> "매도";
+                    case SNAPSHOT -> "보유분 기준 등록";
+                });
                 decimal(row, 5, trade.getQuantity());
                 decimal(row, 6, trade.getUnitPrice());
                 decimal(row, 7, trade.getQuantity().multiply(trade.getUnitPrice()));
