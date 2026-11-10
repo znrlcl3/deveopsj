@@ -33,14 +33,14 @@
                     <div class="card p-4 h-100">
                         <div class="text-muted mb-2">이번 달 매수</div>
                         <div class="summary-value"
-                             th:text="${#numbers.formatInteger(summary.monthlyBuyAmountKrw, 0, 'COMMA')} + '원'"></div>
+                             th:text="${summary.monthlyBuyAmountKrw != null ? #numbers.formatInteger(summary.monthlyBuyAmountKrw, 0, 'COMMA') + '원' : '매수 환율 없음'}"></div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card p-4 h-100">
                         <div class="text-muted mb-2">이번 달 매도</div>
                         <div class="summary-value"
-                             th:text="${#numbers.formatInteger(summary.monthlySellAmountKrw, 0, 'COMMA')} + '원'"></div>
+                             th:text="${summary.monthlySellAmountKrw != null ? #numbers.formatInteger(summary.monthlySellAmountKrw, 0, 'COMMA') + '원' : '매수 환율 없음'}"></div>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -48,21 +48,21 @@
                         <div class="text-muted mb-2">이번 달 순투자금</div>
                         <div class="summary-value"
                              th:classappend="${summary.monthlyNetInvestmentKrw < 0} ? 'text-primary' : ''"
-                             th:text="${#numbers.formatInteger(summary.monthlyNetInvestmentKrw, 0, 'COMMA')} + '원'"></div>
+                             th:text="${summary.monthlyNetInvestmentKrw != null ? #numbers.formatInteger(summary.monthlyNetInvestmentKrw, 0, 'COMMA') + '원' : '매수 환율 없음'}"></div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card p-4 h-100">
                         <div class="text-muted mb-2">월말 남은 매입원금</div>
                         <div class="summary-value"
-                             th:text="${#numbers.formatInteger(summary.monthEndCostKrw, 0, 'COMMA')} + '원'"></div>
+                             th:text="${summary.monthEndCostKrw != null ? #numbers.formatInteger(summary.monthEndCostKrw, 0, 'COMMA') + '원' : '매수 환율 없음'}"></div>
                     </div>
                 </div>
             </div>
 
             <div class="alert alert-info">
                 월말까지 등록된 보유분 기준과 이후 거래를 반영하고, 매도 시 이동평균 원가를 차감합니다. 보유분 기준 등록은 매수·매도액에서 제외합니다.
-                과거 시세가 연동되기 전까지 월말 평가금액과 수익률은 표시하지 않습니다.
+                환율 없는 USD 거래가 포함된 원화 합계는 표시하지 않습니다. 달러 정산액은 투자 거래내역에서 확인하세요. 과거 시세가 연동되기 전까지 월말 평가금액과 수익률은 표시하지 않습니다.
             </div>
 
             <div class="card p-4">
@@ -92,10 +92,10 @@
                             </td>
                             <td class="text-end" th:text="${position.quantity.toPlainString()}"></td>
                             <td class="text-end"
-                                th:text="${#numbers.formatDecimal(position.averageUnitPrice, 1, 'COMMA', 0, 'POINT')
+                                th:text="${#numbers.formatDecimal(position.averageUnitPrice, 1, 'COMMA', 4, 'POINT')
                                         + ' ' + position.currency}"></td>
                             <td class="text-end"
-                                th:text="${#numbers.formatInteger(position.remainingCostKrw, 0, 'COMMA')} + '원'"></td>
+                                th:text="${position.remainingCostKrw != null ? #numbers.formatInteger(position.remainingCostKrw, 0, 'COMMA') + '원' : '매수 환율 없음'}"></td>
                         </tr>
                         </tbody>
                     </table>

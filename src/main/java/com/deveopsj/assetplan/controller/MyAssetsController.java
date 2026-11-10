@@ -22,9 +22,11 @@ import java.util.stream.Collectors;
 public class MyAssetsController {
     private final AssetBalanceService balances;
     private final PortfolioValuationService portfolio;
+    private final com.deveopsj.assetplan.service.BalanceSnapshotService snapshots;
 
     @GetMapping
     public String index(Member member, Model model) {
+        model.addAttribute("snapshotReport", snapshots.report(member.getMemberId()));
         var rows = balances.list(member.getMemberId());
         model.addAttribute("balances", rows);
         model.addAttribute("depositTotal", rows.stream().filter(b -> b.getKind() != AssetBalance.Kind.CASH)

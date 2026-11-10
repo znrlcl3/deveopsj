@@ -12,13 +12,16 @@
         <header th:replace="~{common/asset-navigation :: tradeHeader}"></header>
         <nav th:replace="~{common/asset-navigation :: tradeTabs('import')}"></nav>
         <h2 class="h3 fw-bold">거래내역 엑셀 가져오기</h2>
-        <p class="text-muted">파일을 확인하고 저장할 매수·매도와 분배금·이자 수입을 선택하세요.</p>
+        <p class="text-muted">파일을 확인하고 저장할 매수·매도, 계좌 입출금과 분배금·이자 수입을 선택하세요.</p>
+        <p class="small text-muted">업로드하면 파일 원본 전체를 본인 계정·플랜에 보관합니다. 지원하지 않는 행과 환전 내역도 원본에 남습니다. 금융 합계는 선택 저장한 내역만 반영합니다. 같은 내용의 파일은 플랜별 한 번만 보관합니다.</p>
+        <div th:if="${archiveId != null}" class="alert alert-success">원본 보관 완료 · <a th:href="@{/trades/import/archives/{id}(id=${archiveId})}">보관 원본 다운로드</a> · 파일 분석 오류가 있어도 원본은 보관됩니다.</div>
+        <details class="card p-3 mb-3" th:if="${archives != null and !#lists.isEmpty(archives)}"><summary>최근 보관 원본 (최대 20개)</summary><div th:each="archive : ${archives}" class="py-2 border-bottom"><a th:href="@{/trades/import/archives/{id}(id=${archive.id})}" th:text="${archive.fileName}"></a><small class="d-block text-muted" th:text="|${archive.planName} · ${archive.sizeBytes} bytes · ${archive.createDate}|"></small></div></details>
         <p class="small text-muted">등록한 분배금·이자는 <a href="/income/list">수입 내역</a>에서 확인하세요.</p>
         <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
         <section class="card p-4 mb-4">
             <h2 class="h5">1. 나무증권에서 파일 다운로드</h2>
             <p class="mb-2"><strong>나무증권 → 뱅킹/계좌정보 → 거래내역 → 종합거래내역</strong></p>
-            <p class="small text-muted mb-0">종합거래내역(간략) 파일을 내려받으세요. 원본 .xls와 동일한 13개 열을 유지한 .xlsx를 지원합니다. 국내 주식·ETF 매수·매도, ETF 분배금, 예탁금 이용료를 지원합니다. 계좌 이체입출금은 제외합니다. 5MB / 2,000행까지 가능합니다.</p>
+            <p class="small text-muted mb-0">같은 직투계좌 플랜에 두 파일을 나눠 가져오세요. 종합거래내역(간략)은 국내 매매·원화 입출금·분배금·이자를 등록하고 해외 매매는 제외합니다. 해외주식거래내역은 두 줄 머리글과 거래당 두 행을 포함한 원본 XLS/XLSX를 사용하세요. 화면에서 복사한 탭 구분 TXT도 지원합니다. 미국 USD 매매·소수점 매매를 지원하며 USD 배당·이자·외화 이체입출금은 계좌별 요약에 별도로 저장하고 환전은 제외합니다. 5MB / 2,000건까지 가능합니다.</p>
         </section>
         <section class="card p-4 mb-4">
             <h2 class="h5">2. 계좌에 해당하는 플랜과 파일 선택</h2>
@@ -27,32 +30,63 @@
             <form th:unless="${#lists.isEmpty(plans)}" th:action="@{/trades/import/preview}" method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <div class="col-md-4"><label for="planId" class="form-label">대상 플랜</label><select id="planId" name="planId" class="form-select" required><option value="">플랜 선택</option><option th:each="plan : ${plans}" th:value="${plan.id}" th:text="${plan.planName}" th:selected="${preview != null and preview.planId == plan.id}"></option></select></div>
-                <div class="col-md-5"><label for="file" class="form-label">종합거래내역 파일</label><input id="file" name="file" type="file" accept=".xls,.xlsx" class="form-control" required></div>
+                <div class="col-md-5"><label for="file" class="form-label">종합거래내역 / 해외주식거래내역 파일</label><input id="file" name="file" type="file" accept=".xls,.xlsx,.txt" class="form-control" required></div>
                 <div class="col-md-3"><button class="btn btn-primary w-100" type="submit">미리보기</button></div>
             </form>
         </section>
         <section th:if="${preview != null}" class="card p-3 p-md-4 mb-4">
-            <h2 class="h5">3. 매매·수입 확인 후 선택 저장</h2><p class="small text-muted">분배금은 배당·분배금, 예탁금 이용료는 이자 수입으로 등록합니다. 정산금액(실제 입금액)을 수입에 반영하며 계좌 잔액·보유수량은 변경하지 않습니다.</p>
+            <h2 class="h5">3. 거래·수입 확인 후 선택 저장</h2><p class="small text-muted">분배금은 배당·분배금, 예탁금 이용료는 이자 수입으로 등록합니다. 정산금액(실제 입금액)을 수입에 반영하며 계좌 잔액·보유수량은 변경하지 않습니다.</p>
             <p><strong th:text="${preview.planName}"></strong> · <span th:text="|파일 내역 ${#lists.size(preview.rows)}건|"></span></p>
             <div class="alert alert-info small">
                 <p>선택한 종목에 보유분 기준 기록이 있고 거래일이 그 기준일 이전 또는 같은 날이면 <strong>내역만 저장</strong>합니다. 월별 매매에는 포함하지만 보유수량·월말 보유원금에는 다시 더하지 않습니다.</p>
                 <p class="mb-0">그 외에는 보유수량에 반영합니다. 이전 매수가 빠져 매도 수량이 부족하면 전체 저장을 중단합니다. 실거래일 기준이며 같은 날 가져오는 거래는 매수 후 매도 순으로 처리합니다. 당일 거래 시각·실현손익 재현은 지원하지 않습니다.</p>
             </div>
-            <p class="small text-muted">종목코드가 없는 파일입니다. 종목명·시장·코드를 확인해 선택하세요. 중복 의심 거래는 제외하며, 실제 별도 체결이라면 직접 등록하세요. 미리보기는 10분 동안 유효합니다.</p>
+            <p class="small text-muted">저장 대상이 하나이고 중복이 없는 매매·입출금·분배금·이자는 자동 선택됩니다. 제외하려면 ‘저장 안 함’으로 변경하세요. 종목 후보가 여럿이거나 해외 ISIN이 처음이면 직접 연결하세요. 빨간 중복 의심 행은 실제 별도 거래인지 확인 체크한 뒤 추가 등록할 수 있습니다. 날짜·금액 오류 행은 저장할 수 없습니다. 저장 버튼을 누르기 전에는 등록되지 않습니다. 종합 양식은 종목명으로 후보를 찾고 해외 상세 양식은 ISIN 연결을 사용합니다. 종목명·시장·코드를 확인하세요. 확인 체크는 해당 행을 기존 기록에 추가한다는 뜻입니다. 같은 파일을 다시 올려도 기존 저장 건수로 중복을 다시 확인합니다. 미리보기는 10분 동안 유효합니다.</p>
+            <div class="alert alert-warning small">해외 매매는 해외주식거래내역 파일에서만 저장합니다. 외화 거래·정산액과 비용을 자동으로 읽습니다. 저장된 ISIN 연결과 종목명으로 자동 연결합니다. 한 종목으로 확정되지 않을 때만 후보를 선택하세요. 저장한 연결은 다음 업로드에 재사용합니다. 매수 환율은 입력하지 않으며 현재 평가액은 최신 환율로 계산합니다. 파일 환율은 자동 보존하며 환율 포함 손익을 거래내역 환율 기준으로 보여줍니다. IRP 계약 행은 제외하고 이체입금만 한 번 기록하세요.</div>
             <form th:action="@{/trades/import/apply}" method="post">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><input type="hidden" name="token" th:value="${token}">
                 <div class="table-responsive"><table class="table" style="min-width:1100px"><thead><tr><th>행 / 실거래일</th><th>구분 / 종목</th><th class="text-end">수량 / 단가</th><th class="text-end">정산금액</th><th class="text-end">수수료 / 세금</th><th>저장 대상 선택 / 제외 사유</th></tr></thead><tbody>
-                    <tr th:each="row, stat : ${preview.rows}">
+                    <tr th:each="row, stat : ${preview.rows}" th:classappend="${!row.eligible() ? 'table-danger' : (row.defaultAssetId() == null ? 'table-warning' : '')}">
                         <td><span th:text="|${row.source.line}행|"></span><small class="d-block" th:text="${row.source.date}"></small></td>
-                        <td><span class="badge text-bg-light border" th:text="${row.source.typeLabel}"></span><div th:text="${row.source.name}"></div><details th:if="${row.source.eligible()}" class="small mt-1"><summary>원본 상세</summary><div th:text="${row.source.description}"></div><div th:text="|거래일자: ${row.source.bookingDate}|"></div><div th:text="|세전 거래금액: ${#numbers.formatInteger(row.source.gross, 0, 'COMMA')}원|"></div></details></td>
-                        <td class="text-end"><span th:if="${row.source.quantity != null and !row.source.income()}" th:text="${row.source.quantity.stripTrailingZeros().toPlainString()}"></span><small class="d-block" th:if="${row.source.price != null and !row.source.income()}" th:text="|${#numbers.formatDecimal(row.source.price, 1, 'COMMA', 0, 'POINT')}원|"></small></td>
-                        <td class="text-end" th:text="${row.source.eligible() ? #numbers.formatInteger(row.source.settlement, 0, 'COMMA') + '원' : '-'}"></td>
-                        <td class="text-end" th:text="${row.source.eligible() ? row.source.fee + ' / ' + row.source.tax : '-'}"></td>
-                        <td><select th:if="${row.eligible()}" name="selected" class="form-select" th:aria-label="|${row.source.line}행 저장할 종목|"><option value="">저장 안 함</option><option th:each="candidate : ${row.candidates}" th:value="|${stat.index}:${candidate.id}|" th:disabled="${candidate.duplicate}" th:text="${candidate.label + (candidate.duplicate ? ' · 기존 내역 중복' : (row.source.income() ? ' · 실제 입금액' : (candidate.historyOnly ? ' · 내역만 저장' : ' · 보유수량 반영')))}"></option></select><span th:unless="${row.eligible()}" class="small text-muted" th:text="${row.reason}"></span></td>
+                        <td><span class="badge text-bg-light border" th:text="${row.source.typeLabel}"></span><div th:text="${row.source.name}"></div><details th:if="${row.source.eligible()}" class="small mt-1"><summary>원본 상세</summary><div th:text="${row.source.description}"></div><div th:text="|거래일자: ${row.source.bookingDate}|"></div><div th:text="${row.source.overseas() ? '원본 외화 거래금액: ' + row.source.foreignAmounts.gross : '세전 거래금액: ' + #numbers.formatInteger(row.source.gross, 0, 'COMMA') + '원'}"></div></details></td>
+                        <td class="text-end"><span th:if="${row.source.quantity != null and !row.source.income() and !row.source.transfer()}" th:text="${row.source.quantity.stripTrailingZeros().toPlainString()}"></span><small class="d-block" th:if="${row.source.price != null and !row.source.income() and !row.source.transfer()}" th:text="${row.source.overseas() ? row.source.price + ' (원본 외화 단가)' : #numbers.formatDecimal(row.source.price, 1, 'COMMA', 0, 'POINT') + '원'}"></small></td>
+                        <td class="text-end" th:text="${row.source.eligible() ? (row.source.overseas() ? row.source.foreignAmounts.settlement + ' (외화)' : #numbers.formatInteger(row.source.settlement, 0, 'COMMA') + '원') : '-'}"></td>
+                        <td class="text-end" th:text="${row.source.eligible() ? (row.source.overseas() ? row.source.foreignAmounts.fee + ' / ' + row.source.foreignAmounts.tax + ' (외화)' : row.source.fee + ' / ' + row.source.tax) : '-'}"></td>
+                        <td>
+                            <div th:if="${row.confirmable()}" class="mb-2">
+                                <div class="small text-danger fw-semibold mb-2" th:text="${row.reason}"></div>
+                                <label class="form-check"><input type="checkbox" name="confirmed" class="form-check-input duplicate-confirm" th:value="${stat.index}" th:attr="data-select-id=|save-row-${stat.index}|">
+                                    <span class="form-check-label fw-semibold">실제 별도 거래로 확인 · 이 행 추가 등록</span></label>
+                            </div>
+                            <select th:if="${row.eligible() or row.confirmable()}" name="selected" class="form-select" th:id="|save-row-${stat.index}|" th:disabled="${row.confirmable()}" th:aria-label="|${row.source.line}행 저장 대상|">
+                                <option value="" th:selected="${row.defaultAssetId() == null}">저장 안 함</option>
+                                <option th:each="candidate : ${row.candidates}" th:value="|${stat.index}:${candidate.id}|" th:selected="${candidate.id == row.defaultAssetId()}"
+                                    th:text="${candidate.label + (candidate.duplicate ? ' · 기존 동일 조건 ' + candidate.existingCount + '건' : '') + (row.source.overseas() ? ' · 보유분 기준일에 따라 수량 반영 또는 내역만 저장' : row.source.transfer() ? ' · 수입·지출 미반영' : row.source.income() ? ' · 실제 입금액' : candidate.historyOnly ? ' · 내역만 저장' : ' · 보유수량 반영')}"></option>
+                            </select>
+                            <fieldset th:if="${row.source.overseas() and !row.source.foreignFlow() and (row.eligible() or row.confirmable())}" class="foreign-fields border rounded p-2 mt-2" th:attr="data-select-id=|save-row-${stat.index}|">
+                                <legend class="float-none w-auto fs-6">미국 거래 확인 (USD)</legend>
+                                <p class="small text-muted">원본의 ISIN과 종목명으로 연결합니다. 거래 시각이 없어 같은 날·방향·수량의 기존 USD 거래도 중복 의심으로 표시할 수 있습니다.</p>
+                                <p class="small mb-2" th:text="${row.matchMessage}"></p>
+                                <label class="d-block small">연결 종목 · [종목코드] 종목명 · 시장
+                                    <select class="form-select form-select-sm asset-picker" th:name="|fAsset${stat.index}|" th:attr="data-source-name=${row.source.sourceIdentity()}">
+                                        <option value="">종목 후보를 선택하세요</option>
+                                        <option th:each="option : ${row.foreignOptions}" th:value="${option.id}" th:text="${option.label}" th:selected="${option.id == row.linkedAssetId}"></option>
+                                    </select>
+                                </label>
+                                <details class="mt-2"><summary class="small" th:text="${row.linkedAssetId == null ? '다른 종목 검색' : '연결 종목 변경'}"></summary>
+                                    <div class="input-group input-group-sm mt-1"><input class="form-control asset-query" placeholder="종목명 또는 티커 검색" aria-label="미국 종목 검색" maxlength="100"><button type="button" class="btn btn-outline-primary asset-search">검색</button></div>
+                                    <small class="asset-search-status d-block" role="status"></small>
+                                </details>
+                                <small class="d-block mt-1" th:text="|ISIN: ${row.source.foreignAmounts.sourceCode}|"></small>
+                                <p class="small mb-0 mt-2">외화 금액·비용은 파일 원본으로 저장합니다. 같은 ISIN은 선택한 종목을 공유합니다. 환율 포함 손익은 거래내역 환율 기준으로 표시합니다.</p>
+                            </fieldset>
+                            <span th:if="${!row.eligible() and !row.confirmable()}" class="small text-danger fw-semibold" th:text="${'저장 제외 · ' + row.reason}"></span>
+                            <small th:if="${row.candidates.size() > 1}" class="d-block text-warning-emphasis mt-1">종목 후보가 여러 개입니다. 직접 선택하세요.</small>
+                        </td>
                     </tr>
                 </tbody></table></div>
-                <button type="submit" class="btn btn-primary mt-3">선택한 매매·수입 저장</button>
+                <button type="submit" class="btn btn-primary mt-3">선택한 거래·수입 저장</button>
             </form>
         </section>
     </div></main>
-</div></body></html>
+</div><script src="/js/trade-import.js"></script></body></html>

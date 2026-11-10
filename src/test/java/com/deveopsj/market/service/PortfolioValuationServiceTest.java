@@ -274,4 +274,20 @@ class PortfolioValuationServiceTest {
         trade.setTaxKrw(0L);
         return trade;
     }
+
+    @Test void usdNativeCostUsesCurrentFxForValuationWithoutInventingKrwProfit() {
+        var m=member(7L);var p=plan(3L);var a=asset(11L);a.setCurrency("USD");
+        var buy=trade(p,a,TradeType.BUY,"2","100",200L,1);buy.setCurrency("USD");buy.setExchangeRate(null);buy.setSettlementAmountKrw(null);buy.setForeignSettlement(new BigDecimal("202"));buy.setReferenceExchangeRate(new BigDecimal("1300"));
+        when(assetTradeRepository.findByAssetPlanMemberMemberIdOrderByTradeDateAscIdAsc(7L)).thenReturn(List.of(buy));
+        when(kisMarketPriceService.getQuote(11L)).thenReturn(new MarketPriceQuote(11L,"TEST","Test","NASDAQ","USD",new BigDecimal("110"),BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO,LocalDateTime.now(),false,false));
+        when(kisExchangeRateService.getKrwRate("USD")).thenReturn(new ExchangeRateQuote("USD",new BigDecimal("1400"),LocalDateTime.now(),false,false));
+        var service=new PortfolioValuationService(assetTradeRepository,kisMarketPriceService,kisExchangeRateService);
+        var summary=service.getPortfolio(m);var position=summary.positions().get(0);
+        assertThat(position.valuationAmountKrw()).isEqualTo(308000L);assertThat(position.nativeProfitLoss()).isEqualByComparingTo("18");assertThat(position.fxProfitLossKrw()).isEqualTo(45400L);assertThat(position.referenceCostEstimated()).isTrue();
+        assertThat(position.averageUnitPrice()).isEqualByComparingTo("101");assertThat(position.nativeReturnRate()).isEqualByComparingTo("8.91");
+        assertThat(position.remainingCostKrw()).isNull();assertThat(position.profitLossKrw()).isNull();assertThat(position.returnRate()).isNull();assertThat(summary.totalProfitLossKrw()).isNull();
+        when(kisExchangeRateService.getKrwRate("USD")).thenThrow(new IllegalStateException("no fx"));
+        var unavailable=service.getPortfolio(m).positions().get(0);
+        assertThat(unavailable.valuationAmountKrw()).isNull();assertThat(unavailable.appliedExchangeRate()).isNull();assertThat(unavailable.nativeReturnRate()).isEqualByComparingTo("8.91");
+    }
 }

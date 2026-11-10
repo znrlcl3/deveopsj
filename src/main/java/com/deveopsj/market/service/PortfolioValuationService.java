@@ -50,13 +50,13 @@ public class PortfolioValuationService {
                 positions.add(toPosition(accumulator));
             }
         }
-        long totalCost = positions.stream().mapToLong(PortfolioPosition::remainingCostKrw).sum();
+        Long totalCost = positions.stream().anyMatch(p -> p.remainingCostKrw()==null) ? null : positions.stream().mapToLong(PortfolioPosition::remainingCostKrw).sum();
         long totalValuation = positions.stream()
                 .filter(PortfolioPosition::quoteAvailable)
                 .mapToLong(PortfolioPosition::valuationAmountKrw)
                 .sum();
         long quotedCost = positions.stream()
-                .filter(PortfolioPosition::quoteAvailable)
+                .filter(p -> p.quoteAvailable() && p.remainingCostKrw()!=null)
                 .mapToLong(PortfolioPosition::remainingCostKrw)
                 .sum();
         return new PortfolioSummary(
@@ -64,7 +64,7 @@ public class PortfolioValuationService {
                 totalCost,
                 quotedCost,
                 totalValuation,
-                totalValuation - quotedCost);
+                totalCost==null ? null : totalValuation - quotedCost);
     }
 
     public MonthlyPortfolioSummary getMonthlyPortfolio(Member member, YearMonth selectedMonth) {
@@ -72,8 +72,8 @@ public class PortfolioValuationService {
                 .findByAssetPlanMemberMemberIdAndTradeDateLessThanEqualOrderByTradeDateAscIdAsc(
                         member.getMemberId(), selectedMonth.atEndOfMonth());
         Map<PositionKey, PositionAccumulator> accumulators = new LinkedHashMap<>();
-        long monthlyBuyAmount = 0;
-        long monthlySellAmount = 0;
+        Long monthlyBuyAmount = 0L;
+        Long monthlySellAmount = 0L;
         for (AssetTrade trade : trades) {
             PositionKey key = new PositionKey(
                     trade.getAssetPlan().getId(), trade.getInvestmentAsset().getId());
@@ -81,10 +81,10 @@ public class PortfolioValuationService {
                     .apply(trade);
             if (YearMonth.from(trade.getTradeDate()).equals(selectedMonth)) {
                 if (trade.getTradeType() == TradeType.BUY) {
-                    monthlyBuyAmount = Math.addExact(
+                    monthlyBuyAmount = addKnown(
                             monthlyBuyAmount, trade.getSettlementAmountKrw());
                 } else if (trade.getTradeType() == TradeType.SELL) {
-                    monthlySellAmount = Math.addExact(
+                    monthlySellAmount = addKnown(
                             monthlySellAmount, trade.getSettlementAmountKrw());
                 }
             }
@@ -94,22 +94,24 @@ public class PortfolioValuationService {
                 .filter(accumulator -> accumulator.quantity.signum() > 0)
                 .map(PositionAccumulator::monthlyPosition)
                 .toList();
-        long monthEndCost = positions.stream()
+        Long monthEndCost = positions.stream().anyMatch(p -> p.remainingCostKrw()==null) ? null : positions.stream()
                 .mapToLong(MonthlyPortfolioPosition::remainingCostKrw)
                 .sum();
         return new MonthlyPortfolioSummary(
                 selectedMonth,
                 monthlyBuyAmount,
                 monthlySellAmount,
-                Math.subtractExact(monthlyBuyAmount, monthlySellAmount),
+                monthlyBuyAmount==null || monthlySellAmount==null ? null : Math.subtractExact(monthlyBuyAmount, monthlySellAmount),
                 monthEndCost,
                 positions);
     }
 
+    private static Long addKnown(Long a,Long b) { return a==null || b==null ? null : Math.addExact(a,b); }
+
     private PortfolioPosition toPosition(PositionAccumulator accumulator) {
         BigDecimal averageUnitPrice = accumulator.nativeCost
                 .divide(accumulator.quantity, 4, RoundingMode.HALF_UP);
-        long remainingCostKrw = accumulator.krwCost.setScale(0, RoundingMode.HALF_UP).longValue();
+        Long remainingCostKrw = accumulator.krwCost==null ? null : accumulator.krwCost.setScale(0, RoundingMode.HALF_UP).longValueExact();
         try {
             MarketPriceQuote quote = kisMarketPriceService.getQuote(accumulator.investmentAssetId);
             ExchangeRateQuote exchangeRateQuote;
@@ -117,6 +119,8 @@ public class PortfolioValuationService {
             try {
                 exchangeRateQuote = kisExchangeRateService.getKrwRate(accumulator.currency);
             } catch (IllegalArgumentException | IllegalStateException e) {
+                if(accumulator.exchangeRate==null || accumulator.krwCost==null) return accumulator.position(averageUnitPrice,remainingCostKrw,quote.currentPrice(),null,
+                    "현재 환율을 조회할 수 없습니다.",null,null,null,quote.fetchedAt(),quote.cached(),quote.stale(),"현재 환율 조회 불가");
                 exchangeRateQuote = new ExchangeRateQuote(
                         accumulator.currency, accumulator.exchangeRate, null, false, true);
                 exchangeRateWarning = "실시간 환율 조회 실패로 최근 매매 환율을 적용했습니다.";
@@ -125,8 +129,8 @@ public class PortfolioValuationService {
                     .multiply(accumulator.quantity)
                     .multiply(exchangeRateQuote.krwRate());
             long valuationKrw = valuation.setScale(0, RoundingMode.HALF_UP).longValueExact();
-            long profitLossKrw = Math.subtractExact(valuationKrw, remainingCostKrw);
-            BigDecimal returnRate = remainingCostKrw == 0 ? BigDecimal.ZERO
+            Long profitLossKrw = remainingCostKrw==null ? null : Math.subtractExact(valuationKrw, remainingCostKrw);
+            BigDecimal returnRate = remainingCostKrw==null ? null : remainingCostKrw == 0 ? BigDecimal.ZERO
                     : BigDecimal.valueOf(profitLossKrw)
                             .multiply(BigDecimal.valueOf(100))
                             .divide(BigDecimal.valueOf(remainingCostKrw), 2, RoundingMode.HALF_UP);
@@ -161,6 +165,8 @@ public class PortfolioValuationService {
         private BigDecimal nativeCost = BigDecimal.ZERO;
         private BigDecimal krwCost = BigDecimal.ZERO;
         private BigDecimal exchangeRate = BigDecimal.ONE;
+        private BigDecimal referenceCost = BigDecimal.ZERO;
+        private boolean referenceEstimated;
 
         private PositionAccumulator(AssetTrade trade) {
             this.assetPlanId = trade.getAssetPlan().getId();
@@ -178,19 +184,26 @@ public class PortfolioValuationService {
         private void apply(AssetTrade trade) {
             if (trade.isHistoryOnly()) return;
             exchangeRate = trade.getExchangeRate();
+            BigDecimal tradeReference = trade.getSettlementAmountKrw()!=null ? BigDecimal.valueOf(trade.getSettlementAmountKrw())
+                : trade.getReferenceExchangeRate()!=null && trade.getReferenceExchangeRate().signum()>0 && trade.getForeignSettlement()!=null
+                    ? trade.getForeignSettlement().multiply(trade.getReferenceExchangeRate()) : null;
             if (trade.getTradeType() == TradeType.SNAPSHOT) {
+                referenceCost=tradeReference;referenceEstimated=trade.getSettlementAmountKrw()==null;
                 quantity = trade.getQuantity();
                 nativeCost = trade.getUnitPrice().multiply(quantity);
-                krwCost = BigDecimal.valueOf(trade.getSettlementAmountKrw());
+                krwCost = trade.getSettlementAmountKrw()==null ? null : BigDecimal.valueOf(trade.getSettlementAmountKrw());
                 return;
             }
             if (trade.getTradeType() == TradeType.BUY) {
+                referenceCost=referenceCost==null || tradeReference==null ? null : referenceCost.add(tradeReference);
+                referenceEstimated |= trade.getSettlementAmountKrw()==null;
                 quantity = quantity.add(trade.getQuantity());
-                nativeCost = nativeCost.add(trade.getUnitPrice().multiply(trade.getQuantity()));
-                krwCost = krwCost.add(BigDecimal.valueOf(trade.getSettlementAmountKrw()));
+                nativeCost = nativeCost.add(trade.getForeignSettlement()!=null ? trade.getForeignSettlement() : trade.getUnitPrice().multiply(trade.getQuantity()));
+                krwCost = krwCost==null || trade.getSettlementAmountKrw()==null ? null : krwCost.add(BigDecimal.valueOf(trade.getSettlementAmountKrw()));
                 return;
             }
             if (quantity.signum() <= 0 || trade.getQuantity().compareTo(quantity) >= 0) {
+                referenceCost=BigDecimal.ZERO;referenceEstimated=false;
                 quantity = BigDecimal.ZERO;
                 nativeCost = BigDecimal.ZERO;
                 krwCost = BigDecimal.ZERO;
@@ -200,10 +213,11 @@ public class PortfolioValuationService {
                     .divide(quantity, CALCULATION_SCALE, RoundingMode.HALF_UP);
             quantity = quantity.subtract(trade.getQuantity());
             nativeCost = nativeCost.multiply(remainingRatio);
-            krwCost = krwCost.multiply(remainingRatio);
+            krwCost = krwCost==null ? null : krwCost.multiply(remainingRatio);
+            referenceCost=referenceCost==null ? null : referenceCost.multiply(remainingRatio);
         }
 
-        private PortfolioPosition position(BigDecimal averageUnitPrice, long remainingCostKrw,
+        private PortfolioPosition position(BigDecimal averageUnitPrice, Long remainingCostKrw,
                 BigDecimal currentPrice, ExchangeRateQuote exchangeRateQuote,
                 String exchangeRateWarning, Long valuationAmountKrw, Long profitLossKrw,
                 BigDecimal returnRate, java.time.LocalDateTime quoteFetchedAt,
@@ -218,13 +232,13 @@ public class PortfolioValuationService {
                     exchangeRateQuote != null && exchangeRateQuote.cached(),
                     exchangeRateQuote != null && exchangeRateQuote.stale(), exchangeRateWarning,
                     valuationAmountKrw, profitLossKrw,
-                    returnRate, quoteFetchedAt, cachedQuote, staleQuote, quoteError);
+                    returnRate, quoteFetchedAt, cachedQuote, staleQuote, quoteError,nativeCost,referenceCost==null?null:referenceCost.setScale(0,RoundingMode.HALF_UP).longValueExact(),referenceEstimated);
         }
 
         private MonthlyPortfolioPosition monthlyPosition() {
             BigDecimal averageUnitPrice = nativeCost
                     .divide(quantity, 4, RoundingMode.HALF_UP);
-            long remainingCostKrw = krwCost.setScale(0, RoundingMode.HALF_UP).longValueExact();
+            Long remainingCostKrw = krwCost==null ? null : krwCost.setScale(0, RoundingMode.HALF_UP).longValueExact();
             return new MonthlyPortfolioPosition(
                     assetPlanId, planName, investmentAssetId, symbol, assetName, market, currency,
                     quantity.stripTrailingZeros(), averageUnitPrice, remainingCostKrw);

@@ -86,13 +86,13 @@ public class MonthlyCashFlowService {
             }
         }
         for (AssetTrade trade : trades) {
-            if (trade.getTradeType() == TradeType.SNAPSHOT) continue;
+            if (trade.getTradeType() == TradeType.SNAPSHOT || trade.getSettlementAmountKrw()==null) continue;
             PlanAccumulator accumulator = planAccumulators.computeIfAbsent(
                     trade.getAssetPlan().getId(),
                     ignored -> new PlanAccumulator(
                             trade.getAssetPlan().getId(),
                             planName(trade.getAssetPlan().getPlanName(),
-                                    trade.getAssetPlan().getGoal().getTitle())));
+                                    trade.getAssetPlan().getGoal()==null?"":trade.getAssetPlan().getGoal().getTitle())));
             if (trade.getTradeType() == TradeType.BUY) {
                 accumulator.cumulativeBuy = Math.addExact(
                         accumulator.cumulativeBuy, trade.getSettlementAmountKrw());

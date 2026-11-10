@@ -12,12 +12,19 @@
     <main class="assets-main"><div class="assets-content">
         <header th:replace="~{common/asset-navigation :: assetHeader}"></header>
         <nav th:replace="~{common/asset-navigation :: tabs('overview')}"></nav>
+        <section class="card p-4 mb-4"><h2 class="h5 fw-bold">잔고 파일로 관리하는 계좌</h2>
+            <p th:if="${#lists.isEmpty(snapshotReport.accounts)}" class="text-muted">현재 종합잔고 파일을 올려 계좌 총액과 보유목록부터 등록하세요.</p>
+            <div th:if="${!#lists.isEmpty(snapshotReport.accounts)}"><strong class="d-block fs-2 mb-2" th:text="|${#numbers.formatInteger(snapshotReport.total(),0,'COMMA')}원|"></strong>
+                <div th:each="account : ${snapshotReport.accounts}" class="d-flex flex-wrap justify-content-between gap-2 border-top py-2"><span><span th:text="${account.planName}"></span><small class="d-block text-muted" th:text="|기준일 ${account.date}|"></small></span><strong th:text="|${#numbers.formatInteger(account.data.total(),0,'COMMA')}원|"></strong></div>
+                <p class="small text-muted mt-2">각 계좌의 최신 파일 기준 자산금액입니다. 아래 매매·직접 입력 기반 평가 및 현금 잔액과 중복 합산하지 않습니다. 목표 진행률에는 아직 자동 반영되지 않습니다.</p></div>
+            <a href="/holdings/import" class="btn btn-primary align-self-start">잔고 가져오기 · 상세 보기</a>
+        </section>
         <div class="d-flex justify-content-end mb-4"><a href="#balanceForm" class="btn btn-primary">예·적금 / 현금 등록</a></div>
         <div th:if="${message}" class="alert alert-success" role="status" th:text="${message}"></div>
         <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
         <div th:if="${portfolioError}" class="alert alert-warning" th:text="${portfolioError}"></div>
         <div class="row g-3 mb-3">
-            <div class="col-md-4"><div class="card p-4 h-100"><span class="text-muted">증권 평가금액</span>
+            <div class="col-md-4"><div class="card p-4 h-100"><span class="text-muted">매매·직접 입력 기반 증권 평가금액</span>
                 <strong class="fs-3 amount" th:if="${summary != null}" th:text="|${#numbers.formatInteger(summary.totalValuationKrw, 0, 'COMMA')}원|"></strong>
                 <strong th:if="${summary == null}">조회 불가</strong><small class="text-muted">현재가 조회가 가능한 종목만 합산 · 예수금 제외</small></div></div>
             <div class="col-md-4"><div class="card p-4 h-100"><span class="text-muted">예금·적금 잔액</span><strong class="fs-3 amount" th:text="|${#numbers.formatInteger(depositTotal, 0, 'COMMA')}원|"></strong><small class="text-muted">직접 확인한 잔액 기준</small></div></div>

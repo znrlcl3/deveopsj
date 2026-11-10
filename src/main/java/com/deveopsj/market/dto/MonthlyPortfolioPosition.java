@@ -12,5 +12,5 @@ public record MonthlyPortfolioPosition(
         String currency,
         BigDecimal quantity,
         BigDecimal averageUnitPrice,
-        long remainingCostKrw) {
+        Long remainingCostKrw) {
 }

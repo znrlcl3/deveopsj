@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"><body><div th:fragment="balanceDetails(data)">
+<div class="row g-3 mb-3"><div class="col-sm-6 col-lg-3" th:each="total : ${data.totals}"><span class="small text-muted" th:text="${total.key}"></span><strong class="d-block" th:text="|${#numbers.formatInteger(total.value,0,'COMMA')}원|"></strong></div></div>
+<p class="small text-muted">자산금액은 증권사 상단 표시값입니다. 예수금·외화예수금·D+1·D+2 금액은 참고 항목으로 다시 더하지 않습니다. 해외 주식·ETF 현재가는 원본 외화 표시값, 매입·평가·손익 금액은 원화입니다. 예수금 행의 수량·현재가는 원본 표시값으로 보관하며 정확한 외화 잔액이나 환율로 역산하지 않습니다. 달러 매입원가를 추정하지 않습니다.</p>
+<p th:if="${data.difference().signum() != 0}" class="small text-warning-emphasis" th:text="|종목 평가액 합계와 상단 평가금액의 차이: ${#numbers.formatInteger(data.difference(),0,'COMMA')}원. 원본 값을 그대로 보관합니다.|"></p>
+<details><summary th:text="|보유종목 ${data.securities()}개 · 원본 ${data.lines.size()}행 보기|"></summary>
+<div class="table-responsive mt-2"><table class="table table-sm" style="min-width:1050px"><thead><tr><th>유형 / 구분</th><th>종목 / 상품코드</th><th class="text-end">수량</th><th class="text-end">현재가 (원본)</th><th class="text-end">매입금액 (원)</th><th class="text-end">평가금액 (원)</th><th class="text-end">평가손익 (원)</th><th class="text-end">수익률 (%)</th></tr></thead><tbody>
+<tr th:each="line : ${data.lines}"><td><span th:text="${line.type}"></span><small class="d-block" th:text="${line.category}"></small></td><td><span th:text="${line.name}"></span><small class="d-block text-muted" th:text="${line.code}"></small></td><td class="text-end" th:text="${line.quantity.stripTrailingZeros().toPlainString()}"></td><td class="text-end" th:text="${line.price.stripTrailingZeros().toPlainString()}"></td><td class="text-end" th:text="${#numbers.formatInteger(line.cost,0,'COMMA')}"></td><td class="text-end" th:text="${#numbers.formatInteger(line.value,0,'COMMA')}"></td><td class="text-end" th:text="${#numbers.formatInteger(line.profit,0,'COMMA')}"></td><td class="text-end" th:text="${line.rate}"></td></tr>
+</tbody></table></div></details></div>
+
+</body></html>

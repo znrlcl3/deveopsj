@@ -5,9 +5,9 @@ import java.util.List;
 
 public record MonthlyPortfolioSummary(
         YearMonth selectedMonth,
-        long monthlyBuyAmountKrw,
-        long monthlySellAmountKrw,
-        long monthlyNetInvestmentKrw,
-        long monthEndCostKrw,
+        Long monthlyBuyAmountKrw,
+        Long monthlySellAmountKrw,
+        Long monthlyNetInvestmentKrw,
+        Long monthEndCostKrw,
         List<MonthlyPortfolioPosition> positions) {
 }

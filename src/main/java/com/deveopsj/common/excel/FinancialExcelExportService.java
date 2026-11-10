@@ -76,7 +76,7 @@ public class FinancialExcelExportService {
         List<AssetTrade> rows = assetTradeService.getTradesByMemberAndPeriod(
                 member, range.startDate(), range.endDate());
         return workbook("주식 ETF 매매", List.of("거래일", "종목", "종목코드", "시장", "유형", "수량",
-                "체결단가", "총 매매금액", "통화", "환율", "수수료(원)", "세금(원)", "원화 정산금액", "메모"), sheet -> {
+                "체결단가", "총 매매금액", "통화", "환율", "수수료(원)", "세금(원)", "원화 정산금액", "메모", "외화 거래금액", "외화 수수료", "외화 세금", "외화 정산금액"), sheet -> {
             int rowIndex = 1;
             for (AssetTrade trade : rows) {
                 Row row = sheet.createRow(rowIndex++);
@@ -91,13 +91,14 @@ public class FinancialExcelExportService {
                 });
                 decimal(row, 5, trade.getQuantity());
                 decimal(row, 6, trade.getUnitPrice());
-                decimal(row, 7, trade.getQuantity().multiply(trade.getUnitPrice()));
+                decimal(row, 7, trade.getForeignGross()!=null ? trade.getForeignGross() : trade.getQuantity().multiply(trade.getUnitPrice()));
                 text(row, 8, trade.getCurrency());
                 decimal(row, 9, trade.getExchangeRate());
                 number(row, 10, trade.getFeeKrw());
                 number(row, 11, trade.getTaxKrw());
                 number(row, 12, trade.getSettlementAmountKrw());
                 text(row, 13, trade.getMemo());
+                decimal(row,14,trade.getForeignGross());decimal(row,15,trade.getForeignFee());decimal(row,16,trade.getForeignTax());decimal(row,17,trade.getForeignSettlement());
             }
         });
     }

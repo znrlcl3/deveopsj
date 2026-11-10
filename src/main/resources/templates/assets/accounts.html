@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계좌별 요약 | AI 자산관리</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="/css/assets.css" rel="stylesheet"></head>
+<body class="asset-page"><div class="d-flex">
+<div th:replace="~{common/navigation :: sidebar('assets')}"></div>
+<main class="assets-main"><div class="assets-content">
+<header th:replace="~{common/asset-navigation :: assetHeader}"></header>
+<nav th:replace="~{common/asset-navigation :: tabs('accounts')}"></nav>
+<h2 class="h3 fw-bold">계좌별 요약</h2>
+<p class="text-muted">계좌에 해당하는 자산 플랜별로 집계합니다. 같은 계좌의 거래는 같은 플랜에 등록해 주세요.</p>
+<div th:if="${errorMessage}" class="alert alert-warning" th:text="${errorMessage}"></div>
+<section th:if="${!#lists.isEmpty(balances.accounts)}" class="card p-4 mb-4">
+<h3 class="h5 fw-bold">잔고 파일 기준 계좌 총액</h3><strong class="fs-2" th:text="|${#numbers.formatInteger(balances.total(),0,'COMMA')}원|"></strong>
+<p class="small text-muted">각 계좌의 최신 종합잔고 자산금액 합계입니다. 기준일이 다를 수 있으며 실시간 평가가 아닙니다. 아래 매매 기록 기반 평가와 합산하지 않습니다.</p>
+<div th:each="account : ${balances.accounts}" class="d-flex flex-wrap gap-3 justify-content-between border-top py-2"><span><span th:text="${account.planName}"></span><small class="d-block text-muted" th:text="|기준일 ${account.date}|"></small></span><strong th:text="|${#numbers.formatInteger(account.data.total(),0,'COMMA')}원|"></strong></div>
+<a href="/holdings/import" class="mt-2">잔고 상세 확인 · 새 파일 등록</a></section>
+<section th:if="${!#lists.isEmpty(report.accounts)}" class="card p-4 mb-4" aria-labelledby="accountTotalsTitle">
+<h3 id="accountTotalsTitle" class="h5 fw-bold">계좌별 보유자산 총액</h3><p th:if="${!#lists.isEmpty(balances.accounts)}" class="small text-muted">이 영역은 매매·직접 입력 기록 기반 평가입니다. 잔고 파일 금액은 위에서 별도로 확인하세요.</p>
+<span class="small text-muted">전체 계좌 보유자산 평가액 합계</span>
+<strong class="d-block fs-2 amount mb-2" th:text="${report.totalValuation() != null ? #numbers.formatInteger(report.totalValuation(),0,'COMMA') + '원' : '합계 확인 불가'}"></strong>
+<p th:if="${report.totalValuation() == null}" class="small text-warning-emphasis">평가하지 못한 계좌가 있어 전체 합계를 표시하지 않습니다. 확인 가능한 계좌 금액은 아래에서 볼 수 있습니다.</p>
+<p th:if="${report.staleValuation()}" class="small text-warning-emphasis">이전 조회 시세·환율이 포함되어 있습니다.</p>
+<p class="small text-muted">등록된 주식·ETF의 현재 평가액입니다. 해외 보유분은 현재 조회 환율로 원화 환산합니다. 예수금·현금·예적금은 포함하지 않으며, 아래 거래 조회 월을 바꿔도 월말 잔액으로 바뀌지 않습니다.</p>
+<div class="table-responsive"><table class="table align-middle mb-0">
+<thead><tr><th scope="col">계좌</th><th scope="col" class="text-end">보유종목 수</th><th scope="col" class="text-end">보유자산 총액 (원)</th></tr></thead>
+<tbody><tr th:each="account : ${report.accounts}">
+<th scope="row"><a th:href="|#account-${account.id}|" th:text="${account.name}"></a></th>
+<td class="text-end" th:text="${report.quoteFailed ? '—' : account.holdings}"></td>
+<td class="text-end"><strong class="amount" th:text="${account.valuationAvailable ? #numbers.formatInteger(account.valuation,0,'COMMA') : '조회 불가'}"></strong><small th:if="${account.stale}" class="d-block text-warning-emphasis">이전 조회값 포함</small></td>
+</tr></tbody></table></div>
+</section>
+<form action="/assets/accounts" method="get" class="card p-4 mb-4">
+<div class="d-flex flex-wrap gap-3 align-items-end"><div><label for="accountMonth" class="form-label">거래 조회 월</label>
+<input id="accountMonth" name="month" type="month" min="1900-01" th:max="${currentMonth}" th:value="${selectedMonth}" class="form-control" required></div>
+<button class="btn btn-primary" type="submit">조회</button><a href="/trades/import" class="btn btn-outline-primary">거래내역 엑셀 가져오기</a></div></form>
+<div th:if="${report.quoteFailed}" class="alert alert-warning">현재 평가를 불러오지 못했습니다. 월별 거래·수입 합계는 확인할 수 있습니다.</div>
+<p class="small text-muted">월별 매수는 수수료·세금 포함 출금액, 매도는 비용 차감 후 입금액입니다. 분배금·이자도 세후 입금액이며, 비용은 이미 반영된 금액을 따로 보여줍니다. 보유분 기준 기록은 매수액에서 제외하고 ‘내역만 저장’ 거래는 포함합니다.</p>
+<p class="small text-muted">환율 없는 USD 거래가 있으면 해당 원화 거래 합계·원금·손익은 표시하지 않습니다. 현재 평가액은 최신 환율로 환산하며 달러 수익률은 보유자산 수익률에서 확인하세요. 환율 제외 손익은 USD 기준이며 환율 포함 손익은 원화 기준입니다. 파일의 거래 환율로 계산한 원가는 ‘거래내역 환율 기준’으로 표시합니다. 둘 다 현재 보유분의 미실현 손익이며 이번 달 실현손익이 아닙니다. 현재 평가는 선택한 월의 월말 잔액이 아닙니다. 수익률은 현재 보유분의 남은 매입원금 대비 평가손익이며, 실현손익·분배금·이자는 포함하지 않습니다. 예수금은 별도입니다.</p>
+<div th:if="${report.unassignedIncome.signum() > 0}" class="alert alert-info">계좌 미연결 배당·이자 <strong th:text="|${#numbers.formatInteger(report.unassignedIncome, 0, 'COMMA')}원|"></strong>은 계좌별 합계에서 제외했습니다. <a th:href="@{/income/list(month=${selectedMonth})}">수입 내역 확인</a></div>
+<div th:if="${#lists.isEmpty(report.accounts)}" class="card p-4 text-center text-muted">선택한 월의 거래·수입이나 현재 보유분이 없습니다.</div>
+<article th:each="account : ${report.accounts}" th:id="|account-${account.id}|" class="card p-4 mb-4">
+<h3 class="h5 fw-bold" th:text="${account.name}"></h3>
+<h4 class="h6 text-muted mt-3" th:text="|${selectedMonth} 거래·수입 · 원|"></h4>
+<div class="row g-3 mb-4">
+<div class="col-6 col-lg"><span class="small text-muted">매수 출금액</span><strong class="d-block fs-5 amount" th:text="${account.buy != null ? #numbers.formatInteger(account.buy, 0, 'COMMA') : '환율 없음'}"></strong></div>
+<div class="col-6 col-lg"><span class="small text-muted">매도 입금액</span><strong class="d-block fs-5 amount" th:text="${account.sell != null ? #numbers.formatInteger(account.sell, 0, 'COMMA') : '환율 없음'}"></strong></div>
+<div class="col-6 col-lg"><span class="small text-muted">배당·분배금</span><strong class="d-block fs-5 amount" th:text="${#numbers.formatInteger(account.dividend, 0, 'COMMA')}"></strong></div>
+<div class="col-6 col-lg"><span class="small text-muted">이자·예탁금 이용료</span><strong class="d-block fs-5 amount" th:text="${#numbers.formatInteger(account.interest, 0, 'COMMA')}"></strong></div>
+<div class="col-6 col-lg"><span class="small text-muted">수수료·세금 (반영분)</span><strong class="d-block fs-5 amount" th:text="${account.costs != null ? #numbers.formatInteger(account.costs, 0, 'COMMA') : '환율 없음'}"></strong></div>
+</div>
+<div class="row g-3 mb-4"><div class="col-6"><span class="small text-muted">입금 (원)</span><strong class="d-block" th:text="${#numbers.formatInteger(account.deposits,0,'COMMA')}"></strong></div><div class="col-6"><span class="small text-muted">출금 (원)</span><strong class="d-block" th:text="${#numbers.formatInteger(account.withdrawals,0,'COMMA')}"></strong></div></div>
+<h4 class="h6 text-muted">선택한 월의 달러 거래 · USD</h4>
+<div class="row g-3 mb-4">
+<div class="col-6 col-lg"><span class="small text-muted">매수</span><strong class="d-block" th:text="${#numbers.formatDecimal(account.usdBuy,1,'COMMA',2,'POINT')}"></strong></div>
+<div class="col-6 col-lg"><span class="small text-muted">매도</span><strong class="d-block" th:text="${#numbers.formatDecimal(account.usdSell,1,'COMMA',2,'POINT')}"></strong></div>
+<div class="col-6 col-lg"><span class="small text-muted">배당</span><strong class="d-block" th:text="${#numbers.formatDecimal(account.usdDividend,1,'COMMA',2,'POINT')}"></strong></div>
+<div class="col-6 col-lg"><span class="small text-muted">이자</span><strong class="d-block" th:text="${#numbers.formatDecimal(account.usdInterest,1,'COMMA',2,'POINT')}"></strong></div>
+<div class="col-6 col-lg"><span class="small text-muted">입금</span><strong class="d-block" th:text="${#numbers.formatDecimal(account.usdDeposits,1,'COMMA',2,'POINT')}"></strong></div>
+<div class="col-6 col-lg"><span class="small text-muted">출금</span><strong class="d-block" th:text="${#numbers.formatDecimal(account.usdWithdrawals,1,'COMMA',2,'POINT')}"></strong></div>
+</div><p class="small text-muted">입출금은 계좌 이체만 집계하며 환전·배당·매매 대금과 중복 합산하지 않습니다. USD 배당·이자는 실제 외화 정산액으로 별도 집계하고 원화 수입에는 합산하지 않습니다. 별도 원화 세금은 원본 상세에서 확인하세요.</p>
+<details th:if="${!#lists.isEmpty(account.foreignRows)}" class="mb-3"><summary>이번 달 USD 배당·이자·입출금 상세</summary>
+<div th:each="entry : ${account.foreignRows}" class="border-bottom py-2"><strong th:text="|${entry.entryDate} · ${entry.typeLabel} · ${entry.amount} USD|"></strong><details><summary>원본 상세</summary><p class="small text-break" th:text="${entry.sourceDetails}"></p></details>
+<form th:action="@{/assets/accounts/foreign/delete}" method="post" onsubmit="return confirm('이 해외 내역을 삭제할까요?');"><input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><input type="hidden" name="id" th:value="${entry.id}"><button class="btn btn-sm btn-outline-danger">삭제</button></form></div></details>
+<div class="border-top pt-3"><h4 class="h6">현재 보유분 평가</h4>
+<p th:if="${!account.valuationAvailable}" class="text-warning-emphasis small">시세 또는 환율을 확인하지 못해 평가금액·손익·수익률을 표시하지 않습니다.</p>
+<p th:if="${account.stale}" class="text-warning-emphasis small">이전 조회 시세·환율이 포함되어 있습니다.</p>
+<div class="row g-3 mb-3"><div class="col-md-6"><span class="small text-muted">환율 제외 손익 · 해외 보유분</span><strong class="d-block" th:text="${account.usdProfit != null ? #numbers.formatDecimal(account.usdProfit,1,'COMMA',2,'POINT') + ' USD' : '조회 불가'}"></strong></div>
+<div class="col-md-6"><span class="small text-muted">환율 포함 손익 · 전체 보유분</span><strong class="d-block" th:text="${account.fxProfit != null ? #numbers.formatInteger(account.fxProfit,0,'COMMA') + '원' : '환율·시세 확인 필요'}"></strong><small th:if="${account.fxEstimated}">거래내역 환율 기준 (실제 환전 비용과 차이 가능)</small></div></div>
+<div class="row g-3">
+<div class="col-6 col-lg-3"><span class="small text-muted">남은 매입원금</span><strong class="d-block amount" th:text="${report.quoteFailed ? '조회 불가' : (account.cost != null ? #numbers.formatInteger(account.cost, 0, 'COMMA') + '원' : (account.fxProfit != null ? #numbers.formatInteger(account.valuation.subtract(account.fxProfit),0,'COMMA') + '원 (거래내역 환율)' : '매수 환율 없음'))}"></strong></div>
+<div class="col-6 col-lg-3"><span class="small text-muted">평가금액</span><strong class="d-block amount" th:text="${account.valuationAvailable ? #numbers.formatInteger(account.valuation, 0, 'COMMA') + '원' : '조회 불가'}"></strong></div>
+<div class="col-6 col-lg-3"><span class="small text-muted">확정 원화 원가 기준 손익</span><strong class="d-block amount" th:text="${account.profit != null ? #numbers.formatInteger(account.profit, 0, 'COMMA') + '원' : (account.valuationAvailable ? '매수 환율 없음' : '조회 불가')}"></strong></div>
+<div class="col-6 col-lg-3"><span class="small text-muted">확정 원화 원가 기준 수익률</span><strong class="d-block amount" th:text="${account.rate != null ? account.rate + '%' : '—'}"></strong></div>
+</div></div></article>
+<p class="small text-muted">등록된 내역만 집계합니다. 계좌가 연결되지 않은 수입은 임의로 배분하지 않습니다.</p>
+</div></main></div></body></html>

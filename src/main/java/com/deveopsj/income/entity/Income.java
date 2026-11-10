@@ -28,6 +28,9 @@ import lombok.Setter;
 @Setter
 public class Income extends BaseEntity {
 
+    @Column(length=64)
+    private String importGroupKey;
+
     public enum IncomeType {
         SALARY("급여"),
         SIDE_INCOME("부수입"),

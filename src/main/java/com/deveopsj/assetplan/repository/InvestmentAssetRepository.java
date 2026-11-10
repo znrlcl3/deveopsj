@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.deveopsj.assetplan.entity.InvestmentAsset;
 
 public interface InvestmentAssetRepository extends JpaRepository<InvestmentAsset, Long> {
+    List<InvestmentAsset> findByActiveTrueAndCurrency(String currency);
 
     List<InvestmentAsset> findByActiveTrueAndAssetNameAndCurrency(String assetName, String currency);
 

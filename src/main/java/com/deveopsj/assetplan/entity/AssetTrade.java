@@ -29,6 +29,18 @@ import lombok.Setter;
 @Setter
 public class AssetTrade extends BaseEntity {
 
+    @Column(precision=19,scale=6) private BigDecimal referenceExchangeRate;
+    @Column(precision=19,scale=4) private BigDecimal foreignGross;
+    @Column(precision=19,scale=4) private BigDecimal foreignFee;
+    @Column(precision=19,scale=4) private BigDecimal foreignTax;
+    @Column(precision=19,scale=4) private BigDecimal foreignSettlement;
+
+    @Column(length=2000)
+    private String importDetails;
+
+    @Column(length=64)
+    private String importGroupKey;
+
     @Column(length = 64, unique = true)
     private String importKey;
 
@@ -67,16 +79,16 @@ public class AssetTrade extends BaseEntity {
     @Column(nullable = false, length = 3)
     private String currency;
 
-    @Column(nullable = false, precision = 19, scale = 6)
+    @Column(precision = 19, scale = 6)
     private BigDecimal exchangeRate;
 
-    @Column(nullable = false)
+    @Column
     private Long feeKrw;
 
-    @Column(nullable = false)
+    @Column
     private Long taxKrw;
 
-    @Column(nullable = false)
+    @Column
     private Long settlementAmountKrw;
 
     @Column(length = 200)

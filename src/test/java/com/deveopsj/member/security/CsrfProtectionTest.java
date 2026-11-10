@@ -449,7 +449,7 @@ class CsrfProtectionTest {
                         .with(user(new CustomUserDetails(member)))
                         .param("month", month.toString()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("주식·ETF 매매 내역")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("투자계좌 거래내역")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("조회 월")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("새 매매 등록")));
     }
