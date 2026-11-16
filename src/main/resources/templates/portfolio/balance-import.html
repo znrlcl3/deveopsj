@@ -4,6 +4,7 @@
 <body class="asset-page"><div class="d-flex"><div th:replace="~{common/navigation :: sidebar('assets')}"></div><main class="assets-main"><div class="assets-content">
 <header th:replace="~{common/asset-navigation :: assetHeader}"></header><nav th:replace="~{common/asset-navigation :: tabs('balance-import')}"></nav>
 <h2 class="h3 fw-bold">잔고 가져오기</h2><p class="text-muted">나무증권 종합잔고 파일로 현재 계좌 상태부터 등록하세요. 종목 연결 없이 저장할 수 있습니다.</p>
+<div th:if="${!#lists.isEmpty(balances.accounts)}" class="alert alert-info"><strong>잔고를 등록했다면 다음은 월별 거래내역입니다.</strong><p class="mb-2">등록한 계좌와 같은 플랜에 매수·매도·입출금·분배금을 월별로 가져오세요. 아래 잔고 업로드는 다른 계좌를 시작하거나 현재 평가액을 갱신할 때 사용합니다.</p><a href="/trades/import" class="btn btn-primary">월별 거래내역 업로드</a></div>
 <div th:if="${message}" class="alert alert-success" th:text="${message}"></div><div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 <form th:action="@{/holdings/import/preview}" method="post" enctype="multipart/form-data" class="card p-4 mb-4">
 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

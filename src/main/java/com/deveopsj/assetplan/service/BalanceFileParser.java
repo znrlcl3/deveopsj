@@ -20,7 +20,7 @@ public class BalanceFileParser {
     public Parsed parse(byte[] bytes) {
         if(bytes.length==0 || bytes.length>NamuhTradeFileParser.MAX_BYTES) throw new IllegalArgumentException("5MB 이하의 종합잔고 파일을 선택하세요.");
         try {
-            var rows=(bytes[0]=='P' || (bytes[0]&255)==0xD0) ? tables.workbook(bytes):tables.html(bytes);
+            var rows=(bytes[0]=='P' || (bytes[0]&255)==0xD0) ? workbook(bytes):tables.html(bytes);
             int header=rows.indexOf(HEADER);
             if(header<0) throw new IllegalArgumentException("나무 종합잔고의 11개 열을 확인하세요. 종합거래내역과는 다른 파일입니다.");
             var totals=new LinkedHashMap<String,Long>();
@@ -45,9 +45,36 @@ public class BalanceFileParser {
                 lines.add(new Line(no,r.get(1),r.get(2),r.get(3),r.get(4),qty,price,cost,value,number(r.get(9)).longValueExact(),number(r.get(10))));
                 if(lines.size()>2000) throw new IllegalArgumentException("한 번에 2,000행까지 등록할 수 있습니다.");
             }
-            if(lines.isEmpty()) throw new IllegalArgumentException("잔고 항목이 없습니다.");
+            if(lines.isEmpty() && (totals.get("매입금액")!=0 || totals.get("평가금액")!=0 || totals.get("평가손익")!=0))
+                throw new IllegalArgumentException("보유종목 표가 비어 있지만 매입·평가·손익 금액이 있습니다. 원본 파일을 확인하세요.");
             return new Parsed(Collections.unmodifiableMap(totals),List.copyOf(lines));
         } catch(java.io.IOException | ArithmeticException e) { throw new IllegalArgumentException("잔고 파일의 숫자·형식을 확인하세요."); }
+    }
+    // Numeric source values must not be rounded by Excel display formats.
+    // Preserve the formatted code (leading zeros) and percentage presentation.
+    private List<List<String>> workbook(byte[] bytes) throws java.io.IOException {
+        try(var book=org.apache.poi.ss.usermodel.WorkbookFactory.create(new java.io.ByteArrayInputStream(bytes))) {
+            if(book.getNumberOfSheets()!=1) throw new IllegalArgumentException("시트가 하나인 원본 잔고 파일을 선택하세요.");
+            var sheet=book.getSheetAt(0);
+            if(sheet.getLastRowNum()>4003) throw new IllegalArgumentException("한 번에 2,000행까지 가져올 수 있습니다.");
+            var result=new ArrayList<List<String>>();
+            var format=new org.apache.poi.ss.usermodel.DataFormatter(Locale.KOREA);
+            boolean details=false;
+            for(var row:sheet) {
+                if(row.getLastCellNum()>30) throw new IllegalArgumentException("잔고 열 수를 확인하세요.");
+                var values=new ArrayList<String>();
+                for(int i=0;i<row.getLastCellNum();i++) {
+                    var cell=row.getCell(i);
+                    if(cell!=null && cell.getCellType()==org.apache.poi.ss.usermodel.CellType.FORMULA) throw new IllegalArgumentException("수식이 포함된 파일은 지원하지 않습니다.");
+                    if(cell!=null && cell.getCellType()==org.apache.poi.ss.usermodel.CellType.NUMERIC && (!details || i==0 || (i>=5 && i<=9)))
+                        values.add(new BigDecimal(org.apache.poi.ss.util.NumberToTextConverter.toText(cell.getNumericCellValue())).toPlainString());
+                    else values.add(format.formatCellValue(cell).strip());
+                }
+                if(values.equals(HEADER)) details=true;
+                result.add(values);
+            }
+            return result;
+        }
     }
     private BigDecimal number(String raw) {
         String s=raw.replace(",","").replace("원","").replace("%","").strip();

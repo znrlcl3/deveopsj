@@ -45,7 +45,8 @@ public class BalanceSnapshotService {
         var s=new AccountBalanceSnapshot();s.setPlan(plan);s.setBalanceDate(preview.date());s.setImportedAt(LocalDateTime.now());s.setFileName(preview.fileName());s.setDigest(preview.digest());s.setPayload(mapper.writeValueAsString(preview.data()));s.setOriginalFile(preview.bytes().clone());
         return snapshots.save(s).getId();
     }
-    @Transactional(readOnly=true) public Report report(Long memberId) { return new Report(snapshots.latest(memberId).stream().map(this::view).toList()); }
+    @Transactional(readOnly=true) public Report report(Long memberId) { return new Report(latest(memberId)); }
+    @Transactional(readOnly=true) public List<View> latest(Long memberId) { return snapshots.latest(memberId).stream().map(this::view).toList(); }
     @Transactional(readOnly=true) public AccountBalanceSnapshot owned(Long id,Long memberId) { return snapshots.findByIdAndPlanMemberMemberId(id,memberId).orElseThrow(()->new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND)); }
     private View view(AccountBalanceSnapshot s) { return new View(s.getId(),s.getPlan().getId(),s.getPlan().getPlanName(),s.getBalanceDate(),s.getImportedAt(),mapper.readValue(s.getPayload(),BalanceFileParser.Parsed.class)); }
     private String digest(byte[] bytes) { try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)); } catch(NoSuchAlgorithmException e) { throw new IllegalStateException(e); } }

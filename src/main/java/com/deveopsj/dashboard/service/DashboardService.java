@@ -39,6 +39,7 @@ public class DashboardService {
     private final AssetSavingsRepository assetSavingsRepository;
     private final AssetTradeRepository assetTradeRepository;
     private final AssetValuationRepository assetValuationRepository;
+    private final com.deveopsj.assetplan.service.BalanceSnapshotService balances;
     private final DailySpendingRepository dailySpendingRepository;
     private final IncomeRepository incomeRepository;
     private final MasterCodeService masterCodeService;
@@ -53,12 +54,14 @@ public class DashboardService {
 
         // 1. 자산 플랜 및 이행률 계산
         List<AssetPlan> plans = assetPlanRepository.findByMemberMemberId(memberId);
+        var snapshotByPlan=balances.latest(memberId).stream().collect(Collectors.toMap(com.deveopsj.assetplan.service.BalanceSnapshotService.View::planId,s->s));
         List<DashboardSummary.PlanProgressDto> planProgressList = new ArrayList<>();
         
         long totalTarget = 0;
         long totalActual = 0;
         long valuationPrincipal = 0;
         long currentValuation = 0;
+        long sourceProfitAdjustment=0;
         int valuedPlanCount = 0;
         
         var activeCodeGroups = masterCodeService.getAllActiveCodesGrouped();
@@ -77,7 +80,13 @@ public class DashboardService {
 
             var latestValuation = assetValuationRepository
                     .findTopByAssetPlanIdOrderByValuationDateDescIdDesc(plan.getId());
-            if (latestValuation.isPresent()) {
+            var snapshot=snapshotByPlan.get(plan.getId());
+            if(snapshot!=null) {
+                long cost=snapshot.data().totals().get("매입금액"),value=snapshot.data().totals().get("평가금액"),profit=snapshot.data().totals().get("평가손익");
+                valuationPrincipal=Math.addExact(valuationPrincipal,cost);currentValuation=Math.addExact(currentValuation,value);
+                sourceProfitAdjustment=Math.addExact(sourceProfitAdjustment,Math.subtractExact(profit,Math.subtractExact(value,cost)));
+                valuedPlanCount++;
+            } else if (latestValuation.isPresent()) {
                 Long savingsPrincipal = assetSavingsRepository.getTotalSavingsByPlanId(plan.getId());
                 Long tradePrincipal = assetTradeRepository.getTotalSettlementByPlanIdAndType(
                         plan.getId(), TradeType.BUY);
@@ -92,7 +101,7 @@ public class DashboardService {
             double progress = (plan.getMonthlyAmount() == 0) ? 0 : (actual / (double)plan.getMonthlyAmount()) * 100;
             
             planProgressList.add(DashboardSummary.PlanProgressDto.builder()
-                .goalTitle(plan.getGoal().getTitle())
+                .goalTitle(plan.getGoal()==null ? "미연결 목표" : plan.getGoal().getTitle())
                 .assetType(assetTypeMap.getOrDefault(plan.getAssetType(), plan.getAssetType()))
                 .monthlyAmount(plan.getMonthlyAmount())
                 .actualAmount(actual)
@@ -148,7 +157,7 @@ public class DashboardService {
                 .extraInvestment(extraInvestment)
                 .valuationPrincipal(valuationPrincipal)
                 .currentValuation(currentValuation)
-                .valuationProfit(currentValuation - valuationPrincipal)
+                .valuationProfit(Math.addExact(Math.subtractExact(currentValuation,valuationPrincipal),sourceProfitAdjustment))
                 .valuedPlanCount(valuedPlanCount)
                 .totalIncome(totalIncome)
                 .totalSpending(totalSpend)

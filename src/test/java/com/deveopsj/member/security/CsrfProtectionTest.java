@@ -41,7 +41,6 @@ import com.deveopsj.assetplan.service.AssetValuationService;
 import com.deveopsj.assetplan.service.GoalService;
 import com.deveopsj.market.service.InvestmentAssetSyncService;
 import com.deveopsj.market.dto.PortfolioSummary;
-import com.deveopsj.market.dto.MonthlyPortfolioSummary;
 import com.deveopsj.market.service.PortfolioValuationService;
 import com.deveopsj.income.service.IncomeService;
 import com.deveopsj.cashflow.dto.MonthlyCashFlowSummary;
@@ -473,25 +472,13 @@ class CsrfProtectionTest {
     }
 
     @Test
-    void 로그인사용자는_월별포트폴리오를_조회한다() throws Exception {
-        Member member = new Member();
-        member.setMemberId(7L);
-        member.setLoginId("user");
-        member.setPassword("password");
-        member.setRole("USER");
-        YearMonth month = YearMonth.of(2026, 7);
-        when(portfolioValuationService.getMonthlyPortfolio(member, month))
-                .thenReturn(new MonthlyPortfolioSummary(
-                        month, 0L, 0L, 0L, 0L, java.util.List.of()));
-
+    void 기존_월별포트폴리오_주소는_잔고수익률로_이동한다() throws Exception {
         mockMvc.perform(get("/portfolio/monthly")
-                        .with(user(new CustomUserDetails(member)))
+                        .with(user("user"))
                         .param("month", "2026-07"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "월별 포트폴리오")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "선택한 월말 기준 보유 종목이 없습니다.")));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/portfolio"));
+        verifyNoInteractions(portfolioValuationService);
     }
 
     @Test

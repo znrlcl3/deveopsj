@@ -33,6 +33,7 @@ import com.deveopsj.spending.repository.DailySpendingRepository;
 
 @ExtendWith(MockitoExtension.class)
 class DashboardServiceTest {
+    @Mock private com.deveopsj.assetplan.service.BalanceSnapshotService balances;
 
     @Test
     void 선택월의_실제지출을_소비와_고정으로_나누고_할부는_소비에_포함한다() {

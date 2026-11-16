@@ -13,7 +13,6 @@ import java.time.format.DateTimeParseException;
 @Controller @RequiredArgsConstructor
 public class AccountSummaryController {
     private final AccountSummaryService service;
-    private final com.deveopsj.assetplan.service.BalanceSnapshotService balances;
     @org.springframework.web.bind.annotation.PostMapping("/assets/accounts/foreign/delete")
     public String deleteForeign(@RequestParam Long id,Member member,org.springframework.web.servlet.mvc.support.RedirectAttributes flash) {
         try { service.deleteForeignEntry(id,member.getMemberId()); } catch(IllegalArgumentException e) { flash.addFlashAttribute("errorMessage",e.getMessage()); }
@@ -31,8 +30,9 @@ public class AccountSummaryController {
         }
         model.addAttribute("selectedMonth", selected);
         model.addAttribute("currentMonth", YearMonth.now());
-        model.addAttribute("report", service.summarize(member, selected));
-        model.addAttribute("balances", balances.report(member.getMemberId()));
+        var report=service.summarize(member, selected);
+        model.addAttribute("report", report);
+        model.addAttribute("snapshotByPlan",report.snapshots());
         return "assets/accounts";
     }
 }

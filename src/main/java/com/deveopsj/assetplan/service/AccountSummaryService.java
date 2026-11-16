@@ -24,6 +24,7 @@ public class AccountSummaryService {
     private final AssetTradeRepository trades;
     private final IncomeRepository incomes;
     private final PortfolioValuationService portfolio;
+    private final BalanceSnapshotService balances;
 
     public record Account(Long id, String name, BigInteger buy, BigInteger sell,
             BigInteger dividend, BigInteger interest, BigInteger costs,
@@ -36,7 +37,8 @@ public class AccountSummaryService {
                 BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO,null,profit,false,List.of());
         }
     }
-    public record Summary(List<Account> accounts, boolean quoteFailed, BigInteger unassignedIncome) {
+    public record Summary(List<Account> accounts, boolean quoteFailed, BigInteger unassignedIncome, Map<Long,BalanceSnapshotService.View> snapshots) {
+        public Summary(List<Account> accounts,boolean quoteFailed,BigInteger unassignedIncome) { this(accounts,quoteFailed,unassignedIncome,Map.of()); }
         public BigInteger totalValuation() {
             if (quoteFailed || accounts.stream().anyMatch(a -> !a.valuationAvailable() || a.valuation() == null)) return null;
             return accounts.stream().map(Account::valuation).reduce(BigInteger.ZERO, BigInteger::add);
@@ -83,6 +85,10 @@ public class AccountSummaryService {
             switch(entry.getType()) { case DIVIDEND -> t.usdDividend=t.usdDividend.add(entry.getAmount());case INTEREST -> t.usdInterest=t.usdInterest.add(entry.getAmount());case DEPOSIT -> t.usdDeposits=t.usdDeposits.add(entry.getAmount());case WITHDRAWAL -> t.usdWithdrawals=t.usdWithdrawals.add(entry.getAmount()); }
         }
         boolean failed = false;
+        for(var s:balances.latest(member.getMemberId())) {
+            var t=groups.get(s.planId());
+            if(t!=null) { t.snapshot=s;t.activity=true; }
+        }
         try {
             for (var position : portfolio.getPortfolio(member).positions()) {
                 var t = groups.get(position.assetPlanId());
@@ -98,7 +104,8 @@ public class AccountSummaryService {
         } catch (IllegalStateException | ArithmeticException e) { failed = true; }
         final boolean quoteFailed = failed;
         return new Summary(groups.values().stream().filter(t -> t.activity || t.holdings > 0 || quoteFailed)
-                .map(t -> t.result(quoteFailed)).toList(), failed, unassigned);
+                .map(t -> t.result(quoteFailed)).toList(), failed, unassigned,
+                groups.values().stream().filter(t->t.snapshot!=null).collect(java.util.stream.Collectors.toUnmodifiableMap(t->t.id,t->t.snapshot)));
     }
     @Transactional public void deleteForeignEntry(Long id,Long memberId) {
         incomes.lockOwner(memberId).orElseThrow(() -> new IllegalArgumentException("회원을 확인할 수 없습니다."));
@@ -115,8 +122,17 @@ public class AccountSummaryService {
         BigDecimal usdBuy=BigDecimal.ZERO,usdSell=BigDecimal.ZERO,usdDividend=BigDecimal.ZERO,usdInterest=BigDecimal.ZERO,usdDeposits=BigDecimal.ZERO,usdWithdrawals=BigDecimal.ZERO,usdProfit=BigDecimal.ZERO;
         List<com.deveopsj.assetplan.entity.ForeignAccountEntry> foreignRows=new ArrayList<>();
         boolean activity, stale, complete=true,usdComplete=true,fxEstimated; int holdings,usdHoldings;
+        BalanceSnapshotService.View snapshot;
         Totals(Long id, String name) { this.id=id; this.name=name; }
         Account result(boolean failed) {
+            if(snapshot!=null) {
+                var data=snapshot.data();var sourceCost=BigInteger.valueOf(data.totals().get("매입금액"));
+                var sourceProfit=BigInteger.valueOf(data.totals().get("평가손익"));
+                var sourceRate=sourceCost.signum()>0 ? new BigDecimal(sourceProfit).multiply(BigDecimal.valueOf(100)).divide(new BigDecimal(sourceCost),2,RoundingMode.HALF_UP):null;
+                return new Account(id,name,buy,sell,dividend,interest,costs,sourceCost,BigInteger.valueOf(data.total()),sourceProfit,sourceRate,
+                    Math.toIntExact(data.securities()),false,true,deposits,withdrawals,usdBuy,usdSell,usdDividend,usdInterest,usdDeposits,usdWithdrawals,
+                    null,sourceProfit,false,List.copyOf(foreignRows));
+            }
             boolean available = complete && !failed;
             BigInteger profit = available && cost!=null ? valuation.subtract(cost) : null;
             BigDecimal rate = available && cost!=null && cost.signum() > 0

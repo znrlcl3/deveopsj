@@ -32,12 +32,16 @@ public class PortfolioValuationService {
     private final AssetTradeRepository assetTradeRepository;
     private final KisMarketPriceService kisMarketPriceService;
     private final KisExchangeRateService kisExchangeRateService;
+    private final com.deveopsj.assetplan.service.BalanceSnapshotService balances;
 
     public PortfolioSummary getPortfolio(Member member) {
+        var snapshots=balances.latest(member.getMemberId());
+        var snapshotPlans=snapshots.stream().map(com.deveopsj.assetplan.service.BalanceSnapshotService.View::planId).collect(java.util.stream.Collectors.toSet());
         List<AssetTrade> trades = assetTradeRepository
                 .findByAssetPlanMemberMemberIdOrderByTradeDateAscIdAsc(member.getMemberId());
         Map<PositionKey, PositionAccumulator> accumulators = new LinkedHashMap<>();
         for (AssetTrade trade : trades) {
+            if(snapshotPlans.contains(trade.getAssetPlan().getId())) continue;
             PositionKey key = new PositionKey(
                     trade.getAssetPlan().getId(), trade.getInvestmentAsset().getId());
             accumulators.computeIfAbsent(key, ignored -> new PositionAccumulator(trade))
@@ -59,12 +63,20 @@ public class PortfolioValuationService {
                 .filter(p -> p.quoteAvailable() && p.remainingCostKrw()!=null)
                 .mapToLong(PortfolioPosition::remainingCostKrw)
                 .sum();
+        Long profit=totalCost==null ? null : Math.subtractExact(totalValuation,quotedCost);
+        for(var s:snapshots) {
+            long cost=s.data().totals().get("매입금액");
+            if(totalCost!=null) totalCost=Math.addExact(totalCost,cost);
+            quotedCost=Math.addExact(quotedCost,cost);
+            totalValuation=Math.addExact(totalValuation,s.data().totals().get("평가금액"));
+            if(profit!=null) profit=Math.addExact(profit,s.data().totals().get("평가손익"));
+        }
         return new PortfolioSummary(
                 List.copyOf(positions),
                 totalCost,
                 quotedCost,
                 totalValuation,
-                totalCost==null ? null : totalValuation - quotedCost);
+                profit, List.copyOf(snapshots));
     }
 
     public MonthlyPortfolioSummary getMonthlyPortfolio(Member member, YearMonth selectedMonth) {

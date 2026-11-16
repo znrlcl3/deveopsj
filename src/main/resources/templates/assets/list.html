@@ -12,34 +12,46 @@
     <main class="assets-main"><div class="assets-content">
         <header th:replace="~{common/asset-navigation :: assetHeader}"></header>
         <nav th:replace="~{common/asset-navigation :: tabs('overview')}"></nav>
-        <section class="card p-4 mb-4"><h2 class="h5 fw-bold">잔고 파일로 관리하는 계좌</h2>
-            <p th:if="${#lists.isEmpty(snapshotReport.accounts)}" class="text-muted">현재 종합잔고 파일을 올려 계좌 총액과 보유목록부터 등록하세요.</p>
-            <div th:if="${!#lists.isEmpty(snapshotReport.accounts)}"><strong class="d-block fs-2 mb-2" th:text="|${#numbers.formatInteger(snapshotReport.total(),0,'COMMA')}원|"></strong>
-                <div th:each="account : ${snapshotReport.accounts}" class="d-flex flex-wrap justify-content-between gap-2 border-top py-2"><span><span th:text="${account.planName}"></span><small class="d-block text-muted" th:text="|기준일 ${account.date}|"></small></span><strong th:text="|${#numbers.formatInteger(account.data.total(),0,'COMMA')}원|"></strong></div>
-                <p class="small text-muted mt-2">각 계좌의 최신 파일 기준 자산금액입니다. 아래 매매·직접 입력 기반 평가 및 현금 잔액과 중복 합산하지 않습니다. 목표 진행률에는 아직 자동 반영되지 않습니다.</p></div>
-            <a href="/holdings/import" class="btn btn-primary align-self-start">잔고 가져오기 · 상세 보기</a>
+        <section class="card p-4 mb-4" aria-labelledby="assetFlowHeading" th:with="started=${summary != null and !#lists.isEmpty(summary.snapshots)}">
+            <h2 id="assetFlowHeading" class="h5 fw-bold">처음에는 잔고, 그다음은 월별 거래내역</h2>
+            <p class="small text-muted">과거 내역을 모두 입력할 필요 없이 나무증권의 현재 잔고로 시작하세요. 이후에는 같은 계좌의 거래내역을 월별로 등록합니다.</p>
+            <div class="row g-3">
+                <div class="col-md-6"><div class="border rounded p-3 h-100">
+                    <h3 class="h6 fw-bold">1. 처음 잔고 등록</h3>
+                    <p class="small text-muted">나무증권에서 자산금액과 보유종목이 있는 종합잔고 파일(.xls / .xlsx)을 내려받아 계좌와 실제 조회일을 지정하세요.</p>
+                    <a th:unless="${started}" href="/holdings/import" class="btn btn-primary">잔고 파일 업로드</a>
+                    <div th:if="${started}"><button type="button" class="btn btn-outline-secondary" disabled>등록된 계좌 · 첫 잔고 등록 완료</button>
+                        <ul class="small mt-2 mb-2"><li th:each="account : ${summary.snapshots}" th:text="|${account.planName} · 잔고 기준일 ${account.date}|"></li></ul>
+                        <a href="/holdings/import" class="small">다른 계좌 시작 / 잔고 갱신</a></div>
+                    <p th:if="${summary == null}" class="small text-muted mt-2 mb-0">등록 상태를 확인하지 못했습니다. 잔고 가져오기에서 기존 기록을 확인하세요.</p>
+                </div></div>
+                <div class="col-md-6"><div class="border rounded p-3 h-100" th:classappend="${started ? 'border-primary' : ''}">
+                    <h3 class="h6 fw-bold">2. 이후 월별 거래내역 등록</h3>
+                    <p class="small text-muted">나무증권 → 뱅킹/계좌정보 → 거래내역 → 종합거래내역에서 조회 기간을 한 달로 정해 다운로드하세요. 해외 거래는 해외주식거래내역 파일을 사용하세요.</p>
+                    <a href="/trades/import" class="btn" th:classappend="${started ? 'btn-primary' : 'btn-outline-secondary'}">월별 거래내역 업로드</a>
+                    <p class="small text-muted mt-2 mb-0">잔고를 등록한 계좌와 같은 플랜을 선택하세요. 매수·매도뿐 아니라 입출금·분배금도 확인하고 중복 의심건을 검토합니다.</p>
+                </div></div>
+            </div>
+            <p class="small text-muted mt-3 mb-0">현재 자산은 마지막 잔고 파일 기준입니다. 월별 거래를 등록해도 잔고는 자동으로 바뀌지 않습니다. 현재 평가액을 다시 확인하려면 잔고를 갱신하세요. 처음 등록한 달은 잔고 이후의 거래부터 모으므로 월 전체 실적과 다를 수 있습니다.</p>
         </section>
+        <div th:if="${summary != null}" th:insert="~{portfolio/valuation-source :: summary(${summary})}"></div>
         <div class="d-flex justify-content-end mb-4"><a href="#balanceForm" class="btn btn-primary">예·적금 / 현금 등록</a></div>
         <div th:if="${message}" class="alert alert-success" role="status" th:text="${message}"></div>
         <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
         <div th:if="${portfolioError}" class="alert alert-warning" th:text="${portfolioError}"></div>
         <div class="row g-3 mb-3">
-            <div class="col-md-4"><div class="card p-4 h-100"><span class="text-muted">매매·직접 입력 기반 증권 평가금액</span>
+            <div class="col-md-4"><div class="card p-4 h-100"><span class="text-muted">보유종목 평가금액 (예수금 제외)</span>
                 <strong class="fs-3 amount" th:if="${summary != null}" th:text="|${#numbers.formatInteger(summary.totalValuationKrw, 0, 'COMMA')}원|"></strong>
-                <strong th:if="${summary == null}">조회 불가</strong><small class="text-muted">현재가 조회가 가능한 종목만 합산 · 예수금 제외</small></div></div>
+                <strong th:if="${summary == null}">조회 불가</strong><small class="text-muted">잔고 파일 우선 · 미업로드 계좌는 현재가 조회</small></div></div>
             <div class="col-md-4"><div class="card p-4 h-100"><span class="text-muted">예금·적금 잔액</span><strong class="fs-3 amount" th:text="|${#numbers.formatInteger(depositTotal, 0, 'COMMA')}원|"></strong><small class="text-muted">직접 확인한 잔액 기준</small></div></div>
             <div class="col-md-4"><div class="card p-4 h-100"><span class="text-muted">현금·입출금통장</span><strong class="fs-3 amount" th:text="|${#numbers.formatInteger(cashTotal, 0, 'COMMA')}원|"></strong><small class="text-muted">직접 확인한 잔액 기준</small></div></div>
         </div>
-        <p class="small text-muted mb-4">자산별 기준 시점이 다를 수 있습니다. 이 화면의 잔액은 목표 달성액에 자동 합산되지 않습니다.</p>
+        <p class="small text-muted mb-4">자산별 기준 시점이 다를 수 있습니다. 목표에 연결된 잔고 계좌는 평가액 진행률에 반영합니다. 별도로 입력한 현금·예적금은 자동 합산하지 않습니다.</p>
         <section class="mb-4" aria-labelledby="investmentHeading">
             <h2 id="investmentHeading" class="h5 fw-bold mb-3">증권 자산</h2>
-            <div class="row g-3 mb-3">
-                <div class="col-md-6"><div class="card p-4 h-100"><h3 class="h6 fw-bold">거래내역 엑셀 가져오기</h3><p class="small text-muted">나무 종합거래내역에서 매수·매도와 분배금·이자를 선택해 등록하세요.</p><a href="/trades/import" class="btn btn-primary mt-auto">엑셀 업로드</a></div></div>
-                <div class="col-md-6"><div class="card p-4 h-100"><h3 class="h6 fw-bold">현재 보유분 직접 입력</h3><p class="small text-muted">과거 거래내역이 없으면 현재 수량과 평균 매수가로 시작하세요.</p><a href="/holdings/form" class="btn btn-outline-primary mt-auto">보유분 직접 입력</a></div></div>
-            </div>
-            <div class="d-flex flex-wrap gap-2 mb-3"><a href="/portfolio" class="btn btn-sm btn-outline-secondary">수익률 상세</a><a href="/trades/list" class="btn btn-sm btn-outline-secondary">매매내역 보기</a><a href="/assetplan/form" class="btn btn-sm btn-outline-secondary">플랜 등록</a></div>
-            <p class="small text-muted">기존 증권 보유분은 연결된 플랜별로 표시합니다. 실제 계좌별 자동 구분은 아직 적용되지 않았습니다.</p>
-            <div th:if="${#lists.isEmpty(investmentGroups) and portfolioError == null}" class="card p-4 text-center text-muted">등록된 증권 보유분이 없습니다. 엑셀 업로드 또는 보유분 직접 입력으로 시작하세요.</div>
+            <div class="d-flex flex-wrap gap-2 mb-3"><a href="/portfolio" class="btn btn-sm btn-outline-secondary">수익률 상세</a><a href="/trades/list" class="btn btn-sm btn-outline-secondary">매매내역 보기</a><a href="/holdings/form" class="btn btn-sm btn-outline-secondary">보유분 직접 입력</a><a href="/assetplan/form" class="btn btn-sm btn-outline-secondary">플랜 등록</a></div>
+            <p class="small text-muted">아래는 잔고 파일이 없는 계좌의 매매·직접 입력 보유분입니다. 업로드 계좌의 종목은 위 잔고 상세에서 확인하세요.</p>
+            <div th:if="${#lists.isEmpty(investmentGroups) and portfolioError == null}" class="card p-4 text-center text-muted">잔고 미업로드 계좌의 보유분이 없습니다.</div>
             <article th:each="group : ${investmentGroups}" class="card p-3 p-md-4 mb-3">
                 <h3 class="h6 fw-bold" th:text="${group.name}"></h3>
                 <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>종목</th><th class="text-end">수량</th><th class="text-end">평가금액</th></tr></thead>

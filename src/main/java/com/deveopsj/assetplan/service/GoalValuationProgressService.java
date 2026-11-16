@@ -19,6 +19,7 @@ public class GoalValuationProgressService {
     private final AssetTradeRepository trades;
     private final AssetValuationRepository valuations;
     private final PortfolioValuationService portfolio;
+    private final BalanceSnapshotService balances;
 
     public record Progress(BigInteger amount, BigInteger remaining, BigDecimal percent,
             int missingPlans, int planCount, boolean stale, LocalDate oldestManualDate) {
@@ -32,13 +33,15 @@ public class GoalValuationProgressService {
         var ownedPlans = plans.findByMemberMemberId(member.getMemberId()).stream()
                 .filter(p -> owned(p.getGoal(), member) && totals.containsKey(p.getGoal().getId())).toList();
         if (ownedPlans.isEmpty()) return results(totals);
+        var snapshotByPlan=new HashMap<Long,BalanceSnapshotService.View>();
+        for(var s:balances.latest(member.getMemberId())) snapshotByPlan.put(s.planId(),s);
         var securities = new HashSet<Long>();
         for (var trade : trades.findByAssetPlanMemberMemberIdOrderByTradeDateAscIdAsc(member.getMemberId())) {
             if (!trade.isHistoryOnly() || trade.getTradeType() == TradeType.SNAPSHOT) securities.add(trade.getAssetPlan().getId());
         }
         var positions = new HashMap<Long, List<PortfolioPosition>>();
         boolean failed = false;
-        if (ownedPlans.stream().anyMatch(p -> securities.contains(p.getId()))) {
+        if (ownedPlans.stream().anyMatch(p -> securities.contains(p.getId()) && !snapshotByPlan.containsKey(p.getId()))) {
             try {
                 for (var position : portfolio.getPortfolio(member).positions())
                     positions.computeIfAbsent(position.assetPlanId(), key -> new ArrayList<>()).add(position);
@@ -52,6 +55,12 @@ public class GoalValuationProgressService {
         }
         for (var plan : ownedPlans) {
             var total = totals.get(plan.getGoal().getId()); total.count++;
+            var snapshot=snapshotByPlan.get(plan.getId());
+            if(snapshot!=null) {
+                total.amount=total.amount.add(BigInteger.valueOf(snapshot.data().total()));
+                if(total.date==null || snapshot.date().isBefore(total.date)) total.date=snapshot.date();
+                continue;
+            }
             if (securities.contains(plan.getId())) {
                 var rows = positions.getOrDefault(plan.getId(), List.of());
                 if (failed || rows.stream().anyMatch(p -> p.valuationAmountKrw() == null || !p.quoteAvailable())) {

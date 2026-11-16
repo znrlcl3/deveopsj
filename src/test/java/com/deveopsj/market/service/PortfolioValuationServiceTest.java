@@ -59,7 +59,7 @@ class PortfolioValuationServiceTest {
         when(kisExchangeRateService.getKrwRate("KRW")).thenReturn(new ExchangeRateQuote(
                 "KRW", BigDecimal.ONE, LocalDateTime.now(), false, false));
         PortfolioValuationService service = new PortfolioValuationService(
-                assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
+                assetTradeRepository, kisMarketPriceService, kisExchangeRateService, org.mockito.Mockito.mock(com.deveopsj.assetplan.service.BalanceSnapshotService.class));
 
         PortfolioSummary summary = service.getPortfolio(member);
 
@@ -85,7 +85,7 @@ class PortfolioValuationServiceTest {
         when(kisMarketPriceService.getQuote(11L))
                 .thenThrow(new IllegalStateException("현재가 없음"));
         PortfolioValuationService service = new PortfolioValuationService(
-                assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
+                assetTradeRepository, kisMarketPriceService, kisExchangeRateService, org.mockito.Mockito.mock(com.deveopsj.assetplan.service.BalanceSnapshotService.class));
 
         PortfolioSummary summary = service.getPortfolio(member);
 
@@ -116,7 +116,7 @@ class PortfolioValuationServiceTest {
                         7L, LocalDate.of(2026, 7, 31)))
                 .thenReturn(List.of(juneBuy, julyBuy, julySell));
         PortfolioValuationService service = new PortfolioValuationService(
-                assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
+                assetTradeRepository, kisMarketPriceService, kisExchangeRateService, org.mockito.Mockito.mock(com.deveopsj.assetplan.service.BalanceSnapshotService.class));
 
         MonthlyPortfolioSummary summary = service.getMonthlyPortfolio(
                 member, YearMonth.of(2026, 7));
@@ -152,7 +152,7 @@ class PortfolioValuationServiceTest {
         when(kisExchangeRateService.getKrwRate("USD")).thenReturn(new ExchangeRateQuote(
                 "USD", new BigDecimal("1400"), LocalDateTime.now(), false, false));
         PortfolioValuationService service = new PortfolioValuationService(
-                assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
+                assetTradeRepository, kisMarketPriceService, kisExchangeRateService, org.mockito.Mockito.mock(com.deveopsj.assetplan.service.BalanceSnapshotService.class));
 
         PortfolioSummary summary = service.getPortfolio(member);
 
@@ -182,7 +182,7 @@ class PortfolioValuationServiceTest {
         when(kisExchangeRateService.getKrwRate("USD"))
                 .thenThrow(new IllegalStateException("환율 조회 실패"));
         PortfolioValuationService service = new PortfolioValuationService(
-                assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
+                assetTradeRepository, kisMarketPriceService, kisExchangeRateService, org.mockito.Mockito.mock(com.deveopsj.assetplan.service.BalanceSnapshotService.class));
 
         PortfolioSummary summary = service.getPortfolio(member);
 
@@ -205,7 +205,7 @@ class PortfolioValuationServiceTest {
                 trade(plan, asset, TradeType.BUY, "2", "100", 200, 5));
         when(assetTradeRepository.findByAssetPlanMemberMemberIdOrderByTradeDateAscIdAsc(7L)).thenReturn(rows);
         when(kisMarketPriceService.getQuote(11L)).thenThrow(new IllegalStateException("no quote"));
-        var service = new PortfolioValuationService(assetTradeRepository, kisMarketPriceService, kisExchangeRateService);
+        var service = new PortfolioValuationService(assetTradeRepository, kisMarketPriceService, kisExchangeRateService, org.mockito.Mockito.mock(com.deveopsj.assetplan.service.BalanceSnapshotService.class));
         assertThat(service.getPortfolio(member(7L)).positions()).singleElement().satisfies(p -> {
             assertThat(p.quantity()).isEqualByComparingTo("10");
             assertThat(p.averageUnitPrice()).isEqualByComparingTo("180");
@@ -223,6 +223,24 @@ class PortfolioValuationServiceTest {
         Member member = new Member();
         member.setMemberId(id);
         return member;
+    }
+    @Test void uploadedAccountReplacesItsTradesWhileOtherAccountUsesQuotesAndMissingQuotesDoNotBecomeZero() {
+        var balances=org.mockito.Mockito.mock(com.deveopsj.assetplan.service.BalanceSnapshotService.class);
+        var data=new com.deveopsj.assetplan.service.BalanceFileParser.Parsed(java.util.Map.of("자산금액",1100L,"평가금액",900L,"매입금액",1000L,"평가손익",-100L),List.of());
+        var snapshot=new com.deveopsj.assetplan.service.BalanceSnapshotService.View(1L,3L,"파일 계좌",LocalDate.now(),LocalDateTime.now(),data);
+        when(balances.latest(7L)).thenReturn(List.of(snapshot));
+        when(assetTradeRepository.findByAssetPlanMemberMemberIdOrderByTradeDateAscIdAsc(7L)).thenReturn(List.of(
+            trade(plan(3L),asset(11L),TradeType.BUY,"100","100",10000L,1),
+            trade(plan(4L),asset(12L),TradeType.BUY,"2","100",200L,2)));
+        when(kisMarketPriceService.getQuote(12L)).thenReturn(new MarketPriceQuote(12L,"TEST","Test","KOSPI","KRW",new BigDecimal("150"),BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO,LocalDateTime.now(),false,false));
+        when(kisExchangeRateService.getKrwRate("KRW")).thenReturn(new ExchangeRateQuote("KRW",BigDecimal.ONE,LocalDateTime.now(),false,false));
+        var service=new PortfolioValuationService(assetTradeRepository,kisMarketPriceService,kisExchangeRateService,balances);
+        var summary=service.getPortfolio(member(7L));
+        assertThat(summary.totalAssetsKrw()).isEqualTo(java.math.BigInteger.valueOf(1400));
+        assertThat(summary.totalValuationKrw()).isEqualTo(1200);assertThat(summary.comparisonCostKrw()).isEqualTo(1200);assertThat(summary.comparisonProfitKrw()).isZero();
+        assertThat(summary.positions()).hasSize(1);org.mockito.Mockito.verify(kisMarketPriceService,org.mockito.Mockito.never()).getQuote(11L);
+        when(kisMarketPriceService.getQuote(12L)).thenThrow(new IllegalStateException("missing"));
+        var incomplete=service.getPortfolio(member(7L));assertThat(incomplete.totalAssetsKrw()).isNull();assertThat(incomplete.snapshots()).hasSize(1);
     }
 
     private AssetPlan plan(Long id) {
@@ -281,7 +299,7 @@ class PortfolioValuationServiceTest {
         when(assetTradeRepository.findByAssetPlanMemberMemberIdOrderByTradeDateAscIdAsc(7L)).thenReturn(List.of(buy));
         when(kisMarketPriceService.getQuote(11L)).thenReturn(new MarketPriceQuote(11L,"TEST","Test","NASDAQ","USD",new BigDecimal("110"),BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO,LocalDateTime.now(),false,false));
         when(kisExchangeRateService.getKrwRate("USD")).thenReturn(new ExchangeRateQuote("USD",new BigDecimal("1400"),LocalDateTime.now(),false,false));
-        var service=new PortfolioValuationService(assetTradeRepository,kisMarketPriceService,kisExchangeRateService);
+        var service=new PortfolioValuationService(assetTradeRepository,kisMarketPriceService,kisExchangeRateService, org.mockito.Mockito.mock(com.deveopsj.assetplan.service.BalanceSnapshotService.class));
         var summary=service.getPortfolio(m);var position=summary.positions().get(0);
         assertThat(position.valuationAmountKrw()).isEqualTo(308000L);assertThat(position.nativeProfitLoss()).isEqualByComparingTo("18");assertThat(position.fxProfitLossKrw()).isEqualTo(45400L);assertThat(position.referenceCostEstimated()).isTrue();
         assertThat(position.averageUnitPrice()).isEqualByComparingTo("101");assertThat(position.nativeReturnRate()).isEqualByComparingTo("8.91");

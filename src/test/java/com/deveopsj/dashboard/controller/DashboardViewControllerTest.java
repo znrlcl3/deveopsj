@@ -17,6 +17,7 @@ import com.deveopsj.member.entity.Member;
 
 @ExtendWith(MockitoExtension.class)
 class DashboardViewControllerTest {
+    @Mock private com.deveopsj.market.service.PortfolioValuationService portfolio;
 
     @Mock
     private DashboardService dashboardService;

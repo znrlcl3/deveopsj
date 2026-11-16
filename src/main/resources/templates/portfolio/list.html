@@ -17,61 +17,16 @@
         <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-4">
                 <div>
                     <h2 class="h3 fw-bold mb-1">보유자산 수익률</h2>
-                    <p class="text-muted mb-0">등록한 현재 보유분과 이후 매매, KIS 현재가를 기준으로 계산합니다.</p>
+                    <p class="text-muted mb-0">계좌별 최신 잔고 파일의 평가액과 손익을 확인하세요. 잔고를 갱신하려면 새 파일을 업로드하세요.</p>
                 </div>
-                <a href="/portfolio" class="btn btn-outline-primary">
-                    <i class="fas fa-rotate me-1"></i> 현재가 새로고침
+                <a href="/holdings/import" class="btn btn-primary">
+                    <i class="fas fa-file-upload me-1"></i> 잔고 파일 업로드
                 </a>
             </div>
-            <div class="d-flex flex-wrap gap-2 mb-4"><a href="/portfolio" class="btn btn-outline-primary active">현재 수익률</a><a href="/portfolio/monthly" class="btn btn-outline-primary ">월별 포트폴리오</a></div>
 
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="card p-4 h-100">
-                        <div class="text-muted mb-2">남은 매입원금</div>
-                        <div class="summary-value"
-                             th:text="${summary.comparisonCostKrw() != null ? #numbers.formatInteger(summary.comparisonCostKrw(), 0, 'COMMA') + '원' : '매수 환율 없음'}"></div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card p-4 h-100">
-                        <div class="text-muted mb-2">현재 평가금액</div>
-                        <div class="summary-value"
-                             th:text="${#numbers.formatInteger(summary.totalValuationKrw, 0, 'COMMA')} + '원'"></div>
-                        <small class="text-muted"
-                               th:if="${summary.quotedCostKrw != summary.totalCostKrw}">
-                            현재가·환율 조회 성공 종목만 합산
-                        </small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card p-4 h-100">
-                        <div class="text-muted mb-2">환율 포함 평가손익</div><small class="text-muted" th:if="${summary.usesFileRate()}">거래내역 환율 기준</small>
-                        <div class="summary-value"
-                             th:classappend="${summary.comparisonProfitKrw() != null and summary.comparisonProfitKrw() > 0} ? 'text-danger'
-                                    : (${summary.comparisonProfitKrw() != null and summary.comparisonProfitKrw() < 0} ? 'text-primary' : '')"
-                             th:text="${summary.comparisonProfitKrw() != null ? #numbers.formatInteger(summary.comparisonProfitKrw(), 0, 'COMMA') + '원' : '매수 환율 없음'}"></div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card p-4 h-100">
-                        <div class="text-muted mb-2">USD/KRW 현재 환율</div>
-                        <div th:if="${usdKrwRate != null}">
-                            <div class="summary-value"
-                                 th:text="${#numbers.formatDecimal(usdKrwRate.krwRate, 1, 'COMMA', 2, 'POINT')} + '원'"></div>
-                            <small class="text-muted d-block"
-                                   th:text="${#temporals.format(usdKrwRate.fetchedAt, 'MM-dd HH:mm:ss')
-                                        + (usdKrwRate.stale ? ' 이전 조회값' : (usdKrwRate.cached ? ' 캐시' : ' 실시간'))}"></small>
-                            <small class="text-warning d-block" th:if="${usdKrwRate.stale}">
-                                실시간 조회 실패로 최근 환율을 표시합니다.
-                            </small>
-                        </div>
-                        <div class="text-warning" th:if="${usdKrwRate == null}"
-                             th:text="${exchangeRateError != null ? exchangeRateError : '환율을 조회할 수 없습니다.'}"></div>
-                    </div>
-                </div>
-            </div>
-
+            <div th:replace="~{portfolio/valuation-source :: summary(${summary})}"></div>
+            <div th:if="${#lists.isEmpty(summary.positions) and #lists.isEmpty(summary.snapshots)}" class="card p-4 text-muted">현재 보유 중인 종목이 없습니다. 잔고 파일을 업로드하거나 보유분을 등록하세요.</div>
+            <section th:if="${!#lists.isEmpty(summary.positions)}"><h3 class="h5">잔고 미업로드 계좌 · 매매 기반 수익률</h3>
             <div class="alert alert-info">
                 매도 시 이동평균 원가를 차감합니다. 현재 평가금액에는 최신 환율을 적용합니다. USD 수익률은 달러 매입원가 대비이며 환차손익을 포함하지 않습니다. 환율 포함 손익은 파일의 거래 환율로 원가를 계산하며 실제 환전 비용과 차이가 날 수 있습니다.
             </div>
@@ -139,6 +94,7 @@
                     </table>
                 </div>
             </div>
+            </section>
         </div>
     </main>
 </div>
