@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -15,12 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.deveopsj.assetplan.entity.AssetPlan;
 import com.deveopsj.assetplan.repository.AssetPlanRepository;
 import com.deveopsj.assetplan.repository.AssetSavingsRepository;
-import com.deveopsj.assetplan.repository.AssetTradeRepository;
-import com.deveopsj.assetplan.repository.AssetValuationRepository;
 import com.deveopsj.assetplan.entity.AssetSavings.DepositType;
-import com.deveopsj.assetplan.entity.AssetTrade.TradeType;
 import com.deveopsj.dashboard.dto.DashboardSummary;
 import com.deveopsj.income.repository.IncomeRepository;
+import com.deveopsj.income.entity.Income.IncomeType;
 import com.deveopsj.spending.repository.DailySpendingRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -33,13 +30,9 @@ import java.util.ArrayList;
 @Transactional(readOnly = true)
 public class DashboardService {
 
-    private static final Set<String> SECURITIES_ASSET_TYPES = Set.of("STOCK", "ETF", "FUND");
 
     private final AssetPlanRepository assetPlanRepository;
     private final AssetSavingsRepository assetSavingsRepository;
-    private final AssetTradeRepository assetTradeRepository;
-    private final AssetValuationRepository assetValuationRepository;
-    private final com.deveopsj.assetplan.service.BalanceSnapshotService balances;
     private final DailySpendingRepository dailySpendingRepository;
     private final IncomeRepository incomeRepository;
     private final MasterCodeService masterCodeService;
@@ -54,7 +47,6 @@ public class DashboardService {
 
         // 1. 자산 플랜 및 이행률 계산
         List<AssetPlan> plans = assetPlanRepository.findByMemberMemberId(memberId);
-        var snapshotByPlan=balances.latest(memberId).stream().collect(Collectors.toMap(com.deveopsj.assetplan.service.BalanceSnapshotService.View::planId,s->s));
         List<DashboardSummary.PlanProgressDto> planProgressList = new ArrayList<>();
         
         long totalTarget = 0;
@@ -78,26 +70,6 @@ public class DashboardService {
             long actual = savings != null ? savings : 0;
             totalActual += actual;
 
-            var latestValuation = assetValuationRepository
-                    .findTopByAssetPlanIdOrderByValuationDateDescIdDesc(plan.getId());
-            var snapshot=snapshotByPlan.get(plan.getId());
-            if(snapshot!=null) {
-                long cost=snapshot.data().totals().get("매입금액"),value=snapshot.data().totals().get("평가금액"),profit=snapshot.data().totals().get("평가손익");
-                valuationPrincipal=Math.addExact(valuationPrincipal,cost);currentValuation=Math.addExact(currentValuation,value);
-                sourceProfitAdjustment=Math.addExact(sourceProfitAdjustment,Math.subtractExact(profit,Math.subtractExact(value,cost)));
-                valuedPlanCount++;
-            } else if (latestValuation.isPresent()) {
-                Long savingsPrincipal = assetSavingsRepository.getTotalSavingsByPlanId(plan.getId());
-                Long tradePrincipal = assetTradeRepository.getTotalSettlementByPlanIdAndType(
-                        plan.getId(), TradeType.BUY);
-                long planPrincipal = SECURITIES_ASSET_TYPES.contains(plan.getAssetType())
-                        ? (tradePrincipal != null ? tradePrincipal : 0)
-                        : (savingsPrincipal != null ? savingsPrincipal : 0);
-                valuationPrincipal = Math.addExact(valuationPrincipal, planPrincipal);
-                currentValuation += latestValuation.get().getValuationAmount();
-                valuedPlanCount++;
-            }
-            
             double progress = (plan.getMonthlyAmount() == 0) ? 0 : (actual / (double)plan.getMonthlyAmount()) * 100;
             
             planProgressList.add(DashboardSummary.PlanProgressDto.builder()
@@ -105,7 +77,7 @@ public class DashboardService {
                 .assetType(assetTypeMap.getOrDefault(plan.getAssetType(), plan.getAssetType()))
                 .monthlyAmount(plan.getMonthlyAmount())
                 .actualAmount(actual)
-                .progress(Math.min(progress, 100.0))
+                .progress(Math.max(0, Math.min(progress, 100.0)))
                 .build());
         }
 
@@ -115,12 +87,29 @@ public class DashboardService {
         totalActual = Math.addExact(totalActual, extraInvestment);
 
         // 2. 이번 달 지출 내역 계산
-        var spendings = dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(memberId, start, end);
+        var today = LocalDate.now();
+        var monthlySpendings = dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(memberId, start, end);
+        var futureSpendings = monthlySpendings.stream()
+                .filter(s -> s.getSpendingDate() != null && s.getSpendingDate().isAfter(today)).toList();
+        var spendings = monthlySpendings.stream()
+                .filter(s -> s.getSpendingDate() == null || !s.getSpendingDate().isAfter(today)).toList();
         Long totalSpend = spendings.stream().mapToLong(s -> s.getAmount()).sum();
         long fixedExpenseAmount = spendings.stream().filter(s -> s.isFixedExpense())
                 .mapToLong(s -> s.getAmount()).sum();
         Long totalIncomeValue = incomeRepository.getTotalIncome(memberId, start, end);
         long totalIncome = totalIncomeValue != null ? totalIncomeValue : 0;
+        long dividendIncome = incomeRepository.getTotalByType(memberId, IncomeType.DIVIDEND, start, end);
+        long interestIncome = incomeRepository.getTotalByType(memberId, IncomeType.INTEREST, start, end);
+        long investmentIncome = Math.addExact(dividendIncome, interestIncome);
+        long livingIncome = Math.subtractExact(totalIncome, investmentIncome);
+        long salaryIncome = incomeRepository.getTotalByType(memberId, IncomeType.SALARY, start, end);
+        // Forecast only: never create an income record or add it to actual cash flow.
+        long expectedSalary = 0;
+        if (!month.isBefore(YearMonth.now()) && salaryIncome == 0) {
+            var previousMonth = month.minusMonths(1);
+            expectedSalary = incomeRepository.getTotalByType(memberId, IncomeType.SALARY,
+                    previousMonth.atDay(1), previousMonth.atEndOfMonth());
+        }
         
         var categoryMap = spendings.stream()
                 .collect(Collectors.groupingBy(
@@ -146,10 +135,10 @@ public class DashboardService {
 
         // 3. 전체 투자 달성률 계산
         double totalProgress = (totalTarget == 0) ? 0 : (totalActual / (double)totalTarget) * 100;
-        double savingsRate = totalIncome == 0
-                ? 0 : (totalActual / (double) totalIncome) * 100;
+        double savingsRate = livingIncome == 0
+                ? 0 : (totalActual / (double) livingIncome) * 100;
         long availableCash = Math.subtractExact(
-                Math.subtractExact(totalIncome, totalSpend), totalActual);
+                Math.subtractExact(livingIncome, totalSpend), totalActual);
 
         return DashboardSummary.builder()
                 .totalInvestmentTarget(totalTarget)
@@ -160,7 +149,17 @@ public class DashboardService {
                 .valuationProfit(Math.addExact(Math.subtractExact(currentValuation,valuationPrincipal),sourceProfitAdjustment))
                 .valuedPlanCount(valuedPlanCount)
                 .totalIncome(totalIncome)
+                .livingIncome(livingIncome)
+                .dividendIncome(dividendIncome)
+                .interestIncome(interestIncome)
+                .investmentIncome(investmentIncome)
+                .incomeSpendingDifference(Math.subtractExact(livingIncome, totalSpend))
+                .salaryIncome(salaryIncome)
+                .expectedSalary(expectedSalary)
+                .expectedSalaryDate(expectedSalary > 0 ? end : null)
                 .totalSpending(totalSpend)
+                .futureSpending(futureSpendings.stream().mapToLong(s -> s.getAmount()).reduce(0L, Math::addExact))
+                .futureSpendingCount(futureSpendings.size())
                 .consumptionAmount(totalSpend - fixedExpenseAmount)
                 .fixedExpenseAmount(fixedExpenseAmount)
                 .availableCash(availableCash)
@@ -168,7 +167,7 @@ public class DashboardService {
                 .spendingByCategory(sortedCategories)
                 .recentSpendings(recentSpendings)
                 .spendingCount(spendings.size())
-                .investmentProgress(Math.min(totalProgress, 100.0))
+                .investmentProgress(Math.max(0, Math.min(totalProgress, 100.0)))
                 .planProgressList(planProgressList)
                 .build();
     }

@@ -76,7 +76,7 @@ class InputValidationTest {
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
-                .contains("amount", "depositDate");
+                .contains("amountNonZero", "depositDate");
     }
 
     @Test

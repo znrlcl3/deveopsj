@@ -19,7 +19,23 @@ public record MonthlyCashFlowSummary(
         long consumptionKrw,
         long fixedExpenseKrw,
         long scheduledFixedKrw,
-        long scheduledInstallmentKrw) {
+        long scheduledInstallmentKrw,
+        long dividendIncomeKrw,
+        long interestIncomeKrw,
+        long futureSpendingKrw,
+        int futureSpendingCount) {
+
+    public long investmentIncomeKrw() {
+        return Math.addExact(dividendIncomeKrw, interestIncomeKrw);
+    }
+
+    public long livingIncomeKrw() {
+        return Math.subtractExact(totalIncomeKrw, investmentIncomeKrw());
+    }
+
+    public long incomeSpendingDifferenceKrw() {
+        return Math.subtractExact(livingIncomeKrw(), totalSpendingKrw);
+    }
 
     public long otherDepositKrw() {
         return Math.subtractExact(totalDepositKrw, securitiesDepositKrw);
@@ -30,6 +46,6 @@ public record MonthlyCashFlowSummary(
     }
 
     public long afterScheduledCashKrw() {
-        return Math.subtractExact(remainingCashKrw, scheduledTotalKrw());
+        return Math.subtractExact(Math.subtractExact(remainingCashKrw, futureSpendingKrw), scheduledTotalKrw());
     }
 }

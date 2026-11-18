@@ -33,13 +33,13 @@ class MonthlyCashFlowViewTest {
         var month = YearMonth.of(2026, 7);
         when(service.getMonthlyCashFlow(any(), eq(month))).thenReturn(new MonthlyCashFlowSummary(
                 month, 3000000, 1000000, 1500000, 500000, 1100000, 0, 0, 0, 1100000,
-                1100000, List.of(), 700000, 300000, 600000, 50000));
+                1100000, List.of(), 700000, 300000, 600000, 50000, 0, 0, 30900, 2));
         String html = mvc.perform(get("/cashflow").param("month", "2026-07").with(user(principal())))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(html).contains("소비지출", "고정지출", "700,000원", "400,000원",
-                "-150,000원", "/spending/list?month=2026-07", "/savings/list?month=2026-07",
-                "선택 월말까지 누적", "아직 확정하지 않은 예정액")
-                .doesNotContain("미배분 현금", "<details open");
+                "-180,900원", "30,900원", "미래 날짜로 등록한 지출", "생활비 수입", "투자수익 · 생활비와 별도", "/spending/list?month=2026-07", "/savings/list?month=2026-07",
+                "아직 확정하지 않은 예정액")
+                .doesNotContain("미배분 현금", "<details open", "플랜별 투자 연결");
         String preview = System.getProperty("cashflow.preview.path");
         if (preview != null) java.nio.file.Files.writeString(java.nio.file.Path.of(preview), html);
     }
@@ -47,7 +47,7 @@ class MonthlyCashFlowViewTest {
     @Test
     void emptyMonthRendersZeroAndNoPendingMessage() throws Exception {
         when(service.getMonthlyCashFlow(any(), any())).thenReturn(new MonthlyCashFlowSummary(
-                YearMonth.now(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), 0, 0, 0, 0));
+                YearMonth.now(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), 0, 0, 0, 0, 0, 0, 0, 0));
         String html = mvc.perform(get("/cashflow").with(user(principal())))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(html).contains("이 달에 남은 미확정 예정액이 없습니다.", "0원");

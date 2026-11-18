@@ -33,6 +33,90 @@ import com.deveopsj.spending.repository.DailySpendingRepository;
 
 @ExtendWith(MockitoExtension.class)
 class DashboardServiceTest {
+    @Test
+    void futureSpendingIsExcludedFromActualTotalsCategoriesAndRecentRows() {
+        var today = LocalDate.now();
+        var month = java.time.YearMonth.from(today);
+        when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(
+                7L, month.atDay(1), month.atEndOfMonth())).thenReturn(List.of(
+                DailySpending.builder().spendingDate(today).categoryCode("FOOD").amount(10000L).build(),
+                DailySpending.builder().spendingDate(today.plusDays(1)).categoryCode("FUTURE").amount(30900L).build()));
+        var summary = dashboardService.getMonthlySummary(7L, month);
+        assertThat(summary.getTotalSpending()).isEqualTo(10000);
+        assertThat(summary.getFutureSpending()).isEqualTo(30900);
+        assertThat(summary.getFutureSpendingCount()).isEqualTo(1);
+        assertThat(summary.getIncomeSpendingDifference()).isEqualTo(-10000);
+        assertThat(summary.getSpendingCount()).isEqualTo(1);
+        assertThat(summary.getSpendingByCategory()).containsOnlyKeys("FOOD");
+        assertThat(summary.getRecentSpendings()).singleElement().satisfies(row ->
+                assertThat(row.spendingDate()).isEqualTo(today));
+    }
+
+    @Test
+    void investmentIncomeAndExpectedSalaryDoNotFundLivingExpenses() {
+        var month = java.time.YearMonth.now();
+        var previous = month.minusMonths(1);
+        when(incomeRepository.getTotalByType(7L, com.deveopsj.income.entity.Income.IncomeType.SALARY,
+                month.atDay(1), month.atEndOfMonth())).thenReturn(0L);
+        when(incomeRepository.getTotalIncome(7L, month.atDay(1), month.atEndOfMonth()))
+                .thenReturn(150_000L);
+        when(incomeRepository.getTotalByType(7L, com.deveopsj.income.entity.Income.IncomeType.DIVIDEND,
+                month.atDay(1), month.atEndOfMonth())).thenReturn(100_000L);
+        when(incomeRepository.getTotalByType(7L, com.deveopsj.income.entity.Income.IncomeType.INTEREST,
+                month.atDay(1), month.atEndOfMonth())).thenReturn(20_000L);
+        when(incomeRepository.getTotalByType(7L, com.deveopsj.income.entity.Income.IncomeType.SALARY,
+                previous.atDay(1), previous.atEndOfMonth())).thenReturn(3_000_000L);
+        when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(
+                7L, month.atDay(1), month.atEndOfMonth())).thenReturn(List.of(
+                        DailySpending.builder().categoryCode("FOOD").amount(50_000L).build()));
+        when(assetSavingsRepository.getTotalByMemberIdAndTypeAndDepositDateBetween(
+                7L, com.deveopsj.assetplan.entity.AssetSavings.DepositType.EXTRA,
+                month.atDay(1), month.atEndOfMonth())).thenReturn(10_000L);
+
+        var summary = dashboardService.getMonthlySummary(7L, month);
+        assertThat(summary.getTotalIncome()).isEqualTo(150_000L);
+        assertThat(summary.getInvestmentIncome()).isEqualTo(120_000L);
+        assertThat(summary.getLivingIncome()).isEqualTo(30_000L);
+        assertThat(summary.getIncomeSpendingDifference()).isEqualTo(-20_000L);
+        assertThat(summary.getAvailableCash()).isEqualTo(-30_000L);
+        assertThat(summary.getExpectedSalary()).isEqualTo(3_000_000L);
+        assertThat(summary.getExpectedSalaryDate()).isEqualTo(month.atEndOfMonth());
+        assertThat(summary.getSavingsRate()).isCloseTo(100.0 / 3, org.assertj.core.data.Offset.offset(.0001));
+    }
+
+    @Test
+    void registeredSalarySuppressesForecast() {
+        var month = java.time.YearMonth.now();
+        when(incomeRepository.getTotalByType(7L, com.deveopsj.income.entity.Income.IncomeType.DIVIDEND,
+                month.atDay(1), month.atEndOfMonth())).thenReturn(0L);
+        when(incomeRepository.getTotalByType(7L, com.deveopsj.income.entity.Income.IncomeType.INTEREST,
+                month.atDay(1), month.atEndOfMonth())).thenReturn(0L);
+        when(incomeRepository.getTotalByType(7L, com.deveopsj.income.entity.Income.IncomeType.SALARY,
+                month.atDay(1), month.atEndOfMonth())).thenReturn(3_000_000L);
+        when(incomeRepository.getTotalIncome(7L, month.atDay(1), month.atEndOfMonth()))
+                .thenReturn(3_000_000L);
+        var summary = dashboardService.getMonthlySummary(7L, month);
+        assertThat(summary.getSalaryIncome()).isEqualTo(3_000_000L);
+        assertThat(summary.getExpectedSalary()).isZero();
+        assertThat(summary.getExpectedSalaryDate()).isNull();
+        org.mockito.Mockito.verify(incomeRepository, org.mockito.Mockito.never()).getTotalByType(
+                7L, com.deveopsj.income.entity.Income.IncomeType.SALARY,
+                month.minusMonths(1).atDay(1), month.minusMonths(1).atEndOfMonth());
+    }
+
+    @Test
+    void missingSalaryHistoryAndPastMonthsDoNotInventExpectedIncome() {
+        var current = dashboardService.getMonthlySummary(7L, java.time.YearMonth.now());
+        assertThat(current.getExpectedSalary()).isZero();
+        assertThat(current.getExpectedSalaryDate()).isNull();
+        var past = java.time.YearMonth.of(2024, 2);
+        var summary = dashboardService.getMonthlySummary(7L, past);
+        assertThat(summary.getExpectedSalary()).isZero();
+        org.mockito.Mockito.verify(incomeRepository, org.mockito.Mockito.never()).getTotalByType(
+                7L, com.deveopsj.income.entity.Income.IncomeType.SALARY,
+                past.minusMonths(1).atDay(1), past.minusMonths(1).atEndOfMonth());
+    }
+
     @Mock private com.deveopsj.assetplan.service.BalanceSnapshotService balances;
 
     @Test
@@ -208,7 +292,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    void 최신_평가금액과_누적납입원금으로_평가손익을_계산한다() {
+    void 대시보드는_증권평가없이_실제납입만_집계한다() {
         Long memberId = 7L;
         LocalDate today = LocalDate.now();
         LocalDate start = today.with(TemporalAdjusters.firstDayOfMonth());
@@ -233,21 +317,17 @@ class DashboardServiceTest {
         when(masterCodeService.getAllActiveCodesGrouped()).thenReturn(Map.of());
         when(assetSavingsRepository.getTotalSavingsByPlanIdAndDepositDateBetween(
                 plan.getId(), start, end)).thenReturn(200_000L);
-        when(assetValuationRepository.findTopByAssetPlanIdOrderByValuationDateDescIdDesc(plan.getId()))
-                .thenReturn(Optional.of(latestValuation));
-        when(assetSavingsRepository.getTotalSavingsByPlanId(plan.getId())).thenReturn(800_000L);
-        when(assetTradeRepository.getTotalSettlementByPlanIdAndType(plan.getId(), TradeType.BUY))
-                .thenReturn(1_000_000L);
         when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(
                 memberId, start, end)).thenReturn(List.of());
 
         DashboardSummary summary = dashboardService.getMonthlySummary(memberId);
 
         assertThat(summary.getTotalInvestment()).isEqualTo(200_000L);
-        assertThat(summary.getValuationPrincipal()).isEqualTo(1_000_000L);
-        assertThat(summary.getCurrentValuation()).isEqualTo(1_150_000L);
-        assertThat(summary.getValuationProfit()).isEqualTo(150_000L);
-        assertThat(summary.getValuedPlanCount()).isEqualTo(1);
+        assertThat(summary.getValuationPrincipal()).isZero();
+        assertThat(summary.getCurrentValuation()).isZero();
+        assertThat(summary.getValuationProfit()).isZero();
+        assertThat(summary.getValuedPlanCount()).isZero();
+        org.mockito.Mockito.verifyNoInteractions(assetTradeRepository, assetValuationRepository, balances);
     }
 
     @Test

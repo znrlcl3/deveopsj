@@ -47,7 +47,7 @@ class AssetSavingsServiceTest {
         plan.setAssetType("SAVINGS");
         plan.setGoal(new Goal());
         AssetSavingsSaveRequest request = request(3L);
-        when(assetPlanRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.of(plan));
+        when(assetPlanRepository.lockOwned(3L, 7L)).thenReturn(Optional.of(plan));
 
         assetSavingsService.save(request, member);
 
@@ -59,7 +59,7 @@ class AssetSavingsServiceTest {
     void 타인의_자산플랜에는_적립하지_않는다() {
         Member member = member(7L);
         AssetSavingsSaveRequest request = request(3L);
-        when(assetPlanRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.empty());
+        when(assetPlanRepository.lockOwned(3L, 7L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> assetSavingsService.save(request, member))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -73,7 +73,7 @@ class AssetSavingsServiceTest {
         plan.setAssetType("ETF");
         plan.setGoal(new Goal());
         AssetSavingsSaveRequest request = request(3L);
-        when(assetPlanRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.of(plan));
+        when(assetPlanRepository.lockOwned(3L, 7L)).thenReturn(Optional.of(plan));
 
         assetSavingsService.save(request, member);
 
@@ -128,7 +128,7 @@ class AssetSavingsServiceTest {
         request.setMemo(" 수정 ");
         when(assetSavingsRepository.findByIdAndMemberId(9L, 7L))
                 .thenReturn(Optional.of(savings));
-        when(assetPlanRepository.findByIdAndMemberMemberId(3L, 7L)).thenReturn(Optional.of(plan));
+        when(assetPlanRepository.lockOwned(3L, 7L)).thenReturn(Optional.of(plan));
 
         assetSavingsService.update(request, member);
 

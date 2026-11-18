@@ -23,7 +23,7 @@ public class MyAssetsController {
     private final AssetBalanceService balances;
     private final PortfolioValuationService portfolio;
 
-    @GetMapping
+    @GetMapping("/legacy")
     public String index(Member member, Model model) {
         var rows = balances.list(member.getMemberId());
         model.addAttribute("balances", rows);
@@ -59,7 +59,7 @@ public class MyAssetsController {
             return index(member, model);
         } catch (IllegalArgumentException e) {
             flash.addFlashAttribute("errorMessage", e.getMessage());
-            return "redirect:/assets";
+            return "redirect:/assets/legacy";
         }
     }
     @PostMapping("/save")
@@ -76,7 +76,7 @@ public class MyAssetsController {
             model.addAttribute("errorMessage", "저장할 수 없습니다. 자산이 삭제되거나 수정되었는지 새로고침 후 확인해 주세요.");
             return index(member, model);
         }
-        return "redirect:/assets";
+        return "redirect:/assets/legacy";
     }
     @PostMapping("/delete")
     public String delete(@RequestParam Long id, @RequestParam Long version, Member member, RedirectAttributes flash) {
@@ -86,6 +86,6 @@ public class MyAssetsController {
         } catch (IllegalArgumentException | OptimisticLockingFailureException e) {
             flash.addFlashAttribute("errorMessage", "삭제할 수 없습니다. 새로고침 후 자산을 확인해 주세요.");
         }
-        return "redirect:/assets";
+        return "redirect:/assets/legacy";
     }
 }

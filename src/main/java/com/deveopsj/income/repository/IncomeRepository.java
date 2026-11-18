@@ -12,6 +12,15 @@ import com.deveopsj.income.entity.Income;
 
 public interface IncomeRepository extends JpaRepository<Income, Long> {
 
+    @Query("""
+            SELECT COALESCE(SUM(i.amount), 0) FROM Income i
+            WHERE i.member.memberId = :memberId AND i.incomeType = :type
+              AND i.incomeDate BETWEEN :start AND :end
+            """)
+    long getTotalByType(@Param("memberId") Long memberId,
+            @Param("type") Income.IncomeType type,
+            @Param("start") LocalDate start, @Param("end") LocalDate end);
+
     boolean existsByImportKey(String importKey);
     List<Income> findByMemberMemberIdAndIncomeDateAndIncomeTypeAndAmount(Long memberId, LocalDate date, Income.IncomeType type, Long amount);
 

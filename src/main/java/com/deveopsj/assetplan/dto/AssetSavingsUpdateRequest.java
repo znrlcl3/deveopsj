@@ -27,8 +27,12 @@ public class AssetSavingsUpdateRequest {
     private DepositType depositType;
 
     @NotNull(message = "납입 금액을 입력해 주세요.")
-    @Positive(message = "납입 금액은 0보다 커야 합니다.")
+    @jakarta.validation.constraints.Min(-999999999999999L)
+    @jakarta.validation.constraints.Max(999999999999999L)
     private Long amount;
+
+    @AssertTrue(message = "금액은 0일 수 없습니다. 인출은 음수로 입력하세요.")
+    public boolean isAmountNonZero() { return amount == null || amount != 0; }
 
     @NotNull(message = "납입 날짜를 입력해 주세요.")
     @PastOrPresent(message = "납입 날짜는 미래일 수 없습니다.")

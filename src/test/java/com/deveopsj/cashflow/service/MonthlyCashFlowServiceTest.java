@@ -29,6 +29,41 @@ import com.deveopsj.spending.repository.DailySpendingRepository;
 
 @ExtendWith(MockitoExtension.class)
 class MonthlyCashFlowServiceTest {
+    @Test
+    void livingCashExcludesInvestmentIncomeAndFutureSpendingWithoutDoubleCountingPending() {
+        var today = LocalDate.now();
+        var month = YearMonth.from(today);
+        var member = member(7L);
+        var service = new MonthlyCashFlowService(incomeRepository, dailySpendingRepository,
+                assetSavingsRepository, recurringExpenseService);
+        when(incomeRepository.getTotalIncome(7L, month.atDay(1), month.atEndOfMonth())).thenReturn(150000L);
+        when(incomeRepository.getTotalByType(7L, com.deveopsj.income.entity.Income.IncomeType.DIVIDEND,
+                month.atDay(1), month.atEndOfMonth())).thenReturn(100000L);
+        when(incomeRepository.getTotalByType(7L, com.deveopsj.income.entity.Income.IncomeType.INTEREST,
+                month.atDay(1), month.atEndOfMonth())).thenReturn(20000L);
+        var rule = com.deveopsj.spending.entity.RecurringExpense.builder().amount(30900L).build();
+        var pending = com.deveopsj.spending.entity.RecurringExpense.builder().amount(5000L).build();
+        when(dailySpendingRepository.findByMemberMemberIdAndSpendingDateBetween(
+                7L, month.atDay(1), month.atEndOfMonth())).thenReturn(List.of(
+                com.deveopsj.spending.entity.DailySpending.builder().spendingDate(today).amount(10000L).build(),
+                com.deveopsj.spending.entity.DailySpending.builder().spendingDate(today.plusDays(1))
+                        .amount(30900L).recurringExpense(rule).build()));
+        when(recurringExpenseService.getOccurrences(member, month)).thenReturn(List.of(
+                new com.deveopsj.spending.dto.RecurringExpenseOccurrence(rule, today.plusDays(1), true),
+                new com.deveopsj.spending.dto.RecurringExpenseOccurrence(pending, today.plusDays(1), false)));
+        var result = service.getMonthlyCashFlow(member, month);
+        assertThat(result.livingIncomeKrw()).isEqualTo(30000);
+        assertThat(result.investmentIncomeKrw()).isEqualTo(120000);
+        assertThat(result.totalSpendingKrw()).isEqualTo(10000);
+        assertThat(result.fixedExpenseKrw()).isZero();
+        assertThat(result.futureSpendingKrw()).isEqualTo(30900);
+        assertThat(result.futureSpendingCount()).isEqualTo(1);
+        assertThat(result.incomeSpendingDifferenceKrw()).isEqualTo(20000);
+        assertThat(result.remainingCashKrw()).isEqualTo(20000);
+        assertThat(result.scheduledTotalKrw()).isEqualTo(5000);
+        assertThat(result.afterScheduledCashKrw()).isEqualTo(-15900);
+    }
+
 
     @Mock
     private IncomeRepository incomeRepository;
@@ -48,7 +83,7 @@ class MonthlyCashFlowServiceTest {
     void 수입부터_납입과_증권계좌매매까지_월간흐름을_계산한다() {
         MonthlyCashFlowService service = new MonthlyCashFlowService(
                 incomeRepository, dailySpendingRepository,
-                assetSavingsRepository, assetTradeRepository, recurringExpenseService);
+                assetSavingsRepository, recurringExpenseService);
         Member member = member(7L);
         YearMonth month = YearMonth.of(2026, 7);
         LocalDate start = LocalDate.of(2026, 7, 1);
@@ -78,17 +113,6 @@ class MonthlyCashFlowServiceTest {
                         saving(isa, DepositType.PLAN, 1_100_000L),
                         saving(pension, DepositType.PLAN, 300_000L),
                         saving(null, DepositType.EXTRA, 100_000L)));
-        AssetTrade juneBuy = trade(isa, TradeType.BUY, 400_000L);
-        juneBuy.setTradeDate(LocalDate.of(2026, 6, 15));
-        when(assetTradeRepository
-                .findByAssetPlanMemberMemberIdAndTradeDateLessThanEqualOrderByTradeDateAscIdAsc(
-                        7L, end))
-                .thenReturn(List.of(
-                        juneBuy,
-                        trade(isa, TradeType.SNAPSHOT, 9_000_000L),
-                        trade(isa, TradeType.BUY, 1_000_000L),
-                        trade(isa, TradeType.SELL, 100_000L)));
-
         MonthlyCashFlowSummary summary = service.getMonthlyCashFlow(member, month);
 
         assertThat(summary.totalIncomeKrw()).isEqualTo(3_000_000L);
@@ -101,18 +125,10 @@ class MonthlyCashFlowServiceTest {
         assertThat(summary.scheduledTotalKrw()).isEqualTo(250_000L);
         assertThat(summary.afterScheduledCashKrw()).isEqualTo(250_000L);
         assertThat(summary.securitiesDepositKrw()).isEqualTo(1_100_000L);
-        assertThat(summary.totalBuyKrw()).isEqualTo(1_000_000L);
-        assertThat(summary.totalSellKrw()).isEqualTo(100_000L);
-        assertThat(summary.netPurchaseKrw()).isEqualTo(900_000L);
-        assertThat(summary.uninvestedSecuritiesCashKrw()).isEqualTo(200_000L);
-        assertThat(summary.estimatedSecuritiesAccountCashKrw()).isEqualTo(300_000L);
-        assertThat(summary.planFlows()).singleElement().satisfies(flow -> {
-            assertThat(flow.planName()).isEqualTo("ISA 계좌");
-            assertThat(flow.uninvestedAmountKrw()).isEqualTo(200_000L);
-            assertThat(flow.cumulativeDepositAmountKrw()).isEqualTo(1_600_000L);
-            assertThat(flow.cumulativeNetPurchaseAmountKrw()).isEqualTo(1_300_000L);
-            assertThat(flow.estimatedAccountCashKrw()).isEqualTo(300_000L);
-        });
+        assertThat(summary.totalBuyKrw()).isZero();
+        assertThat(summary.totalSellKrw()).isZero();
+        assertThat(summary.planFlows()).isEmpty();
+        org.mockito.Mockito.verifyNoInteractions(assetTradeRepository);
         verify(assetSavingsRepository)
                 .findAllByMemberIdAndDepositDateLessThanEqual(7L, end);
     }

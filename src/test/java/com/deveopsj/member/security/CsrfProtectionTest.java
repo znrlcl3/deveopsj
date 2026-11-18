@@ -285,7 +285,7 @@ class CsrfProtectionTest {
                 .thenReturn(new MonthlyCashFlowSummary(
                         month, 3_000_000L, 1_000_000L, 1_400_000L, 600_000L,
                         1_100_000L, 1_000_000L, 100_000L, 900_000L, 200_000L, 300_000L,
-                        java.util.List.of(), 700_000L, 300_000L, 0L, 0L));
+                        java.util.List.of(), 700_000L, 300_000L, 0L, 0L, 0L, 0L, 0L, 0));
 
         mockMvc.perform(get("/cashflow")
                         .with(user(new CustomUserDetails(member)))
@@ -294,9 +294,9 @@ class CsrfProtectionTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "월간 자금 흐름")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "이번 달 기록상 잔액")))
+                        "수입·지출 차액")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "누적 계좌 현금 추정액")));
+                        "저축·투자 순납입")));
 
         verify(monthlyCashFlowService).getMonthlyCashFlow(member, month);
     }
@@ -387,7 +387,7 @@ class CsrfProtectionTest {
         mockMvc.perform(get("/savings/form")
                         .with(user(new CustomUserDetails(member))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("납입 등록")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("추가 납입·인출")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "ISA 계좌 · 목표: 1억 모으기 · 월 1,100,000원")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("inputmode=\"numeric\"")))
@@ -412,7 +412,7 @@ class CsrfProtectionTest {
                         .param("month", month.toString()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("납입 내역")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("월 납입 합계")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("월 순납입 합계")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("새 납입 등록")));
     }
 

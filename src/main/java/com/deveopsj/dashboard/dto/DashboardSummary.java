@@ -17,7 +17,17 @@ public class DashboardSummary {
     private Long valuationProfit;
     private int valuedPlanCount;
     private Long totalIncome;
+    private long livingIncome;
+    private long dividendIncome;
+    private long interestIncome;
+    private long investmentIncome;
+    private long incomeSpendingDifference;
+    private long salaryIncome;
+    private long expectedSalary;
+    private java.time.LocalDate expectedSalaryDate;
     private Long totalSpending;
+    private long futureSpending;
+    private int futureSpendingCount;
     private long consumptionAmount;
     private long fixedExpenseAmount;
     private Long availableCash;

@@ -22,7 +22,6 @@ public class GoalController {
     private final GoalService goalService;
     private final com.deveopsj.assetplan.service.GoalProgressService goalProgressService;
 
-    private final com.deveopsj.assetplan.service.GoalValuationProgressService goalValuationProgressService;
 
     @GetMapping("/form")
     public String goalForm(Model model, Member member) {
@@ -30,7 +29,7 @@ public class GoalController {
         var progress = goalProgressService.summarize(member, goals);
         model.addAttribute("goals", goals);
         model.addAttribute("goalProgress", progress);
-        model.addAttribute("valuationProgress", goalValuationProgressService.summarize(member, goals));
+        // Household goals track principal; market valuations remain in the securities screens.
         model.addAttribute("reachedCount", progress.stream().filter(g -> g.remainingAmount() == 0).count());
         if (!model.containsAttribute("goalRequest")) model.addAttribute("goalRequest", new GoalSaveRequest());
         return "goal/form";

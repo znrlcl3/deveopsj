@@ -73,6 +73,7 @@ class RecurringSavingsServiceTest {
         when(assetSavingsRepository.existsByRecurringSavingsIdAndRecurringYearMonth(11L, "2026-02"))
                 .thenReturn(false);
 
+        when(assetPlanRepository.lockOwned(3L, 7L)).thenReturn(Optional.of(rule.getAssetPlan()));
         service().confirm(11L, YearMonth.of(2026, 2), member);
 
         ArgumentCaptor<AssetSavings> captor = ArgumentCaptor.forClass(AssetSavings.class);
@@ -109,6 +110,7 @@ class RecurringSavingsServiceTest {
         when(assetSavingsRepository.existsByRecurringSavingsIdAndRecurringYearMonth(12L, "2026-08"))
                 .thenReturn(true);
 
+        when(assetPlanRepository.lockOwned(3L, 7L)).thenReturn(Optional.of(first.getAssetPlan()));
         assertThat(service().confirmAll(YearMonth.of(2026, 8), member)).isEqualTo(1);
         ArgumentCaptor<List<AssetSavings>> captor = ArgumentCaptor.forClass(List.class);
         verify(assetSavingsRepository).saveAll(captor.capture());

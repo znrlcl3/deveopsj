@@ -58,15 +58,16 @@
             <input id="dashboardMonth" name="month" type="month" min="1900-01" max="9999-12" th:value="${selectedMonth}" class="form-control" style="width: 170px;" required>
             <button class="btn btn-dark" type="submit">조회</button>
             <a th:href="@{/dashboard/view}" class="btn btn-link">이번 달</a>
-            <span class="text-muted small" th:text="${summary.spendingCount} + '건의 지출 기록'"></span>
+            <span class="text-muted small" th:text="${summary.spendingCount} + '건의 지출 기록 (오늘까지)'"></span>
         </form>
         <div class="row g-3 mb-3">
             <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body">
-                <div class="section-label mb-2">수입</div><div class="metric-value" th:text="${#numbers.formatInteger(summary.totalIncome, 0, 'COMMA')} + '원'"></div>
+                <div class="section-label mb-2">생활비 수입</div><div class="metric-value" th:text="${#numbers.formatInteger(summary.livingIncome, 0, 'COMMA')} + '원'"></div>
+                <div class="small text-muted mb-2">등록된 급여·부수입·기타 수입</div>
                 <a th:href="@{/income/list(month=${selectedMonth})}" class="small">수입 내역 보기</a>
             </div></div></div>
             <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body">
-                <div class="section-label mb-2">지출</div><div class="metric-value" th:text="${#numbers.formatInteger(summary.totalSpending, 0, 'COMMA')} + '원'"></div>
+                <div class="section-label mb-2">지출 · 오늘까지</div><div class="metric-value" th:text="${#numbers.formatInteger(summary.totalSpending, 0, 'COMMA')} + '원'"></div>
                 <dl class="small border-top pt-2 mt-2 mb-2">
                     <div class="d-flex flex-wrap justify-content-between gap-1"><dt class="fw-normal">소비지출</dt><dd class="mb-1 fw-bold text-primary" th:text="${#numbers.formatInteger(summary.consumptionAmount, 0, 'COMMA')} + '원'"></dd></div>
                     <div class="d-flex flex-wrap justify-content-between gap-1"><dt class="fw-normal">고정지출</dt><dd class="mb-0 fw-bold" th:text="${#numbers.formatInteger(summary.fixedExpenseAmount, 0, 'COMMA')} + '원'"></dd></div>
@@ -75,15 +76,53 @@
                 <a th:href="@{/spending/list(month=${selectedMonth})}" class="small">지출 내역 보기</a>
             </div></div></div>
             <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body">
-                <div class="section-label mb-2">저축·투자 납입</div><div class="metric-value" th:text="${#numbers.formatInteger(summary.totalInvestment, 0, 'COMMA')} + '원'"></div>
+                <div class="section-label mb-2">저축·투자 순납입</div><div class="metric-value" th:text="${#numbers.formatInteger(summary.totalInvestment, 0, 'COMMA')} + '원'"></div>
                 <a th:href="@{/savings/list(month=${selectedMonth})}" class="small">납입 내역 보기</a>
             </div></div></div>
             <div class="col-6 col-xl-3"><div class="card balance-card h-100"><div class="card-body">
-                <div class="section-label mb-2">기록상 잔액</div><div class="metric-value" th:text="${#numbers.formatInteger(summary.availableCash, 0, 'COMMA')} + '원'"></div>
-                <div class="small text-muted">수입 − 지출 − 납입</div>
+                <div class="section-label mb-2" th:text="${selectedMonth.equals(currentMonth) ? '현재까지 수입·지출 차액' : '선택 월 수입·지출 차액'}">현재까지 수입·지출 차액</div>
+                <div class="metric-value" th:text="${#numbers.formatInteger(summary.incomeSpendingDifference, 0, 'COMMA')} + '원'"></div>
+                <div class="small text-muted">생활비 수입 − 지출</div>
+                <div class="small border-top pt-2 mt-2">순납입 반영 후 <strong th:text="${#numbers.formatInteger(summary.availableCash, 0, 'COMMA')} + '원'"></strong></div>
+                <span th:if="${selectedMonth.equals(currentMonth)}" class="badge text-bg-light mt-2">이번 달 기록 진행 중</span>
             </div></div></div>
         </div>
-        <p class="text-muted small mb-4">기록상 잔액은 선택한 월에 입력한 내역의 차액입니다. 실제 통장 잔액과 다르며, 이전 잔액·미확정 고정지출·주식 매매는 반영하지 않습니다.</p>
+        <p class="text-muted small mb-4">차액은 선택한 월에 등록한 내역 기준입니다. 월급 입금 전에는 마이너스일 수 있으며, 실제 잔고 부족을 뜻하지 않습니다. 전월 이월금·예정 월급·투자수익·미확정 고정지출은 생활비 차액에 포함하지 않습니다.</p>
+        <div class="row g-3 mb-4">
+            <section class="col-12"><div class="card"><div class="card-body">
+                <h2 class="h6 fw-bold">미래 날짜로 등록한 지출</h2>
+                <div class="metric-value" th:text="${#numbers.formatInteger(summary.futureSpending, 0, 'COMMA')} + '원'"></div>
+                <p class="small text-muted mt-2 mb-2" th:text="|선택한 월에서 오늘 이후 날짜로 등록한 ${summary.futureSpendingCount}건입니다. 위 지출·차액·카테고리·최근 지출에서는 제외하며, 해당 날짜가 되면 자동으로 포함합니다.|"></p>
+                <a th:href="@{/spending/list(month=${selectedMonth})}" class="small">등록 지출 확인하기</a>
+            </div></div></section>
+            <section class="col-md-6"><div class="card h-100"><div class="card-body">
+                <h2 class="h6 fw-bold">월급 입금 예정</h2>
+                <div th:if="${summary.salaryIncome > 0}">
+                    <span class="badge text-bg-success mb-2">급여 등록됨</span>
+                    <div class="metric-value" th:text="${#numbers.formatInteger(summary.salaryIncome, 0, 'COMMA')} + '원'"></div>
+                    <p class="small text-muted mt-2">선택한 월에 등록된 급여입니다. 예상액은 중복 표시하지 않습니다.</p>
+                </div>
+                <div th:if="${summary.salaryIncome == 0 and summary.expectedSalary > 0}">
+                    <span class="badge text-bg-light mb-2">예상 · 실제 수입 미포함</span>
+                    <div class="metric-value" th:text="${#numbers.formatInteger(summary.expectedSalary, 0, 'COMMA')} + '원'"></div>
+                    <div class="small mt-2" th:text="|예상 입금일 ${summary.expectedSalaryDate} (월말 가정)|"></div>
+                    <p class="small text-muted mt-2">전월 급여 합계 기준 추정입니다. 실제 금액·입금일은 다를 수 있습니다. 입금 후 수입에 급여로 등록해 주세요.</p>
+                </div>
+                <p th:if="${summary.salaryIncome == 0 and summary.expectedSalary == 0}" class="small text-muted"
+                   th:text="${selectedMonth.isBefore(currentMonth) ? '이 달에 등록된 급여가 없습니다. 지난달에는 예정액을 표시하지 않습니다.' : '전월 급여 기록이 없어 예상액을 계산할 수 없습니다. 전월 급여를 등록하면 월말 예상액을 표시합니다.'}"></p>
+                <a th:href="@{/income/form}" class="small">급여 등록하기</a>
+            </div></div></section>
+            <section class="col-md-6"><div class="card h-100"><div class="card-body">
+                <h2 class="h6 fw-bold">투자수익 · 생활비와 별도</h2>
+                <div class="metric-value" th:text="${#numbers.formatInteger(summary.investmentIncome, 0, 'COMMA')} + '원'"></div>
+                <dl class="small mt-2 mb-2">
+                    <div class="d-flex justify-content-between gap-2"><dt class="fw-normal">배당·분배금</dt><dd th:text="${#numbers.formatInteger(summary.dividendIncome, 0, 'COMMA')} + '원'"></dd></div>
+                    <div class="d-flex justify-content-between gap-2"><dt class="fw-normal">이자·예탁금이용료</dt><dd th:text="${#numbers.formatInteger(summary.interestIncome, 0, 'COMMA')} + '원'"></dd></div>
+                </dl>
+                <p class="small text-muted">등록된 배당·분배금과 모든 이자 수입입니다. 생활비 차액·저축률에서 제외하며, 평가손익은 포함하지 않습니다.</p>
+                <a th:href="@{/income/list(month=${selectedMonth})}" class="small">전체 수입 내역 보기</a>
+            </div></div></section>
+        </div>
         <div class="row g-3 mb-4">
             <section class="col-lg-7"><div class="card h-100"><div class="card-body p-4">
                 <h2 class="h5 fw-bold">어디에 많이 썼을까요?</h2><p class="small text-muted">카테고리별 지출을 금액이 큰 순서로 보여드려요.</p>
@@ -94,16 +133,44 @@
                 </div>
             </div></div></section>
             <aside class="col-lg-5"><div class="card h-100"><div class="card-body p-4">
-                <h2 class="h5 fw-bold">처음이라면 이렇게 시작해요</h2>
-                <p class="text-muted mt-3">이번 달은 예산을 정하기보다 쓴 돈을 차근차근 기록해 보세요. 기록이 쌓이면 나에게 맞는 예산을 정하기 쉬워져요.</p>
-                <hr><h3 class="h6 fw-bold">매달 나가는 돈도 확인해 주세요</h3>
-                <p class="small text-muted">월세·통신비 같은 고정지출은 지출 내역에서 확인하고 확정할 수 있어요. 확정 전 금액은 위 지출 합계에 포함되지 않아요.</p>
-                <a th:href="@{/spending/list(month=${selectedMonth})}" class="btn btn-outline-secondary btn-sm">고정지출 확인하기</a>
+                <h2 class="h5 fw-bold" th:text="${selectedMonth.equals(currentMonth) ? '이번 달 확인할 일' : '선택 월 확인할 일'}">이번 달 확인할 일</h2>
+                <p class="small text-muted" th:text="|${selectedMonth} 기록 기준 · 실제 입금·지출·납입 여부를 확인한 뒤 등록하세요.|"></p>
+                <p th:if="${checklist == null}" class="small text-muted">미래 월의 확인할 일은 해당 월에 안내합니다.</p>
+                <div th:if="${checklist != null}">
+                    <div class="border-bottom py-3">
+                        <h3 class="h6 fw-bold">급여 확인</h3>
+                        <p th:if="${summary.salaryIncome > 0}" class="small text-success mb-0">급여 등록됨</p>
+                        <div th:if="${summary.salaryIncome == 0}">
+                            <p class="small mb-2" th:text="${summary.expectedSalary > 0 ? '급여 입금 대기 · 예상액은 실제 수입에 포함되지 않습니다.' : '급여 기록 없음 · 급여 수입이 없다면 등록하지 않아도 됩니다.'}"></p>
+                            <p class="small text-muted mb-2">입금받았다면 실제 입금일과 금액으로 등록하세요.</p>
+                            <a href="/income/form" class="btn btn-sm btn-outline-primary">급여 등록하기</a>
+                        </div>
+                    </div>
+                    <div class="border-bottom py-3">
+                        <h3 class="h6 fw-bold">고정지출·할부 확인</h3>
+                        <p th:if="${checklist.pendingExpenses == 0}" class="small text-success mb-0">미확정 고정지출·할부 없음</p>
+                        <div th:if="${checklist.pendingExpenses > 0}">
+                            <p class="small mb-1" th:text="|미확정 ${checklist.pendingExpenses}건 · ${#numbers.formatInteger(checklist.pendingExpenseAmount,0,'COMMA')}원|"></p>
+                            <p class="small text-muted mb-2" th:text="|그중 예정일이 오늘까지인 항목 ${checklist.dueExpenses}건. 이미 등록한 미래 날짜 지출은 포함하지 않습니다.|"></p>
+                            <a th:href="@{/spending/list(month=${selectedMonth})}" class="btn btn-sm btn-outline-primary">예정 지출 확인하기</a>
+                        </div>
+                    </div>
+                    <div class="pt-3">
+                        <h3 class="h6 fw-bold">저축·투자 납입 확인</h3>
+                        <p th:if="${checklist.pendingDeposits == 0}" class="small text-success mb-0">납입 확인 대상 없음</p>
+                        <div th:if="${checklist.pendingDeposits > 0}">
+                            <p class="small mb-1" th:text="|미등록 플랜 ${checklist.pendingDeposits}개 · 월 계획 ${#numbers.formatInteger(checklist.plannedDepositAmount,0,'COMMA')}원|"></p>
+                            <p class="small text-muted mb-2">계획 금액이며 실제 납입액이 아닙니다. 이미 납입 기록이 있는 플랜은 제외합니다.</p>
+                            <a th:href="@{/assets(month=${selectedMonth})}" class="btn btn-sm btn-outline-primary">실제 납입 확인하기</a>
+                        </div>
+                        <p th:if="${checklist.openingExcludedPlans > 0}" class="small text-muted mt-2 mb-0" th:text="|시작 원금 기준월 이전·당월인 ${checklist.openingExcludedPlans}개 플랜은 제외했습니다. 과거 납입을 다시 등록하지 마세요.|"></p>
+                    </div>
+                </div>
             </div></div></aside>
         </div>
         <section class="card mb-4"><div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center gap-2 mb-3"><h2 class="h5 fw-bold mb-0">최근 지출</h2><a th:href="@{/spending/list(month=${selectedMonth})}" class="small">전체 내역 보기 →</a></div>
-            <p class="small text-muted">선택한 월의 지출일이 최근인 5건입니다. 등록 일시도 함께 확인해 보세요.</p>
+            <p class="small text-muted">선택한 월에서 오늘까지의 지출 중 최근 5건입니다. 미래 날짜로 등록한 지출은 별도로 표시합니다.</p>
             <div th:if="${summary.spendingCount == 0}" class="empty-state">지출을 등록하거나 엑셀·카드 내역을 가져오면 여기에 표시됩니다.</div>
             <div th:if="${summary.spendingCount > 0}" class="table-responsive"><table class="table mb-0">
                 <thead><tr class="small text-muted"><th>지출일</th><th>내용</th><th>카테고리</th><th class="text-end">금액</th><th>등록 일시</th></tr></thead>
@@ -114,14 +181,15 @@
                 </tr></tbody>
             </table></div>
         </div></section>
-        <details class="mb-4"><summary>저축·투자와 현재 자산 현황</summary><div class="mt-3">
+        <section th:if="${principalSummary != null}" class="card mb-4 p-4"><h2 class="h5 fw-bold">지금까지 모은 원금</h2><strong class="fs-2" th:text="|${#numbers.formatInteger(principalSummary.principal,0,'COMMA')}원|"></strong><p class="small text-muted mt-2">오늘까지의 시작 원금 + 납입 − 인출입니다. 선택한 월의 실적 및 증권 평가액과 구분합니다.</p><div><a href="/assets" class="btn btn-primary">월별 납입 확인</a> <a href="/goal/form" class="btn btn-outline-secondary">목표 진행률</a></div></section>
+        <details class="mb-4"><summary>월별 저축 실행 현황</summary><div class="mt-3">
         <div class="row">
             <div class="col-12 mb-4">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
                         <h5 class="card-title mb-4">선택한 월의 저축·투자 실행 현황</h5>
                         <div class="d-flex justify-content-between mb-2">
-                            <span>실제 납입 원금:
+                            <span>실제 순납입:
                                 <strong th:text="${#numbers.formatInteger(summary.totalInvestment, 0, 'COMMA')} + '원'"></strong>
                             </span>
                             <span>월 목표 합계:
@@ -146,35 +214,6 @@
 
         </div>
 
-        <div th:if="${assetSummary != null}" th:insert="~{portfolio/valuation-source :: summary(${assetSummary})}"></div>
-        <div class="card shadow-sm mb-4" th:if="${assetSummary == null or (#lists.isEmpty(assetSummary.snapshots) and #lists.isEmpty(assetSummary.positions))}">
-            <div class="card-body">
-                <h5 class="card-title mb-3">현재 자산 평가 현황</h5>
-                <div th:if="${summary.valuedPlanCount > 0}">
-                    <div class="row text-center g-3">
-                        <div class="col-md-4">
-                            <div class="text-muted small">평가 기준 원금</div>
-                            <strong th:text="${#numbers.formatInteger(summary.valuationPrincipal, 0, 'COMMA')} + '원'"></strong>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-muted small">현재 평가금액</div>
-                            <strong th:text="${#numbers.formatInteger(summary.currentValuation, 0, 'COMMA')} + '원'"></strong>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-muted small">평가손익</div>
-                            <strong th:classappend="${summary.valuationProfit >= 0} ? 'text-success' : 'text-danger'"
-                                    th:text="${(summary.valuationProfit >= 0 ? '+' : '') + #numbers.formatInteger(summary.valuationProfit, 0, 'COMMA') + '원'}"></strong>
-                        </div>
-                    </div>
-                    <p class="text-muted small mt-3 mb-0"
-                       th:text="'* 최근 평가금액을 입력한 ' + ${summary.valuedPlanCount} + '개 플랜 기준입니다.'"></p>
-                </div>
-                <div th:unless="${summary.valuedPlanCount > 0}" class="text-muted">
-                    아직 등록된 평가금액이 없습니다. 적립 내역 화면에서 현재 평가금액을 기록해 주세요.
-                </div>
-            </div>
-        </div>
-        
         </div></details>
         <section class="card mb-4 p-4" aria-labelledby="analysisTitle">
             <h5 id="analysisTitle" class="fw-bold">이번 달 어디에 많이 썼을까?</h5>

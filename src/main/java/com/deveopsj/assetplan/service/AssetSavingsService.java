@@ -31,6 +31,7 @@ public class AssetSavingsService {
     public void save(AssetSavingsSaveRequest request, Member member) {
         DepositTarget target = resolveTarget(
                 request.getDepositType(), request.getAssetPlanId(), request.getGoalId(), member);
+        if (target.assetPlan() != null) target.assetPlan().requireAfterOpening(request.getDepositDate());
 
         AssetSavings assetSavings = AssetSavings.builder()
                 .assetPlan(target.assetPlan())
@@ -73,6 +74,7 @@ public class AssetSavingsService {
                 .orElseThrow(() -> new IllegalArgumentException("수정할 수 있는 납입 내역이 없습니다."));
         DepositTarget target = resolveTarget(
                 request.getDepositType(), request.getAssetPlanId(), request.getGoalId(), member);
+        if (target.assetPlan() != null) target.assetPlan().requireAfterOpening(request.getDepositDate());
 
         savings.setAssetPlan(target.assetPlan());
         savings.setGoal(target.goal());
@@ -93,7 +95,7 @@ public class AssetSavingsService {
             Long goalId, Member member) {
         if (depositType == DepositType.PLAN) {
             AssetPlan assetPlan = assetPlanRepository
-                    .findByIdAndMemberMemberId(assetPlanId, member.getMemberId())
+                    .lockOwned(assetPlanId, member.getMemberId())
                     .orElseThrow(() -> new IllegalArgumentException("선택한 자산 플랜을 사용할 수 없습니다."));
             return new DepositTarget(assetPlan, assetPlan.getGoal());
         }

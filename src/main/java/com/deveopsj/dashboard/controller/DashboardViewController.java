@@ -22,7 +22,8 @@ public class DashboardViewController {
 
     private final DashboardService dashboardService;
     private final GeminiProperties geminiProperties;
-    private final com.deveopsj.market.service.PortfolioValuationService portfolio;
+    private final com.deveopsj.assetplan.service.HouseholdLedgerService ledger;
+    private final com.deveopsj.dashboard.service.DashboardChecklistService checklist;
 
     @GetMapping("/view")
     public String dashboard(@RequestParam(required = false) String month, Model model, Member member) {
@@ -38,8 +39,10 @@ public class DashboardViewController {
         }
         var summary = dashboardService.getMonthlySummary(member.getMemberId(), selectedMonth);
         model.addAttribute("summary", summary);
-        try { model.addAttribute("assetSummary",portfolio.getPortfolio(member)); }
-        catch(IllegalStateException | ArithmeticException e) { model.addAttribute("assetSummaryError","자산 평가를 확인하지 못했습니다."); }
+        if (!selectedMonth.isAfter(YearMonth.now())) {
+            model.addAttribute("checklist", checklist.summarize(member, selectedMonth));
+        }
+        model.addAttribute("principalSummary", ledger.summary(member.getMemberId(), YearMonth.now()));
         model.addAttribute("aiModel", geminiProperties.getModel());
         model.addAttribute("selectedMonth", selectedMonth);
         model.addAttribute("currentMonth", YearMonth.now());

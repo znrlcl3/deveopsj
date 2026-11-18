@@ -1,33 +1,28 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>납입 내역 | AI 자산관리</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>납입·인출 내역 | AI 자산관리</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { background-color: #f4f7f6; font-family: 'Pretendard', sans-serif; }
-        .content-container { max-width: 1100px; margin: 60px auto; }
-        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-    </style>
+    <link href="/css/assets.css" rel="stylesheet">
 </head>
-<body>
+<body class="asset-page">
 <div class="d-flex">
-    <div th:replace="~{common/navigation :: sidebar('savings')}"></div>
-    <main class="flex-grow-1" style="margin-left: 280px; min-height: 100vh;">
-        <div class="container content-container">
+    <div th:replace="~{common/navigation :: sidebar('assets')}"></div>
+    <main class="assets-main">
+        <div class="assets-content">
+            <header th:replace="~{common/savings-navigation :: header}"></header>
+            <nav th:replace="~{common/savings-navigation :: tabs('history')}"></nav>
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="fw-bold mb-0">납입 내역</h3>
+                <h3 class="fw-bold mb-0">납입·인출 내역</h3>
                 <a href="/savings/form" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> 새 납입 등록
                 </a>
             </div>
 
-            <ul class="nav nav-tabs mb-4">
-                <li class="nav-item"><a class="nav-link" href="/savings/form">납입 등록</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/savings/list">납입 내역</a></li>
-                <li class="nav-item"><a class="nav-link" href="/recurring-savings">정기 납입 설정</a></li>
-            </ul>
+
 
             <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
@@ -69,7 +64,7 @@
                         <button type="submit" class="btn btn-outline-primary w-100">조회</button>
                     </div>
                     <div class="col-md-6 text-md-end">
-                        <span class="text-muted">월 납입 합계</span>
+                        <span class="text-muted">월 순납입 합계</span>
                         <strong class="fs-4 ms-2"
                                 th:text="${#numbers.formatInteger(totalAmount, 0, 'COMMA')} + '원'"></strong>
                     </div>
@@ -164,7 +159,7 @@
                                         th:text="${(#strings.isEmpty(plan.planName)
                                                 ? @masterCodeService.getCodeName('ASSET_TYPE', plan.assetType) + ' 플랜'
                                                 : plan.planName)
-                                                + ' · 목표: ' + plan.goal.title
+                                                + ' · 목표: ' + (plan.goal == null ? '미연결' : plan.goal.title)
                                                 + ' · 월 ' + #numbers.formatInteger(plan.monthlyAmount, 0, 'COMMA') + '원'}"
                                         th:selected="${saving.assetPlan != null and plan.id == saving.assetPlan.id}"></option>
                             </select>
@@ -185,9 +180,9 @@
                                    th:value="${saving.depositDate}" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">납입금액</label>
+                            <label class="form-label">금액 (납입 + / 인출 −)</label>
                             <input type="text" name="amount" inputmode="numeric"
-                                   class="form-control amount-input" pattern="[0-9,]+"
+                                   class="form-control amount-input" pattern="-?[0-9,]+"
                                    th:value="${saving.amount}" autocomplete="off" required>
                         </div>
                         <div>
@@ -225,8 +220,9 @@
     document.querySelectorAll('.edit-deposit-type').forEach(toggleSavingsTarget);
 
     function formatAmountInput(input) {
+        const sign = input.value.startsWith('-') ? '-' : '';
         const digits = input.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
-        input.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        input.value = sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
 
     document.querySelectorAll('.amount-input').forEach(input => {

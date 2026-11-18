@@ -25,11 +25,17 @@ public class GoalProgressService {
         var counts = new HashMap<Long, Integer>();
         var planCounts = new HashMap<Long, Integer>();
         for (var plan : plans.findByMemberMemberId(member.getMemberId())) {
-            if (owned(plan.getGoal(), member)) planCounts.merge(plan.getGoal().getId(), 1, Integer::sum);
+            if (owned(plan.getGoal(), member)) {
+                planCounts.merge(plan.getGoal().getId(), 1, Integer::sum);
+                if (plan.getOpeningDate() != null && !plan.getOpeningDate().isAfter(today)
+                        && plan.getOpeningPrincipal() != null) {
+                    amounts.merge(plan.getGoal().getId(), plan.getOpeningPrincipal(), Math::addExact);
+                }
+            }
         }
         for (var saving : savings.findAllByMemberIdAndDepositDateLessThanEqual(member.getMemberId(), today)) {
             Goal goal = saving.getAssetPlan() != null ? saving.getAssetPlan().getGoal() : saving.getGoal();
-            if (!owned(goal, member) || saving.getAmount() == null || saving.getAmount() <= 0
+            if (!owned(goal, member) || saving.getAmount() == null || saving.getAmount() == 0
                     || saving.getDepositDate() == null || saving.getDepositDate().isAfter(today)) continue;
             if (saving.getAssetPlan() != null && (saving.getAssetPlan().getMember() == null
                     || !Objects.equals(saving.getAssetPlan().getMember().getMemberId(), member.getMemberId()))) continue;
@@ -54,7 +60,7 @@ public class GoalProgressService {
                             : "FAILED".equals(goal.getStatus()) ? "미달성 종료"
                             : remaining == 0 ? "목표 금액 도달" : days != null && days < 0 ? "기한 지남" : "진행 중";
                     return new GoalProgress(goal, saved, remaining,
-                            goal.getTargetAmount() > 0 ? Math.min(100.0, saved * 100.0 / goal.getTargetAmount()) : 0,
+                            goal.getTargetAmount() > 0 ? Math.max(0.0, Math.min(100.0, saved * 100.0 / goal.getTargetAmount())) : 0,
                             planCounts.getOrDefault(goal.getId(), 0), counts.getOrDefault(goal.getId(), 0), days, monthly, status);
                 }).toList();
     }

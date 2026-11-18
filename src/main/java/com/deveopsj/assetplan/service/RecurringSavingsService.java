@@ -112,6 +112,13 @@ public class RecurringSavingsService {
     }
 
     private AssetSavings toSavings(RecurringSavings rule, YearMonth month) {
+        if (rule.getAssetPlan() != null) {
+            var plan = assetPlanRepository.lockOwned(rule.getAssetPlan().getId(), rule.getMember().getMemberId())
+                    .orElseThrow(() -> new IllegalArgumentException("사용할 수 있는 플랜이 없습니다."));
+            if (plan.openingCoversMonth(month))
+                throw new IllegalArgumentException("시작 원금 기준월까지는 정기 납입에서 제외합니다. 기준일 이후 추가 거래는 직접 기록하세요.");
+            plan.requireAfterOpening(scheduledDate(rule, month));
+        }
         return AssetSavings.builder()
                 .assetPlan(rule.getAssetPlan())
                 .goal(rule.getGoal())
@@ -132,6 +139,7 @@ public class RecurringSavingsService {
         LocalDate monthStart = month.atDay(1);
         LocalDate monthEnd = month.atEndOfMonth();
         return rule.isActive()
+                && (rule.getAssetPlan() == null || !rule.getAssetPlan().openingCoversMonth(month))
                 && !rule.getStartDate().isAfter(monthEnd)
                 && (rule.getEndDate() == null || !rule.getEndDate().isBefore(monthStart));
     }

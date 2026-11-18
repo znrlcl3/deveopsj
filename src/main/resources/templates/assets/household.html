@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내 자산 · 저축 현황 | AI 자산관리</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="/css/assets.css" rel="stylesheet"></head>
+<body class="asset-page"><div class="d-flex"><div th:replace="~{common/navigation :: sidebar('assets')}"></div>
+<main class="assets-main"><div class="assets-content">
+<header th:replace="~{common/savings-navigation :: header}"></header>
+<nav th:replace="~{common/savings-navigation :: tabs('overview')}"></nav>
+
+<div th:if="${message}" class="alert alert-success" role="status" th:text="${message}"></div>
+<div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+<section class="card p-4 mb-4"><h2 class="h5">지금까지 모은 원금</h2><strong class="fs-2" th:text="|${#numbers.formatInteger(ledger.principal,0,'COMMA')}원|"></strong>
+<p class="small text-muted mt-2 mb-0">오늘까지의 시작 원금 + 실제 납입 − 인출입니다. 증권 평가액·매매·잔고 파일은 합산하지 않습니다. 이자·배당은 수입으로 따로 기록하세요. 계좌 안에서 재투자한 금액은 외부에서 새로 넣은 원금이 아닙니다.</p>
+<p class="small text-danger mt-2 mb-0" th:if="${ledger.principal < 0}">인출이 기록된 원금보다 큽니다. 누락된 시작 원금이나 납입을 확인하세요.</p>
+</section>
+<div class="alert alert-light border"><strong>목표 → 플랜 → 시작 원금 → 매달 납입 확인</strong><p class="small mb-0 mt-2">ISA·연금저축·예적금 모두 같은 방식입니다. 시작 원금에는 기준일까지의 순납입액을 넣으세요. 기준월은 일괄 납입에서 제외하고 다음 달부터 실제 납입을 확인합니다. 기준일 이후 같은 달에 추가로 넣거나 뺀 돈은 추가 납입·인출에서 기록하세요. 내 계좌 간 이동은 출발 계좌에 인출, 도착 계좌에 납입으로 기록해 중복을 피하세요.</p></div>
+<div th:if="${#lists.isEmpty(ledger.rows)}" class="card p-4 mb-4"><h2 class="h5">저축할 곳을 등록해 주세요</h2><p>목표와 연결할 플랜을 만들면 시작 원금과 월별 납입을 기록할 수 있습니다.</p><div class="d-flex gap-2"><a href="/goal/form" class="btn btn-outline-primary">목표 만들기</a><a href="/assetplan/form" class="btn btn-primary">플랜 만들기</a></div></div>
+<section th:unless="${#lists.isEmpty(ledger.rows)}" class="mb-4"><div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 fw-bold mb-0">계좌별 모은 원금</h2><a href="/assetplan/form" class="btn btn-sm btn-outline-secondary">플랜 설정</a></div>
+<div class="row g-3"><div class="col-lg-6" th:each="row : ${ledger.rows}"><article class="card p-4 h-100">
+<h3 class="h6 fw-bold" th:text="${row.name()}"></h3><small class="text-muted" th:text="${row.plan.goal == null ? '목표 미연결' : row.plan.goal.title}"></small>
+<strong class="fs-4 mt-2" th:text="|${#numbers.formatInteger(row.principal,0,'COMMA')}원|"></strong>
+<p class="small text-muted mt-2" th:text="|월 계획 ${#numbers.formatInteger(row.plan.monthlyAmount,0,'COMMA')}원|"></p>
+<p th:if="${row.plan.openingDate != null}" class="small text-muted" th:text="|${row.plan.openingDate}까지의 원금 포함 · ${row.plan.openingDate.plusDays(1)}부터 추가 거래 기록|"></p>
+<p th:if="${row.overlapCount > 0}" class="small text-danger" th:text="|기준일 이전·당일 납입 내역 ${row.overlapCount}건이 있습니다. 기존 합계는 유지되므로 시작 원금과 중복인지 내역을 확인하세요.|"></p>
+<details><summary th:text="${row.plan.openingPrincipal == null ? '시작 원금 등록 (선택)' : '시작 원금 확인·수정'}"></summary>
+<p class="small text-muted mt-2">기준일까지의 입금에서 출금을 뺀 원금입니다. 기준일은 처음 투자한 날이 아니라 이 원금에 마지막으로 포함된 날짜입니다. 평가손익·배당은 제외하세요. 기준일은 기존 첫 납입일보다 빨라야 하며, 기준일 당일까지의 거래는 추가 등록하지 않습니다. 시작 원금은 월 실적에 더하지 않습니다.</p>
+<form th:action="@{/assets/opening}" method="post" class="row g-2">
+<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><input type="hidden" name="planId" th:value="${row.plan.id}">
+<input type="hidden" name="expectedAmount" th:value="${row.plan.openingPrincipal}"><input type="hidden" name="expectedDate" th:value="${row.plan.openingDate}">
+<div class="col-sm-6"><label class="form-label" th:for="|opening-amount-${row.plan.id}|">시작 원금 (원)</label><input th:id="|opening-amount-${row.plan.id}|" name="amount" type="number" min="0" max="999999999999999" step="1" th:value="${row.plan.openingPrincipal}" class="form-control" required></div>
+<div class="col-sm-6"><label class="form-label" th:for="|opening-date-${row.plan.id}|">원금 집계 기준일</label><input th:id="|opening-date-${row.plan.id}|" name="date" type="date" min="1900-01-01" th:max="${today}" th:value="${row.plan.openingDate}" class="form-control" required></div>
+<div class="col-12"><button class="btn btn-outline-primary" type="submit">시작 원금 저장</button></div></form></details>
+</article></div></div></section>
+<p class="small text-muted" th:if="${ledger.extra != 0}" th:text="|플랜 없이 목표에 직접 기록한 순납입 ${#numbers.formatInteger(ledger.extra,0,'COMMA')}원도 모은 원금에 포함합니다.|"></p>
+<section class="card p-4 mb-4"><div class="d-flex flex-wrap gap-3 justify-content-between align-items-center"><h2 class="h5 fw-bold mb-0">매달 실제 납입 확인</h2>
+<form method="get" action="/assets" class="d-flex gap-2"><label for="savingMonth" class="visually-hidden">조회 월</label><input id="savingMonth" type="month" name="month" min="1900-01" th:max="${currentMonth}" th:value="${selectedMonth}" class="form-control" required><button class="btn btn-outline-secondary">조회</button></form></div>
+<div class="row g-3 my-2"><div class="col-sm-4"><span class="small text-muted">이 달 납입</span><strong class="d-block" th:text="|${#numbers.formatInteger(ledger.deposits,0,'COMMA')}원|"></strong></div><div class="col-sm-4"><span class="small text-muted">이 달 인출</span><strong class="d-block" th:text="|${#numbers.formatInteger(ledger.withdrawals,0,'COMMA')}원|"></strong></div><div class="col-sm-4"><span class="small text-muted">이 달 순저축</span><strong class="d-block" th:text="|${#numbers.formatInteger(ledger.netDeposit(),0,'COMMA')}원|"></strong></div></div>
+<p class="small text-muted">계획 금액은 자동 저장되지 않습니다. 실제 납입한 항목을 체크하고 금액·날짜를 확인하세요. 이미 납입한 플랜과 시작 원금 기준월까지는 일괄 등록에서 제외합니다. 기준일 이후 같은 달의 추가 납입·인출은 별도 기록하세요.</p>
+<form th:unless="${#lists.isEmpty(ledger.rows)}" th:action="@{/assets/monthly}" method="post">
+<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+<div class="mb-3"><label for="depositDate" class="form-label">선택 항목의 실제 납입일</label><input id="depositDate" name="date" type="date" th:min="${selectedMonth.atDay(1)}" th:max="${depositDate}" th:value="${depositDate}" class="form-control" style="max-width: 220px" required><small class="text-muted">납입일이 다른 항목은 나눠 등록하세요.</small></div>
+<div class="table-responsive"><table class="table align-middle"><thead><tr><th>확인</th><th>플랜</th><th>실제 납입액 (원)</th><th>등록 상태</th></tr></thead><tbody>
+<tr th:each="row, stat : ${ledger.rows}"><td><input type="checkbox" th:name="|rows[${stat.index}].selected|" value="true" th:disabled="${row.monthlyIn > 0 or row.plan.openingCoversMonth(selectedMonth)}" th:aria-label="|${row.name()} 납입 선택|" class="form-check-input"><input type="hidden" th:name="|rows[${stat.index}].planId|" th:value="${row.plan.id}"></td><td th:text="${row.name()}"></td>
+<td><input type="number" th:name="|rows[${stat.index}].amount|" min="1" max="999999999999999" step="1" th:value="${row.plan.monthlyAmount > 0 ? row.plan.monthlyAmount : null}" th:disabled="${row.monthlyIn > 0 or row.plan.openingCoversMonth(selectedMonth)}" th:aria-label="|${row.name()} 실제 납입액|" class="form-control"></td>
+<td><span th:if="${row.monthlyIn > 0}" class="text-success" th:text="|등록됨 · ${#numbers.formatInteger(row.monthlyIn,0,'COMMA')}원|"></span><span th:if="${row.monthlyIn == 0 and row.plan.openingCoversMonth(selectedMonth)}" class="text-muted">시작 원금 기준월 이전·당월 · 일괄 등록 제외</span><span th:if="${row.monthlyIn == 0 and !row.plan.openingCoversMonth(selectedMonth)}" class="text-muted">미등록</span></td></tr></tbody></table></div>
+<button type="submit" class="btn btn-primary">선택한 납입 등록</button>
+<a th:href="@{/savings/list(month=${selectedMonth})}" class="btn btn-outline-secondary">내역 확인·수정</a><a href="/savings/form" class="btn btn-link">추가 납입·인출 기록</a>
+</form></section>
+</div></main></div></body></html>

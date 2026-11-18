@@ -71,13 +71,7 @@
                     내 자산
                 </a>
             </li>
-            <li class="nav-item mb-2">
-                <a href="/trades/list" class="nav-link text-white d-flex align-items-center py-2 px-3"
-                   th:classappend="${activeMenu == 'trades'} ? 'active bg-primary fw-bold' : 'hover-overlay'">
-                    <i class="fas fa-arrow-right-arrow-left me-3" style="width: 20px;"></i>
-                    투자 거래내역
-                </a>
-            </li>
+
             <li class="nav-item mb-2" sec:authorize="hasRole('ADMIN')">
                 <a href="/krx/test" class="nav-link text-white d-flex align-items-center py-2 px-3"
                    th:classappend="${activeMenu == 'krx'} ? 'active bg-primary fw-bold' : 'hover-overlay'">

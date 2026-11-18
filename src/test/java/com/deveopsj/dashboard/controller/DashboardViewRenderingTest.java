@@ -27,6 +27,27 @@ import com.deveopsj.member.security.CustomUserDetails;
 class DashboardViewRenderingTest {
     @Autowired MockMvc mvc;
     @MockitoBean DashboardService service;
+    @MockitoBean com.deveopsj.dashboard.service.DashboardChecklistService checklist;
+
+    @org.junit.jupiter.api.BeforeEach
+    void emptyChecklist() {
+        when(checklist.summarize(any(), any())).thenReturn(
+                new com.deveopsj.dashboard.service.DashboardChecklistService.Checklist(0,0,0,0,0,0));
+    }
+
+    @Test void rendersMonthlyTasksAndLinksWithoutWritingRecords() throws Exception {
+        var month=YearMonth.now();
+        when(service.getMonthlySummary(7L,month)).thenReturn(summary(List.of()));
+        when(checklist.summarize(any(),eq(month))).thenReturn(
+                new com.deveopsj.dashboard.service.DashboardChecklistService.Checklist(2,1,20000,1,700000,3));
+        var html=mvc.perform(get("/dashboard/view").with(user(principal())))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("이번 달 확인할 일", "미확정 2건", "20,000원", "미등록 플랜 1개",
+                "700,000원", "3개 플랜은 제외", "/assets?month="+month, "/spending/list?month="+month,
+                "급여 수입이 없다면 등록하지 않아도 됩니다.")
+                .doesNotContain("처음이라면 이렇게 시작해요");
+        verify(checklist).summarize(argThat(m -> m.getMemberId().equals(7L)), eq(month));
+    }
 
     @Test
     void rendersSelectedMonthRegistrationAndEscapedMemo() throws Exception {
@@ -36,7 +57,7 @@ class DashboardViewRenderingTest {
         String html = mvc.perform(get("/dashboard/view").param("month", "2024-02").with(user(principal())))
                 .andExpect(status().isOk()).andExpect(view().name("dashboard"))
                 .andReturn().getResponse().getContentAsString();
-        assertThat(html).contains("기록상 잔액", "2024-02", "2024-03-01 10:20", "&lt;script&gt;bad&lt;/script&gt;")
+        assertThat(html).contains("선택 월 수입·지출 차액", "2024-02", "2024-03-01 10:20", "&lt;script&gt;bad&lt;/script&gt;")
                 .doesNotContain("<script>bad</script>", "spendingChart");
         assertThat(html.indexOf("최근 지출")).isLessThan(html.indexOf("이번 달 어디에 많이 썼을까?"));
         assertThat(html).contains("이번 달 소비 분석하기", "확인할 지출", "다음 달 실천 하나")
@@ -56,7 +77,28 @@ class DashboardViewRenderingTest {
         var html = mvc.perform(get("/dashboard/view").with(user(principal())))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(html).contains("첫 지출 기록하기", "아직 이 달의 지출 기록이 없어요");
+        assertThat(html).contains("미확정 고정지출·할부 없음", "납입 확인 대상 없음");
         assertThat(html).contains("소비지출</dt>", "고정지출</dt>", ">0원</dd>");
+        assertThat(html).contains("전월 급여 기록이 없어", "현재까지 수입·지출 차액");
+    }
+
+    @Test
+    void expectedSalaryAndInvestmentIncomeRenderSeparatelyFromLivingDifference() throws Exception {
+        var month = YearMonth.now();
+        var data = DashboardSummary.builder().totalIncome(120000L).livingIncome(0)
+                .investmentIncome(120000).dividendIncome(100000).interestIncome(20000)
+                .expectedSalary(3000000).expectedSalaryDate(month.atEndOfMonth())
+                .incomeSpendingDifference(-12000).availableCash(-12000L)
+                .totalSpending(12000L).totalInvestment(0L).totalInvestmentTarget(0L).extraInvestment(0L)
+                .savingsRate(0.0).investmentProgress(0.0).planProgressList(List.of())
+                .recentSpendings(List.of()).spendingByCategory(Map.of()).build();
+        when(service.getMonthlySummary(7L, month)).thenReturn(data);
+        var html = mvc.perform(get("/dashboard/view").with(user(principal())))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("생활비 수입", "투자수익 · 생활비와 별도", "3,000,000원",
+                "120,000원", "-12,000원", "월말 가정", month.atEndOfMonth().toString(),
+                "전월 급여 합계 기준 추정", "예상 · 실제 수입 미포함")
+                .doesNotContain("급여 등록됨", "전월 급여 기록이 없어");
     }
 
     @Test
