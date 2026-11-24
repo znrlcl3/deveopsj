@@ -2,6 +2,7 @@ package com.deveopsj.spending.dto;
 
 public enum CardCompany {
     SHINHAN("신한카드"),
+    LOTTE("롯데카드"),
     SAMSUNG("삼성카드"),
     KAKAO_BANK("카카오뱅크");
 

@@ -25,7 +25,7 @@ public class AssetPlanService {
     private final GoalRepository goalRepository;
     private final MasterCodeService masterCodeService;
 
-    public void save(AssetPlanSaveRequest request, Member member) {
+    public Long save(AssetPlanSaveRequest request, Member member) {
         validateAssetType(request.getAssetType());
         Goal goal = goalRepository.findByIdAndMemberMemberId(request.getGoalId(), member.getMemberId())
                 .orElseThrow(() -> new IllegalArgumentException("선택한 목표를 사용할 수 없습니다."));
@@ -37,7 +37,7 @@ public class AssetPlanService {
         assetPlan.setAssetType(request.getAssetType());
         assetPlan.setMonthlyAmount(request.getMonthlyAmount());
         assetPlan.setMemo(request.getMemo() == null ? null : request.getMemo().trim());
-        assetPlanRepository.save(assetPlan);
+        return assetPlanRepository.save(assetPlan).getId();
     }
 
     public List<AssetPlan> getPlansByMember(Member member) {

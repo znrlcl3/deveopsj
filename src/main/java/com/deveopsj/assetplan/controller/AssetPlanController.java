@@ -50,13 +50,14 @@ public class AssetPlanController {
             return "redirect:/assetplan/form";
         }
         try {
-            assetPlanService.save(request, member);
-            redirectAttributes.addFlashAttribute("message", "자산 플랜이 성공적으로 저장되었습니다.");
+            Long planId = assetPlanService.save(request, member);
+            redirectAttributes.addFlashAttribute("openingPlanId", planId);
+            redirectAttributes.addFlashAttribute("message", "자산 플랜을 등록했습니다. 이미 모은 원금이 있으면 입력하세요.");
+            return "redirect:/assets#opening-" + planId;
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             return "redirect:/assetplan/form";
         }
-        return "redirect:/assetplan/list";
     }
 
     @PostMapping("/update")

@@ -1,0 +1,17 @@
+html { scrollbar-gutter: stable; }
+.ledger-page { background: #f5f7fb; color: #24334b; font-family: 'Pretendard', sans-serif; }
+.ledger-main { margin-left: 280px; width: calc(100% - 280px); min-width: 0; min-height: 100vh; padding: 1.5rem 1rem; }
+.ledger-content { max-width: 1280px; margin-inline: auto; }
+:where(.ledger-page) .card { border: 1px solid #e7ebf2; border-radius: 18px; }
+.ledger-form-card { max-width: 600px; }
+.ledger-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; min-width: max-content; }
+.ledger-row-actions .btn { white-space: nowrap; }
+@media (min-width: 768px) {
+    .ledger-main { padding-inline: 1.5rem; }
+}
+@media (max-width: 991px) {
+    .ledger-page > .d-flex { flex-direction: column; }
+    .ledger-page > .d-flex > div:first-child { position: static !important; width: 100% !important; height: auto !important; }
+    .ledger-page > .d-flex > div:first-child ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ledger-main { margin-left: 0; width: 100%; }
+}

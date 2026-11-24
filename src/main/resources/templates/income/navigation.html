@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<header th:fragment="header(activeTab)">
+    <h1 class="h3 fw-bold mb-3">수입 관리</h1>
+    <nav class="nav nav-tabs mb-4" aria-label="수입 관리">
+        <a href="/income/list" class="nav-link" th:classappend="${activeTab == 'list'} ? 'active'"
+           th:attr="aria-current=${activeTab == 'list' ? 'page' : null}">수입 내역</a>
+        <a href="/income/form" class="nav-link" th:classappend="${activeTab == 'form'} ? 'active'"
+           th:attr="aria-current=${activeTab == 'form' ? 'page' : null}">수입 등록</a>
+    </nav>
+</header>
+</body>
+</html>

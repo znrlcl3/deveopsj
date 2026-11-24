@@ -3,31 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/css/income.css">
     <title>수입 내역 | AI 자산관리</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { background-color: #f4f7f6; font-family: 'Pretendard', sans-serif; }
-        .content-container { max-width: 1100px; margin: 28px auto; }
-        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-    </style>
+    <link rel="stylesheet" href="/css/ledger-layout.css">
+    <link rel="stylesheet" href="/css/income.css">
 </head>
-<body class="income-page">
+<body class="ledger-page income-page">
 <div class="d-flex">
     <div th:replace="~{common/navigation :: sidebar('income')}"></div>
-    <main class="income-main">
-        <div class="container content-container">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                <h3 class="fw-bold mb-0">수입 내역</h3>
-                <a href="/income/form" class="btn btn-primary">
-                    <i class="fas fa-plus me-1"></i> 새 수입 등록
-                </a>
-            </div>
-            <ul class="nav nav-tabs mb-4">
-                <li class="nav-item"><a class="nav-link" href="/income/form">수입 등록</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/income/list">수입 내역</a></li>
-            </ul>
+    <main class="ledger-main">
+        <div class="ledger-content">
+            <header th:replace="~{income/navigation :: header('list')}"></header>
 
             <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
@@ -95,7 +82,7 @@
                             <td class="text-muted small text-nowrap"
                                 th:text="${income.createDate != null ? #temporals.format(income.createDate, 'yyyy-MM-dd HH:mm') : '-'}"></td>
                             <td>
-                                <div class="d-flex justify-content-end gap-2">
+                                <div class="ledger-row-actions">
                                     <button th:if="${income.importKey == null}" type="button" class="btn btn-sm btn-outline-primary"
                                             data-bs-toggle="modal"
                                             th:attr="data-bs-target='#editModal-' + ${income.id}">수정</button>

@@ -2,53 +2,36 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>지출 내역 | AI 자산관리</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { background-color: #f4f7f6; font-family: 'Pretendard', sans-serif; }
-        .content-container { max-width: 1100px; margin: 60px auto; }
-        .card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-    </style>
+    <link rel="stylesheet" href="/css/ledger-layout.css">
 </head>
-<body>
+<body class="ledger-page">
 <div class="d-flex">
     <div th:replace="~{common/navigation :: sidebar('spending')}"></div>
 
-    <main class="flex-grow-1" style="margin-left: 280px; min-height: 100vh;">
-        <div class="container content-container">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="fw-bold mb-0">지출 내역</h3>
-                <a href="/spending/form" class="btn btn-primary">
-                    <i class="fas fa-plus me-1"></i> 새 지출 등록
-                </a>
-            </div>
-
-            <ul class="nav nav-tabs mb-4">
-                <li class="nav-item">
-                    <a class="nav-link" href="/spending/form">지출 등록</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="/spending/list">지출 내역</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/recurring-expenses">고정지출 설정</a>
-                </li>
-            </ul>
+    <main class="ledger-main">
+        <div class="ledger-content">
+            <header th:replace="~{common/ledger-navigation :: spending('list')}"></header>
 
             <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
             <div th:replace="~{common/excel-export :: controls('/spending/export', ${selectedMonth}, 'spendingExportModal')}"></div>
-            <div class="d-flex justify-content-end gap-2 mb-3">
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                        data-bs-target="#cardImportModal">
-                    <i class="fas fa-credit-card me-1"></i> 카드사 엑셀 가져오기
-                </button>
-                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
-                        data-bs-target="#spendingImportModal">
-                    <i class="fas fa-file-arrow-up me-1"></i> 지출 엑셀 업로드
-                </button>
-            </div>
+            <section id="spending-import" tabindex="-1" class="mb-3">
+                <h2 class="h5 fw-bold">엑셀·카드 가져오기</h2>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                            data-bs-target="#cardImportModal">
+                        <i class="fas fa-credit-card me-1"></i> 카드사 엑셀 가져오기
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                            data-bs-target="#spendingImportModal">
+                        <i class="fas fa-file-arrow-up me-1"></i> 지출 엑셀 업로드
+                    </button>
+                </div>
+            </section>
 
             <div class="modal fade" id="spendingImportModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog">
@@ -101,13 +84,14 @@
                                     <div class="fw-bold mb-2">이용내역 파일 다운로드 방법</div>
                                     <ul class="mb-2 ps-3">
                                         <li><strong>신한카드</strong>: 마이 → 카드이용내역 → 엑셀 저장</li>
+                                        <li class="mt-1"><strong>롯데카드</strong>: 최근 이용내역 → 엑셀저장</li>
                                         <li class="mt-1"><strong>삼성카드</strong>: 이용내역 → 다운로드</li>
                                     </ul>
                                     <div class="text-muted">삼성카드는 일시불+할부 이용내역을 다운로드해 주세요. 내려받은 XLSX 파일을 아래에서 선택하면 됩니다.</div>
                                 </div>
                                 <label class="form-label" for="cardExcelFile">카드 이용내역 파일</label>
                                 <input id="cardExcelFile" type="file" name="file" class="form-control"
-                                       accept=".xlsx" required>
+                                       accept=".xls,.xlsx" required>
                                 <label class="form-label mt-3" for="cardExcelPassword">파일 비밀번호 (암호화 파일만)</label>
                                 <input id="cardExcelPassword" type="password" name="filePassword" class="form-control"
                                        maxlength="100" autocomplete="new-password">
@@ -117,7 +101,7 @@
                                 <input id="cardBillingMonth" type="month" name="billingMonth" class="form-control"
                                        th:value="${selectedMonth}">
                                 <div class="form-text">실제 할부 청구액을 가져올 때는 기존 청구명세서의 원금과 이자/수수료를 합쳐 청구월 1일의 지출로 등록합니다. 이미 할부 예정을 만든 거래와 중복되지 않게 확인해 주세요.</div>
-                                <div class="form-text mt-3">현재 신한카드, 삼성카드, 카카오뱅크 XLSX 양식을 지원합니다.</div>
+                                <div class="form-text mt-3">롯데카드는 카드이용내역 XLS, 신한카드·삼성카드·카카오뱅크는 XLSX 양식을 지원합니다.</div>
                                 <div class="alert alert-warning small mt-3 mb-0">
                                     양식이 일치하지 않으면 저장하지 않고 오류를 표시합니다. 저장 전 미리보기에서 카테고리를 지정할 수 있습니다.
                                 </div>
@@ -235,7 +219,7 @@
                             <td class="text-muted small text-nowrap"
                                 th:text="${spending.createDate != null ? #temporals.format(spending.createDate, 'yyyy-MM-dd HH:mm') : '-'}"></td>
                             <td>
-                                <div class="d-flex justify-content-end gap-2">
+                                <div class="ledger-row-actions">
                                     <button type="button" class="btn btn-sm btn-outline-primary"
                                             data-bs-toggle="modal"
                                             th:attr="data-bs-target='#editModal-' + ${spending.id}">수정</button>

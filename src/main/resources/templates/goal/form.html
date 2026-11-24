@@ -7,23 +7,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { background: #f5f7fb; color: #24334b; }
-        .goal-main { margin-left: 280px; width: calc(100% - 280px); min-width: 0; }
-        .goal-content { max-width: 1200px; margin: auto; }
         .card { border: 1px solid #e7ebf2; border-radius: 18px; }
         .goal-money { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
         summary { cursor: pointer; }
         .progress { height: 10px; }
-        @media (max-width: 991px) {
-            body > .d-flex { flex-direction: column; }
-            body > .d-flex > div:first-child { position: static !important; width: 100% !important; height: auto !important; }
-            body > .d-flex > div:first-child ul { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
-            .goal-main { margin-left: 0; width: 100%; }
-        }
     </style>
+    <link rel="stylesheet" href="/css/ledger-layout.css">
 </head>
-<body><div class="d-flex">
+<body class="ledger-page"><div class="d-flex">
     <div th:replace="~{common/navigation :: sidebar('goal')}"></div>
-    <main class="goal-main py-4 px-3 px-md-4"><div class="goal-content">
+    <main class="ledger-main"><div class="ledger-content">
         <h1 class="h3 fw-bold">목표 관리</h1>
         <p class="text-muted">목표까지 얼마나 모았는지, 앞으로 얼마가 필요한지 확인해 보세요.</p>
         <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>

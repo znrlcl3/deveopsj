@@ -2,6 +2,7 @@ package com.deveopsj.assetplan.controller;
 
 import com.deveopsj.assetplan.dto.MonthlyDepositRequest;
 import com.deveopsj.assetplan.service.HouseholdLedgerService;
+import com.deveopsj.assetplan.service.GoalService;
 import com.deveopsj.member.entity.Member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -13,6 +14,7 @@ import java.time.*;
 @Controller @RequiredArgsConstructor
 public class HouseholdLedgerController {
     private final HouseholdLedgerService ledger;
+    private final GoalService goalService;
     @GetMapping("/assets")
     public String index(@RequestParam(required = false) String month, Model model, Member member) {
         YearMonth selected;
@@ -23,7 +25,11 @@ public class HouseholdLedgerController {
             selected = YearMonth.now();
             model.addAttribute("errorMessage", "오늘까지의 조회 월을 선택하세요.");
         }
-        model.addAttribute("ledger", ledger.summary(member.getMemberId(), selected));
+        var summary = ledger.summary(member.getMemberId(), selected);
+        model.addAttribute("ledger", summary);
+        if (summary.rows().isEmpty()) {
+            model.addAttribute("hasGoals", !goalService.getGoalsByMember(member).isEmpty());
+        }
         model.addAttribute("selectedMonth", selected);
         model.addAttribute("currentMonth", YearMonth.now());
         model.addAttribute("today", LocalDate.now());

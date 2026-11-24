@@ -1,6 +1,9 @@
 package com.deveopsj.assetplan.controller;
 
+import java.time.LocalDate;
 import java.time.YearMonth;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import com.deveopsj.assetplan.entity.AssetSavings.DepositType;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -32,6 +35,15 @@ public class AssetSavingsController {
 
     @GetMapping("/form")
     public String savingsForm(Model model, Member member) {
+        var entry = new AssetSavingsSaveRequest();
+        entry.setDepositDate(LocalDate.now());
+        entry.setDepositType(DepositType.PLAN);
+        entry.setDirection(AssetSavingsSaveRequest.Direction.DEPOSIT);
+        model.addAttribute("entry", entry);
+        return renderEntry(model, member);
+    }
+
+    private String renderEntry(Model model, Member member) {
         model.addAttribute("plans", assetSavingsService.getDepositPlansByMember(member));
         model.addAttribute("goals", goalService.getGoalsByMember(member));
         return "savings/form";
@@ -62,20 +74,21 @@ public class AssetSavingsController {
     }
 
     @PostMapping("/save")
-    public String save(@Valid AssetSavingsSaveRequest request, BindingResult bindingResult, Member member,
+    public String save(@Valid @ModelAttribute("entry") AssetSavingsSaveRequest request, BindingResult bindingResult,
+            Model model, Member member,
             org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
-            redirectAttributes.addFlashAttribute("errorMessage",
-                    bindingResult.getAllErrors().get(0).getDefaultMessage());
-            return "redirect:/savings/form";
+            return renderEntry(model, member);
         }
         try {
             assetSavingsService.save(request, member);
-            redirectAttributes.addFlashAttribute("message", "적립 내역이 저장되었습니다.");
+            String action = request.signedAmount() < 0 ? "인출" : "납입";
+            redirectAttributes.addFlashAttribute("message", request.getDepositDate().getMonthValue() + "월 " + action + "을 등록했습니다.");
         } catch (IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            model.addAttribute("errorMessage", e.getMessage());
+            return renderEntry(model, member);
         }
-        return "redirect:/savings/list";
+        return "redirect:/savings/list?month=" + YearMonth.from(request.getDepositDate());
     }
 
     @PostMapping("/update")

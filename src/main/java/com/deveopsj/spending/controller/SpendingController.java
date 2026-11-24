@@ -25,7 +25,10 @@ import com.deveopsj.spending.dto.CardImportPreview;
 import com.deveopsj.spending.service.CardSpendingImportService;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.web.servlet.support.RequestContextUtils;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +52,11 @@ public class SpendingController {
     @ModelAttribute("cardCompanies")
     public CardCompany[] cardCompanies() {
         return CardCompany.values();
+    }
+
+    @GetMapping
+    public String index() {
+        return "redirect:/spending/list";
     }
 
     @GetMapping("/form")
@@ -98,8 +106,12 @@ public class SpendingController {
 
     @PostMapping("/api/save")
     @ResponseBody
-    public ResponseEntity<String> saveSpending(@Valid @RequestBody SpendingSaveRequest request, Member member) {
+    public ResponseEntity<String> saveSpending(@Valid @RequestBody SpendingSaveRequest request, Member member,
+            HttpServletRequest httpRequest, HttpServletResponse response) {
         dataInputService.saveSpendingWithAi(request, member);
+        String listUrl = httpRequest.getContextPath() + "/spending/list?month=" + YearMonth.from(request.getDate());
+        RequestContextUtils.getOutputFlashMap(httpRequest).put("message", request.getDate().getMonthValue() + "월 지출을 등록했습니다.");
+        RequestContextUtils.saveOutputFlashMap(listUrl, httpRequest, response);
         return ResponseEntity.ok("성공적으로 저장되었습니다.");
     }
 

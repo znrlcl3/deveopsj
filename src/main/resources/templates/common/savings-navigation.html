@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org"><body>
-<header th:fragment="header" class="asset-section-header">
-    <h1>내 자산 · 저축 관리</h1>
-    <p>시작 원금과 실제 납입·인출을 기록하고 모은 금액을 확인하세요.</p>
+<header th:fragment="header" class="mb-4">
+    <h1 class="h3 fw-bold mb-2">내 자산 · 저축 관리</h1>
+    <p class="text-muted mb-0">시작 원금과 실제 납입·인출을 기록하고 모은 금액을 확인하세요.</p>
 </header>
 <nav th:fragment="tabs(active)" class="asset-tabs" aria-label="저축 관리">
     <a href="/assets" th:attr="aria-current=${active == 'overview' ? 'page' : null}">저축 현황</a>

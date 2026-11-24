@@ -3,9 +3,9 @@ html:has(body.asset-page) { overflow-y:scroll; }
 @supports (scrollbar-gutter:stable) {
     html:has(body.asset-page) { overflow-y:auto; scrollbar-gutter:stable; }
 }
-body.asset-page { background:#f5f7fb; color:#24334b; }
+body.asset-page { background:#f5f7fb; color:#24334b; font-family:'Pretendard', sans-serif; }
 .asset-page .assets-main { margin-left:280px; width:calc(100% - 280px); min-width:0; padding:24px; }
-.asset-page .assets-content { max-width:1240px; margin:auto; }
+.asset-page .assets-content { max-width:1280px; margin:auto; }
 .asset-page .card { border:1px solid #e4e9f1; border-radius:18px; box-shadow:none; }
 .asset-page .btn { border-radius:9px; }
 .asset-page .form-control, .asset-page .form-select { border-radius:9px; min-height:42px; }
@@ -24,13 +24,16 @@ body.asset-page { background:#f5f7fb; color:#24334b; }
 .asset-page .table th { color:#52627a; background:#f8fafc; font-size:.875rem; white-space:nowrap; }
 .asset-page .namuh-table { min-width:780px; }
 .asset-page .guide-list li { margin-bottom:12px; }
+@media(max-width:767px) {
+    .asset-page .assets-main { padding-inline:16px; }
+}
 @media(max-width:991px) {
     .asset-page > .d-flex { flex-direction:column; }
     .asset-page > .d-flex > div:first-child { position:static !important; width:100% !important; height:auto !important; }
     .asset-page > .d-flex > div:first-child ul { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
-    .asset-page > .d-flex > div:first-child .nav-link { padding:8px !important; font-size:.875rem; }
+    .asset-page > .d-flex > div:first-child .nav-link { padding:8px !important; }
     .asset-page > .d-flex > div:first-child .nav-link i { margin-right:8px !important; }
-    .asset-page .assets-main { margin-left:0; width:100%; padding:20px 12px; }
+    .asset-page .assets-main { margin-left:0; width:100%; }
     .asset-tabs { gap:4px; }
-    .asset-tabs a { padding:8px 10px; font-size:.875rem; }
+    .asset-tabs a { padding:8px 10px; }
 }

@@ -37,7 +37,7 @@ public class AssetSavingsService {
                 .assetPlan(target.assetPlan())
                 .goal(target.goal())
                 .depositType(request.getDepositType())
-                .amount(request.getAmount())
+                .amount(request.signedAmount())
                 .depositDate(request.getDepositDate())
                 .memo(request.getMemo() == null ? null : request.getMemo().trim())
                 .build();

@@ -5,9 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>지출 엑셀 미리보기</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/ledger-layout.css">
 </head>
-<body class="bg-light">
-<main class="container py-5">
+<body class="ledger-page">
+<div class="d-flex">
+    <div th:replace="~{common/navigation :: sidebar('spending')}"></div>
+    <main class="ledger-main"><div class="ledger-content">
+    <header th:replace="~{common/ledger-navigation :: spending('list')}"></header>
     <h2>지출 엑셀 미리보기</h2>
     <p class="text-muted" th:text="${preview.originalFilename}"></p>
     <div class="alert alert-info">날짜·금액·메모가 같은 기존 내역은 중복 후보입니다. 중복 후보와 파일 안의 반복 행은 기본 선택에서 제외했습니다. 실제로 별도 지출인 경우 확인 후 선택해 주세요. 이미 등록한 동일 파일의 행은 다시 등록할 수 없습니다.</div>
@@ -46,7 +51,8 @@
             <button type="submit" class="btn btn-primary">선택 내역 등록</button>
         </div>
     </form>
-</main>
+    </div></main>
+</div>
 <script>
 function confirmExcelImport(form) {
     const count = form.querySelectorAll('input[name="selectedRows"]:checked:not(:disabled)').length;

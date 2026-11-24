@@ -15,7 +15,7 @@
         <div class="assets-content">
             <header th:replace="~{common/savings-navigation :: header}"></header>
             <nav th:replace="~{common/savings-navigation :: tabs('recurring')}"></nav>
-            <h3 class="fw-bold mb-4">정기 납입 설정</h3><p class="small text-muted">시작 원금이 있는 플랜은 기준월 다음 달부터 정기 납입 대상입니다. 기준일 이후 같은 달의 실제 거래는 추가 납입·인출에서 기록하세요.</p>
+            <h2 class="h5 fw-bold mb-4">정기 납입 설정</h2><p class="small text-muted">시작 원금이 있는 플랜은 기준월 다음 달부터 정기 납입 대상입니다. 기준일 이후 같은 달의 실제 거래는 추가 납입·인출에서 기록하세요.</p>
 
 
             <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>

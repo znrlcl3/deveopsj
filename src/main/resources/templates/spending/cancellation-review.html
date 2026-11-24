@@ -1,9 +1,15 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>신한카드 취소 확인</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"></head>
-<body class="bg-light"><main class="container py-4" style="max-width: 900px">
-    <h1 class="h4">취소할 기존 지출 확인</h1>
+<title>신한카드 취소 확인</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/ledger-layout.css">
+</head>
+<body class="ledger-page">
+<div class="d-flex">
+    <div th:replace="~{common/navigation :: sidebar('spending')}"></div>
+    <main class="ledger-main"><div class="ledger-content">
+    <header th:replace="~{common/ledger-navigation :: spending('list')}"></header>
+    <h2 class="h4">취소할 기존 지출 확인</h2>
     <p th:text="|${review.row.spendingDate} · ${review.row.merchantName} · 취소 ${#numbers.formatInteger(-review.row.amount, 0, 'COMMA')}원|"></p>
     <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
     <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
@@ -27,4 +33,5 @@
     </section>
     <a th:href="@{/spending/list}" class="btn btn-outline-secondary">지출 내역 보기</a>
     <p class="small text-muted mt-3">이 창을 닫으면 업로드 미리보기에서 나머지 거래를 계속 확인할 수 있습니다. 일반 거래 등록을 완료하면 미리보기가 만료되므로 취소 확인을 먼저 마쳐 주세요.</p>
-</main></body></html>
+    </div></main>
+</div></body></html>

@@ -81,22 +81,32 @@ public class CardSpendingImportService {
     @Transactional(readOnly = true)
     public CardImportPreview preview(CardCompany company, MultipartFile file, String filePassword,
             YearMonth billingMonth, Member member) {
-        validateFile(file);
-        CardStatementParser parser = parsers.get(company);
-        if (parser == null) throw new IllegalArgumentException("지원하지 않는 카드사입니다.");
-        try (XSSFWorkbook workbook = openWorkbook(file, filePassword)) {
-            if (workbook.getNumberOfSheets() == 0) throw new IllegalArgumentException("엑셀 시트를 찾을 수 없습니다.");
-            List<CardSpendingImportRow> rows = parser.parse(workbook, billingMonth);
+        validateFile(file, company);
+        try {
+            List<CardSpendingImportRow> rows;
+            String notice;
+            if (company == CardCompany.LOTTE) {
+                rows = LotteCardStatementParser.parse(file.getBytes());
+                notice = "롯데카드 이용일 기준입니다. 취소·부분취소 거래는 제외하며 기존 지출은 자동 차감하지 않습니다. 할부는 첫 청구일을 확인한 뒤 월별 예정 지출로 등록하세요.";
+            } else {
+                CardStatementParser parser = parsers.get(company);
+                if (parser == null) throw new IllegalArgumentException("지원하지 않는 카드사입니다.");
+                try (XSSFWorkbook workbook = openWorkbook(file, filePassword)) {
+                    if (workbook.getNumberOfSheets() == 0) throw new IllegalArgumentException("엑셀 시트를 찾을 수 없습니다.");
+                    rows = parser.parse(workbook, billingMonth);
+                    notice = parser.previewNotice(workbook, billingMonth);
+                }
+            }
             if (rows.isEmpty()) throw new IllegalArgumentException("가져올 카드 이용내역이 없습니다.");
             if (rows.size() > MAX_ROWS) throw new IllegalArgumentException("한 번에 최대 1,000건까지 확인할 수 있습니다.");
             if (member != null) rows = markDuplicates(company, rows, member);
             return new CardImportPreview(UUID.randomUUID().toString(), company,
                     safeFilename(file.getOriginalFilename()), List.copyOf(rows),
-                    parser.previewNotice(workbook, billingMonth), member == null ? null : member.getMemberId());
+                    notice, member == null ? null : member.getMemberId());
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (IOException | RuntimeException e) {
-            throw new IllegalArgumentException("올바른 XLSX 파일인지 확인해 주세요.", e);
+            throw new IllegalArgumentException(company == CardCompany.LOTTE ? "롯데카드 카드이용내역 XLS 원본을 확인해 주세요." : "올바른 XLSX 파일인지 확인해 주세요.", e);
         }
     }
 
@@ -264,11 +274,12 @@ public class CardSpendingImportService {
         return List.copyOf(result);
     }
 
-    private void validateFile(MultipartFile file) {
+    private void validateFile(MultipartFile file, CardCompany company) {
         if (file == null || file.isEmpty()) throw new IllegalArgumentException("업로드할 엑셀 파일을 선택해 주세요.");
         String filename = file.getOriginalFilename();
-        if (filename == null || !filename.toLowerCase(java.util.Locale.ROOT).endsWith(".xlsx"))
-            throw new IllegalArgumentException("XLSX 파일만 업로드할 수 있습니다.");
+        String extension = company == CardCompany.LOTTE ? ".xls" : ".xlsx";
+        if (filename == null || !filename.toLowerCase(java.util.Locale.ROOT).endsWith(extension))
+            throw new IllegalArgumentException("선택한 카드사의 " + extension + " 이용내역 파일을 선택해 주세요.");
         if (file.getSize() > MAX_FILE_SIZE) throw new IllegalArgumentException("엑셀 파일은 5MB 이하여야 합니다.");
     }
 

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<header th:fragment="spending(activeTab)">
+    <h1 class="h3 fw-bold mb-3">지출 관리</h1>
+    <nav class="nav nav-tabs mb-4" aria-label="지출 관리">
+        <a th:href="@{/spending/list}" class="nav-link" th:classappend="${activeTab == 'list'} ? 'active'"
+           th:attr="aria-current=${activeTab == 'list' ? 'page' : null}">지출 내역</a>
+        <a th:href="@{/spending/form}" class="nav-link" th:classappend="${activeTab == 'form'} ? 'active'"
+           th:attr="aria-current=${activeTab == 'form' ? 'page' : null}">지출 등록</a>
+        <a th:href="@{/recurring-expenses}" class="nav-link" th:classappend="${activeTab == 'recurring'} ? 'active'"
+           th:attr="aria-current=${activeTab == 'recurring' ? 'page' : null}">고정지출 설정</a>
+    </nav>
+</header>
+<header th:fragment="assetplan(activeTab)">
+    <h1 class="h3 fw-bold mb-3">자산 플랜</h1>
+    <nav class="nav nav-tabs mb-4" aria-label="자산 플랜">
+        <a th:href="@{/assetplan/form}" class="nav-link" th:classappend="${activeTab == 'form'} ? 'active'"
+           th:attr="aria-current=${activeTab == 'form' ? 'page' : null}">플랜 등록</a>
+        <a th:href="@{/assetplan/list}" class="nav-link" th:classappend="${activeTab == 'list'} ? 'active'"
+           th:attr="aria-current=${activeTab == 'list' ? 'page' : null}">플랜 내역</a>
+    </nav>
+</header>
+</body>
+</html>

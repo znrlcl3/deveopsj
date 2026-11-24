@@ -7,7 +7,7 @@ import com.deveopsj.assetplan.entity.AssetSavings.DepositType;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.Positive;
+import org.springframework.format.annotation.DateTimeFormat;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,6 +15,10 @@ import lombok.Setter;
 @Getter
 @Setter
 public class AssetSavingsSaveRequest {
+
+    public enum Direction { DEPOSIT, WITHDRAWAL }
+
+    private Direction direction;
 
     private Long assetPlanId;
 
@@ -28,11 +32,18 @@ public class AssetSavingsSaveRequest {
     @jakarta.validation.constraints.Max(999999999999999L)
     private Long amount;
 
-    @AssertTrue(message = "금액은 0일 수 없습니다. 인출은 음수로 입력하세요.")
-    public boolean isAmountNonZero() { return amount == null || amount != 0; }
+    @AssertTrue(message = "금액은 0보다 큰 정수로 입력해 주세요.")
+    public boolean isAmountNonZero() {
+        return amount == null || (direction == null ? amount != 0 : amount > 0);
+    }
+
+    public long signedAmount() {
+        return direction == Direction.WITHDRAWAL ? -amount : amount;
+    }
 
     @NotNull(message = "적립 날짜를 입력해 주세요.")
     @PastOrPresent(message = "적립 날짜는 미래일 수 없습니다.")
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate depositDate;
 
     @Size(max = 200, message = "메모는 200자 이하여야 합니다.")
