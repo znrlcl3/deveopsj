@@ -28,6 +28,7 @@ description: DeveopsJ 기능 추가, 수정, 리팩터링, 장애 분석, 테스
 | --- | --- | --- |
 | 금융 저장·계산, 수입·매매·납입·평가, 반복 규칙, 현금흐름 | domain-data-expert | 화면/인가 변경 시 web-security-expert |
 | XLSX 내보내기·일괄 등록·카드 파서·중복 방지 | domain-data-expert | 업로드/세션은 web-security-expert, 분류는 ai-integration-expert |
+| 화면 사용성 리뷰·정보 우선순위·메뉴/탭 개편·입력 흐름 설계 | ui-ux-expert | 구현·권한은 web-security-expert, 금융 의미는 domain-data-expert, 수용 기준 확인은 qa-engineer |
 | Controller·Thymeleaf·JS, 로컬 로그인·Keycloak, 관리자 전환, OPA/Rego | web-security-expert | 소유권 쿼리는 domain-data-expert, 프로필은 operations-expert |
 | Gemini 피드백·지출 분석·카테고리 예측 | ai-integration-expert | 저장/활성 공통코드는 domain-data-expert |
 | KIS 토큰·시세·환율, KRX/Nasdaq 종목 동기화 | market-integration-expert | 포트폴리오 산식은 domain-data-expert, 관리 권한은 web-security-expert |
